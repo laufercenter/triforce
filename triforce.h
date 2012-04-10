@@ -20,6 +20,6 @@
 
 //This is a main header - it includes everything else.
 
-#include <triforce/tessellation.h>
+#include "triforce/tessellation.h"
 
 #endif // TRIFORCE_H_
