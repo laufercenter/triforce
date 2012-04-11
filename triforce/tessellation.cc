@@ -246,11 +246,11 @@ void filterCircularRegions(double radius, std::vector<CircularRegion> &circles){
 
 }
 
-void filterEmptyCircularRegions(std::vector<CircularRegion> *circles){
+void filterEmptyCircularRegions(std::vector<CircularRegion> &circles){
 	std::vector<CircularRegion>::iterator it;
 	bool erased;
 	it = circles->begin();
-	while(it != circles->end()){
+	while(it != circles.end()){
 		erased=false;
 		if(it->forwardIntersections.size()==0){
 			it = circles->erase(it);
@@ -263,21 +263,21 @@ void filterEmptyCircularRegions(std::vector<CircularRegion> *circles){
 
 
 
-void reindexCircularRegions(std::vector<CircularRegion> *circles){
+void reindexCircularRegions(std::vector<CircularRegion> &circles){
 	std::list<IntersectionPoint>::iterator it;
 	int i,j;
 	int currentID;
-	for(i=0;i<circles->size();i++){
-		currentID = (*circles)[i].id;
-		(*circles)[i].id = i;
-		for(it = (*circles)[i].forwardIntersections.begin(); it != (*circles)[i].forwardIntersections.end(); ++it){
+	for(i=0;i<circles.size();i++){
+		currentID = circles[i].id;
+		circles[i].id = i;
+		for(it = circles[i].forwardIntersections.begin(); it != circles[i].forwardIntersections.end(); ++it){
 			it->from = i;
 		}
 
-		for(j=0;j<circles->size();j++){
+		for(j=0;j<circles.size();j++){
 			if(j!=i){
-				it = (*circles)[j].forwardIntersections.begin();
-				while(it != (*circles)[j].forwardIntersections.end()){
+				it = circles[j].forwardIntersections.begin();
+				while(it != circles[j].forwardIntersections.end()){
 					if(it->with == currentID && !it->visited){
 						it->with = i;
 						it->visited=true;
@@ -294,23 +294,23 @@ void reindexCircularRegions(std::vector<CircularRegion> *circles){
 }
 
 
-void outputCircularRegions(std::vector<CircularRegion> *circles){
+void outputCircularRegions(std::vector<CircularRegion> &circles){
 	std::list<IntersectionPoint>::iterator it;
 	int i,u;
-	NSWarnLog(@"......... outputting circular regions ...........");
-	for(i=0;i<circles->size();i++){
-		NSWarnLog(@"- circular region %d with id: %d:",i,(*circles)[i].id);
+	fprintf(stdout, "......... outputting circular regions ...........");
+	for(i=0;i<circles.size();i++){
+		fprintf(stdout,"- circular region %d with id: %d:",i,circles[i].id);
 		u=0;
-		for(it = (*circles)[i].forwardIntersections.begin(); it != (*circles)[i].forwardIntersections.end(); ++it){
-			NSWarnLog(@"intersection %d from: %d with: %d (%f %f %f)",u,it->from,it->with,it->vector.vector[0],it->vector.vector[1],it->vector.vector[2]);
+		for(it = circles[i].forwardIntersections.begin(); it != circles[i].forwardIntersections.end(); ++it){
+			fprintf(stdout,"intersection %d from: %d with: %d (%f %f %f)",u,it->from,it->with,it->vector.vector[0],it->vector.vector[1],it->vector.vector[2]);
 			++u;
 		}
 	}
-	NSWarnLog(@"......... end of data  ...........");
+	fprintf(stdout,"......... end of data  ...........");
 
 }
 
-
+/*
 void outputSingleCircularRegion(CircularRegion *circle){
 	
 	NSWarnLog(@"...............................................");
@@ -319,28 +319,25 @@ void outputSingleCircularRegion(CircularRegion *circle){
 	NSWarnLog(@"length: %f(%f), g: %f, a: %f, openingAngle: %f, sphereRadius: %f",circle->vector.length,circle->normal.length,circle->g, circle->a, circle->openingAngle, circle->sphereRadius); 
 	
 }
+*/
 
 
-
-void filterIntersectionPoints(Vector3D *origin, double radius, std::vector<CircularRegion> *circles, int except){
+void filterIntersectionPoints(std::vector<CircularRegion> &circles, int except){
 	std::list<IntersectionPoint>::iterator it;
 	int i,u;
 	double angle;
 	bool erase;
-	for(i=0; i<circles->size(); i++){
-		it = (*circles)[i].forwardIntersections.begin();
-		while(it != (*circles)[i].forwardIntersections.end()){
+	for(i=0; i<circles.size(); i++){
+		it = circles[i].forwardIntersections.begin();
+		while(it != circles[i].forwardIntersections.end()){
 			erase=false;
-			for(u=0; u<circles->size(); u++){
-				if(it->with != (*circles)[u].id && (*circles)[u].id!=(*circles)[i].id && (*circles)[u].id!=except){
-					angle = getAngle(&it->vector, &(*circles)[u].vector);
-					//NSWarnLog(@"ANGLE: %f %f",angle,circles[u].openingAngle);
-					if(angle < (*circles)[u].openingAngle) erase = true;
+			for(u=0; u<circles.size(); u++){
+				if(it->with != circles[u].id && circles[u].id!=circles[i].id && circles[u].id!=except){
+					angle = getAngle(it->vector, circles[u].vector);
+					if(angle < circles[u].openingAngle) erase = true;
 					
 					if(erase){
-						//NSWarnLog(@"deleting intersection %d %d due to %d",circles[i].id,it->with,circles[u].id);
-
-						it = (*circles)[i].forwardIntersections.erase(it);
+						it = circles[i].forwardIntersections.erase(it);
 						break;
 					}
 				}
@@ -355,7 +352,7 @@ void filterIntersectionPoints(Vector3D *origin, double radius, std::vector<Circu
 
 
 
-std::vector<CircularRegion>* deepCopy(std::vector<CircularRegion> *circles){
+std::vector<CircularRegion>* deepCopy(std::vector<CircularRegion> &circles){
 	int i,j;
 	std::list<IntersectionPoint>::iterator it;
 	std::vector<CircularRegion>* newCircles;
@@ -381,6 +378,295 @@ std::vector<CircularRegion>* deepCopy(std::vector<CircularRegion> *circles){
 	return newCircles;
 }
 
+
+void outputGaussBonnetPath(std::list<IntersectionPoint*> &points){
+	std::list<IntersectionPoint*>::iterator it;
+	int i;
+	
+	for(it=points->begin(), i=0; it!=points->end(); ++it, ++i)
+		fprintf(stdout,"GBPATH[%d] %d - %d - %d", i, (*it)->from, (*it)->id, (*it)->with);
+}
+
+
+
+void prepareCircularRegions(std::vector<CircularRegion> &circles, std::vector<CircularRegion> **newCircles){
+	*newCircles = deepCopy(circles);
+	
+	filterEmptyCircularRegions(*newCircles);
+	clearFlags(*newCircles);
+	reindexCircularRegions(*newCircles);
+	clearFlags(*newCircles);
+}
+
+
+void insertFakeIntersectionPoints(std::vector<CircularRegion> &circles){
+	vec v2;
+	
+	//we have to find circles that did not intersect with other circles and we have to insert fake intersectionpoints for them
+	for(k=0;k<circles.size();k++){
+		if(!circles[k].intersect){
+			//NSWarnLog(@"INSERTING FAKE INTERSECTIONPOINTS");
+			v = randu<vec>(3);
+			v2 = circles[k].normal * circles[k].g;
+			o = cross(v2,v);
+			o = o / norm(o,2);
+			p.vector = v2+o;
+			p.with=k;
+			p.from=k;
+			circles[k].forwardIntersections.push_back(p);
+			
+			o2 = cross(v2,o);
+			o2 = o2 / norm(o2,2);
+			p.vector=v2+o2;
+			circles[k].forwardIntersections.push_back(p);
+			
+			p.vector = v2 + (o * -1)
+			circles[k].forwardIntersections.push_back(p);
+			
+			p.vector = v2 + (o2 * -1)
+			circles[k].forwardIntersections.push_back(p);
+			
+		}
+	}
+	
+}
+
+
+
+void buildGaussBonnetPath(vec &origin, double radius, std::vector<vec> &atoms, std::vector<int> &indizee, std::vector<double> &radii, std::vector<CircularRegion> &circles){
+	IntersectionPoint p;
+	int i,k,j;
+	IntersectionPair points;
+	double angle;
+	vec v,v2,o,o2;
+	
+	srand(2);
+
+
+	makeCircularRegions(origin, radius, atoms, indizee, radii, circles);
+	for(i=0;i<circles.size();i++){
+		determineProjection(origin, radius, circles[i]);
+	}
+	filterCircularRegions(radius, circles);
+	
+	clearFlags(circles);
+	reindexCircularRegions(circles);
+
+	p.visited = false;
+	p.flagged = false;
+	for(k=0;k<circles.size();k++)
+		for(j=k+1;j<circles.size();j++){
+			if(k!=j){
+				//determine if there will be intersections
+				angle = getAngleBetweenNormals(circles[k].normal,circles[j].normal);
+				if(angle < circles[k].openingAngle + circles[j].openingAngle)
+					if(angle + circles[k].openingAngle > circles[j].openingAngle && angle + circles[j].openingAngle > circles[k].openingAngle){
+						points = determineIntersectionPoints(origin, radius, circles[k]), circles[j]));
+						//NSWarnLog(@"POINTS: [%f %f %f], [%f %f %f]",points.k_j.vector[0],points.k_j.vector[1],points.k_j.vector[2],points.j_k.vector[0],points.j_k.vector[1],points.j_k.vector[2]);
+						p.vector = points.k_j;
+						p.with = j;
+						p.from = k;
+						(*circles)[k].forwardIntersections.push_back(p);	
+						(*circles)[k].intersect = true;
+						p.vector = points.j_k;
+						p.with = k;
+						p.from = j;
+						circles[j].forwardIntersections.push_back(p);						
+						circles[j].intersect = true;
+					}
+			}
+		}
+
+	//NSWarnLog(@"filtering intersectionpoints...");
+	filterIntersectionPoints(origin, radius, circles,-1);
+	//NSWarnLog(@"filtering circular regions...");
+
+	//we're not filtering empty regions at this point, we need all regions later on
+	//filterEmptyCircularRegions(circles);
+	//because we're not deleting, we don't need reindexing
+	//NSWarnLog(@"reindexing circular regions...");
+	//reindexCircularRegions(circles);
+	//NSWarnLog(@"clearing flags...");
+	clearFlags(circles);
+	//NSWarnLog(@"gauss bonnet path is ready...");
+	
+	insertFakeIntersectionPoints(circles);
+	
+	
+	
+}
+
+
+
+
+void harvestIntersectionPoints(std::vector<CircularRegion> &circles, std::vector<vec> &intersections){
+	int i;
+	std::list<IntersectionPoint>::iterator it;
+
+	for(i=0;i<circles.size();i++)
+		for(it = circles[i].forwardIntersections.begin(); it != circles[i].forwardIntersections.end(); ++it){
+			//NSWarnLog(@"POINT: [%f %f %f]",it->vector.vector[0],it->vector.vector[1],it->vector.vector[2]);
+			intersections.push_back(it->vector);
+			}
+}
+
+
+bool hasUnflaggedIntersectionPoints(CircularRegion &circle, IntersectionPoint **ip){
+	std::list<IntersectionPoint>::iterator it;
+	for(it = circle.forwardIntersections.begin(); it != circle.forwardIntersections.end(); ++it){
+		if(!it->visited){
+			*ip=&*it;
+			return true;
+		}
+	}
+	return false;
+}
+
+
+std::list<IntersectionPoint*>* retrieveIntersections(CircularRegion &circle){
+	std::list<IntersectionPoint*>* res;
+	res = new std::list<IntersectionPoint*>();
+	
+	std::list<IntersectionPoint>::iterator it;
+	for(it = circle->forwardIntersections.begin(); it != circle.forwardIntersections.end(); ++it){
+		//if(!it->visited){
+			//save a pointer to the intersectionpoint
+			res->push_back(&(*it));
+		//}
+	}
+	return res;
+	
+}
+
+
+void showIntersections(std::list<IntersectionPoint*> &intersections){
+	std::list<IntersectionPoint*>::iterator it;
+	
+	for(it=intersections.begin();it!=intersections.end();++it)
+		fprintf(stdout,"INTERSECTION %d-%d",(*it)->from, (*it)->with);
+}
+
+/*
+ * path and res needs to be deleted somewhere
+ */
+std::vector<std::list<IntersectionPoint*>*>*  harvestGaussBonnetPaths(std::vector<CircularRegion> &circles){
+	std::vector<std::list<IntersectionPoint*>*>* res;
+	std::list<IntersectionPoint*>* path;
+	std::list<IntersectionPoint*>* intersectionsTest;
+	std::list<IntersectionPoint*>* intersections;
+	std::list<IntersectionPoint*>::iterator it_i, minIt;
+
+	vec v,ortho,test,reference;
+	IntersectionPoint  *p, *p_prev;
+	CircularRegion circle;
+	bool done;
+	double minAngle,angle;
+	int i,j;
+	
+	res = new std::vector<std::list<IntersectionPoint*>*>();
+	path = new std::list<IntersectionPoint*>();
+	//the whole thing can actually be emtpy, in that case we better get outta here
+	if(circles.size()==0) return res;
+	//outputCircularRegions(circles);
+	
+	clearFlags(circles);
+	
+	
+	for(j=0;j<circles.size();++j){
+		if(hasUnflaggedIntersectionPoints(&((*circles)[j]),&p_prev)){
+			//NSWarnLog(@"USING SEED %d, %d-%d",j, p_prev->from, p_prev->with);
+			//p_prev->visited=true;
+			done=false;
+			while(!done){
+				//NSWarnLog(@"STARTING ROUND %d",p_prev->with);
+				circle = (*circles)[p_prev->with];
+				//NSWarnLog(@"GETTING INTERSECTIONS FOR: %d",p_prev->with);
+				intersections = retrieveIntersections(circles[p_prev->with]);
+				
+				if(intersections->size() > 1){
+					showIntersections(intersections);
+					//NSWarnLog(@"MULTIINTERSECTIONS");
+					//determine which point we need to take, using p_prev as a reference
+					
+					//first we draw an orthogonal vector to the plane of the circular region
+					v = circle.normal * circle.g;
+					//from there we draw a vector to the last visited intersectionpoint
+					reference = p_prev->vector - v;
+		
+					//we create a plane that lies in the previously constructed vector and the plane-orthogonal vector.
+					//ortho is then the normal vector of the plane
+					ortho = cross(p_prev->vector,v);
+					ortho = ortho / norm(ortho,2);
+		
+					minAngle = 2 * PI;
+					for(it_i=intersections->begin(); it_i!=intersections->end(); ++it_i){
+						
+						//NSWarnLog(@"vector: (%f %f %f)",intersections[i]->vector.vector[0],intersections[i]->vector.vector[1],intersections[i]->vector.vector[2]);
+						//we draw a vector from the plane-orthogonal vector to the currently inspected intersectionpoint
+						test = it_i->vector - &v;
+						angle = getAngle(&reference,&test);
+						
+						double oldAngle = angle;
+						//here, we check on which side of the plane the intersection point is
+						//(if it is counterclockwise or clockwise oriented regarding to the reference)
+						if(circle.form == CONCAVE){
+							if(dot(ortho,test) < 0) angle = 2 * PI - angle;
+						}
+						else{
+							if(dot(ortho,test) > 0) angle = 2 * PI - angle;
+						}
+						//NSWarnLog(@"EVAL: %f %f - %f",angle,minAngle,Ad3DDotProduct(&ortho,&test));
+						
+						if(isZero(angle)) angle = 2 * PI;
+						
+						if(angle < minAngle){
+							minAngle = angle;
+							minIt = it_i;
+						}
+						
+						//NSWarnLog(@"INT: %d-%d ANG: %f / %f [%f] %f %d",(*it_i)->from,(*it_i)->with,angle,oldAngle,minAngle,Ad3DDotProduct(&ortho,&test),circle.form);
+						
+					}
+		
+					//we got the next point :)
+					
+					p = *minIt;
+					if(!p->visited){
+						p->visited = true;
+						p->id=path->size();
+						p_prev = p;
+						path->push_back(p);
+					}
+					else done=true;
+					
+				}
+				else{
+					//NSWarnLog(@"NORMAL INTERSECTION");
+					p = (*intersections->begin());
+					if(!p->visited){
+						p->visited = true;
+						p->id = path->size();
+						p_prev = p;
+						path->push_back(p);
+					}
+					else done=true;
+				}
+				
+			
+				delete intersections;
+			}
+			res->push_back(path);
+			path = new std::list<IntersectionPoint*>();
+		}
+		delete intersectionsTest;
+	}
+	return res;
+}
+
+
+
+
+/*
 void splitCircularRegions(Vector3D *origin, double radius, std::vector<CircularRegion> *circles, CircularRegion *splitter, std::vector<CircularRegion> **inCircles, std::vector<CircularRegion> **offCircles){
 	//insert new points
 	CircularRegion c;
@@ -487,300 +773,12 @@ void splitCircularRegions(Vector3D *origin, double radius, std::vector<CircularR
 		
 	
 }
+*/
 
 
-void outputGaussBonnetPath(std::list<IntersectionPoint*> *points){
-	std::list<IntersectionPoint*>::iterator it;
-	int i;
+
 	
-	for(it=points->begin(), i=0; it!=points->end(); ++it, ++i)
-		NSWarnLog(@"GBPATH[%d] %d - %d - %d", i, (*it)->from, (*it)->id, (*it)->with);
-}
-
-
-
-void prepareCircularRegions(std::vector<CircularRegion> *circles, std::vector<CircularRegion> **newCircles){
-	*newCircles = deepCopy(circles);
-	
-	filterEmptyCircularRegions(*newCircles);
-	clearFlags(*newCircles);
-	reindexCircularRegions(*newCircles);
-	clearFlags(*newCircles);
-}
-
-
-
-void buildGaussBonnetPath(Vector3D *origin, double radius, std::vector<Vector3D> *atoms, std::vector<int> *indizee, std::vector<double> *radii, std::vector<CircularRegion> *circles){
-	IntersectionPoint p;
-	int i,k,j;
-	IntersectionPair points;
-	double angle;
-	Vector3D v,vec,o,o2;
-	
-	srand(2);
-
-
-	//NSWarnLog(@"making circular regions...");
-	makeCircularRegions(origin, radius, atoms, indizee, radii, circles);
-
-	//NSWarnLog(@"determining projections...");
-	for(i=0;i<circles->size();i++){
-		determineProjection(origin, radius, &(*circles)[i]);
-	}
-	//NSWarnLog(@"filtering circular regions...");
-	filterCircularRegions(radius, circles);
-	
-	clearFlags(circles);
-	reindexCircularRegions(circles);
-
-	p.visited = false;
-	p.flagged = false;
-	//NSWarnLog(@"determining intersectionpoints...");
-	for(k=0;k<circles->size();k++)
-		for(j=k+1;j<circles->size();j++){
-			if(k!=j){
-				//determine if there will be intersections
-				angle = getAngleBetweenNormals(&((*circles)[k].normal),&((*circles)[j].normal));
-				if(angle < (*circles)[k].openingAngle + (*circles)[j].openingAngle)
-					if(angle + (*circles)[k].openingAngle > (*circles)[j].openingAngle && angle + (*circles)[j].openingAngle > (*circles)[k].openingAngle){
-						points = determineIntersectionPoints(origin, radius, &((*circles)[k]), &((*circles)[j]));
-						//NSWarnLog(@"POINTS: [%f %f %f], [%f %f %f]",points.k_j.vector[0],points.k_j.vector[1],points.k_j.vector[2],points.j_k.vector[0],points.j_k.vector[1],points.j_k.vector[2]);
-						p.vector = points.k_j;
-						p.with = j;
-						p.from = k;
-						(*circles)[k].forwardIntersections.push_back(p);	
-						(*circles)[k].intersect = true;
-						p.vector = points.j_k;
-						p.with = k;
-						p.from = j;
-						(*circles)[j].forwardIntersections.push_back(p);						
-						(*circles)[j].intersect = true;
-					}
-			}
-		}
-
-	//NSWarnLog(@"filtering intersectionpoints...");
-	filterIntersectionPoints(origin, radius, circles,-1);
-	//NSWarnLog(@"filtering circular regions...");
-
-	//we're not filtering empty regions at this point, we need all regions later on
-	//filterEmptyCircularRegions(circles);
-	//because we're not deleting, we don't need reindexing
-	//NSWarnLog(@"reindexing circular regions...");
-	//reindexCircularRegions(circles);
-	//NSWarnLog(@"clearing flags...");
-	clearFlags(circles);
-	//NSWarnLog(@"gauss bonnet path is ready...");
-	
-	//we have to find circles that did not intersect with other circles and we have to insert fake intersectionpoints for them
-	for(k=0;k<circles->size();k++){
-		if(!(*circles)[k].intersect){
-			NSWarnLog(@"INSERTING FAKE INTERSECTIONPOINTS");
-			v.vector[0] = ((double)rand()/(double)RAND_MAX)-0.5;
-			v.vector[1] = ((double)rand()/(double)RAND_MAX)-0.5;
-			v.vector[2] = ((double)rand()/(double)RAND_MAX)-0.5;
-			
-			Ad3DVectorScalarMultiply2(&((*circles)[k].normal), (*circles)[k].g, &vec);
-			Ad3DCrossProduct(&vec, &v, &o);
-			Ad3DVectorLength(&o);
-			Ad3DVectorScalarMultiply(&o, (*circles)[k].a/o.length);
-			Ad3DVectorLength(&o);
-			Ad3DVectorAdd(&vec, &o, &p.vector);
-			p.with=k;
-			p.from=k;
-			(*circles)[k].forwardIntersections.push_back(p);
-			
-			Ad3DCrossProduct(&vec, &o, &o2);
-			Ad3DVectorLength(&o2);
-			Ad3DVectorScalarMultiply(&o2, (*circles)[k].a/o2.length);
-			Ad3DVectorLength(&o2);
-			Ad3DVectorAdd(&vec, &o2, &p.vector);
-			(*circles)[k].forwardIntersections.push_back(p);
-			
-			
-			Ad3DVectorScalarMultiply(&o, -1.0);
-			Ad3DVectorAdd(&vec, &o, &p.vector);
-			(*circles)[k].forwardIntersections.push_back(p);
-			
-			Ad3DVectorScalarMultiply(&o2, -1.0);
-			Ad3DVectorAdd(&vec, &o2, &p.vector);
-			(*circles)[k].forwardIntersections.push_back(p);
-			
-		}
-	}
-	
-}
-
-
-
-
-void harvestIntersectionPoints(std::vector<CircularRegion> *circles, std::vector<Vector3D> *intersections){
-	int i;
-	std::list<IntersectionPoint>::iterator it;
-
-	for(i=0;i<circles->size();i++)
-		for(it = (*circles)[i].forwardIntersections.begin(); it != (*circles)[i].forwardIntersections.end(); ++it){
-			//NSWarnLog(@"POINT: [%f %f %f]",it->vector.vector[0],it->vector.vector[1],it->vector.vector[2]);
-			intersections->push_back(it->vector);
-			}
-}
-
-
-bool hasUnflaggedIntersectionPoints(CircularRegion *circle, IntersectionPoint **ip){
-	std::list<IntersectionPoint>::iterator it;
-	for(it = circle->forwardIntersections.begin(); it != circle->forwardIntersections.end(); ++it){
-		if(!it->visited){
-			*ip=&*it;
-			return true;
-		}
-	}
-	return false;
-}
-
-
-std::list<IntersectionPoint*>* retrieveIntersections(CircularRegion *circle){
-	std::list<IntersectionPoint*>* res;
-	res = new std::list<IntersectionPoint*>();
-	
-	std::list<IntersectionPoint>::iterator it;
-	for(it = circle->forwardIntersections.begin(); it != circle->forwardIntersections.end(); ++it){
-		//if(!it->visited){
-			//save a pointer to the intersectionpoint
-			res->push_back(&(*it));
-		//}
-	}
-	return res;
-	
-}
-
-
-void showIntersections(std::list<IntersectionPoint*>* intersections){
-	std::list<IntersectionPoint*>::iterator it;
-	
-	for(it=intersections->begin();it!=intersections->end();++it)
-		NSWarnLog(@"INTERSECTION %d-%d",(*it)->from, (*it)->with);
-}
-
 /*
- * path and res needs to be deleted somewhere
- */
-std::vector<std::list<IntersectionPoint*>*>*  harvestGaussBonnetPaths(std::vector<CircularRegion> *circles){
-	std::vector<std::list<IntersectionPoint*>*>* res;
-	std::list<IntersectionPoint*>* path;
-	std::list<IntersectionPoint*>* intersectionsTest;
-	std::list<IntersectionPoint*>* intersections;
-	std::list<IntersectionPoint*>::iterator it_i, minIt;
-
-	Vector3D vec,ortho,test,reference;
-	IntersectionPoint  *p, *p_prev;
-	CircularRegion circle;
-	bool done;
-	double minAngle,angle;
-	int i,j;
-	
-	res = new std::vector<std::list<IntersectionPoint*>*>();
-	path = new std::list<IntersectionPoint*>();
-	//the whole thing can actually be emtpy, in that case we better get outta here
-	if(circles->size()==0) return res;
-	//outputCircularRegions(circles);
-	
-	clearFlags(circles);
-	
-	
-	for(j=0;j<circles->size();++j){
-		if(hasUnflaggedIntersectionPoints(&((*circles)[j]),&p_prev)){
-			NSWarnLog(@"USING SEED %d, %d-%d",j, p_prev->from, p_prev->with);
-			//p_prev->visited=true;
-			done=false;
-			while(!done){
-				//NSWarnLog(@"STARTING ROUND %d",p_prev->with);
-				circle = (*circles)[p_prev->with];
-				NSWarnLog(@"GETTING INTERSECTIONS FOR: %d",p_prev->with);
-				intersections = retrieveIntersections(&(*circles)[p_prev->with]);
-				
-				if(intersections->size() > 1){
-					showIntersections(intersections);
-					NSWarnLog(@"MULTIINTERSECTIONS");
-					//determine which point we need to take, using p_prev as a reference
-					
-					//first we draw an orthogonal vector to the plane of the circular region
-					Ad3DVectorScalarMultiply2(&(circle.normal), circle.g, &vec);
-					//from there we draw a vector to the last visited intersectionpoint
-					Ad3DVectorSubstract(&p_prev->vector,&vec,&reference);
-		
-					//we create a plane that lies in the previously constructed vector and the plane-orthogonal vector.
-					//ortho is then the normal vector of the plane
-					Ad3DCrossProduct(&p_prev->vector,&vec,&ortho);
-					Ad3DVectorLength(&ortho);
-					Ad3DVectorScalarMultiply(&ortho, 1.0/ortho.length);
-					Ad3DVectorLength(&ortho);
-		
-					minAngle = 2 * M_PI;
-					for(it_i=intersections->begin(); it_i!=intersections->end(); ++it_i){
-						
-						//NSWarnLog(@"vector: (%f %f %f)",intersections[i]->vector.vector[0],intersections[i]->vector.vector[1],intersections[i]->vector.vector[2]);
-						//we draw a vector from the plane-orthogonal vector to the currently inspected intersectionpoint
-						Ad3DVectorSubstract(&(*it_i)->vector,&vec,&test);
-						angle = getAngle(&reference,&test);
-						
-						double oldAngle = angle;
-						//here, we check on which side of the plane the intersection point is
-						//(if it is counterclockwise or clockwise oriented regarding to the reference)
-						if(circle.form == CONCAVE){
-							if(Ad3DDotProduct(&ortho,&test) < 0) angle = 2 * M_PI - angle;
-						}
-						else{
-							if(Ad3DDotProduct(&ortho,&test) > 0) angle = 2 * M_PI - angle;
-						}
-						//NSWarnLog(@"EVAL: %f %f - %f",angle,minAngle,Ad3DDotProduct(&ortho,&test));
-						
-						if(isZero(angle)) angle = 2 * M_PI;
-						
-						if(angle < minAngle){
-							minAngle = angle;
-							minIt = it_i;
-						}
-						
-						NSWarnLog(@"INT: %d-%d ANG: %f / %f [%f] %f %d",(*it_i)->from,(*it_i)->with,angle,oldAngle,minAngle,Ad3DDotProduct(&ortho,&test),circle.form);
-						
-					}
-		
-					//we got the next point :)
-					
-					p = *minIt;
-					if(!p->visited){
-						p->visited = true;
-						p->id=path->size();
-						p_prev = p;
-						path->push_back(p);
-					}
-					else done=true;
-					
-				}
-				else{
-					NSWarnLog(@"NORMAL INTERSECTION");
-					p = (*intersections->begin());
-					if(!p->visited){
-						p->visited = true;
-						p->id = path->size();
-						p_prev = p;
-						path->push_back(p);
-					}
-					else done=true;
-				}
-				
-			
-				delete intersections;
-			}
-			res->push_back(path);
-			path = new std::list<IntersectionPoint*>();
-		}
-		delete intersectionsTest;
-	}
-	return res;
-}
-	
-
 CircularRegion getGreatOpeningCircle(double radius, Vector3D *K, double r_k, int index){
 	double g,a,side,alpha;
 	CircularRegion res;
@@ -842,4 +840,4 @@ CircularRegion getGreatOpeningCircle(double radius, Vector3D *K, double r_k, int
 
 	return res;
 }
-
+*/
