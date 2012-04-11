@@ -1,4 +1,6 @@
 #!/bin/bash
 
 svn commit
-./update
+svn_version=$(svnversion -n)
+sed s/SVN_VERSION/$svn_version/ <configure.ac.pre >configure.ac
+autoconf
