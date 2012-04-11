@@ -18,7 +18,6 @@
 #ifndef TESSELLATION_H_
 #define TESSELLATION_H_
 
-int test();
 
 
 #endif // TESSELLATION_H_
