@@ -84,7 +84,7 @@ Molecule::Molecule(ForceField forcefield){
 
 
 void Molecule::addAtom(int i, double* x, double* y, double* z, string type){
-	DoubleCoordinates c;
+	CoordinatesPointers c;
 	Parameters p;
 	c.x=x;
 	c.y=y;
@@ -93,22 +93,22 @@ void Molecule::addAtom(int i, double* x, double* y, double* z, string type){
 	p=dict[string2UpperCase(type)];
 	
 	
-	if(i != doubleCoordinatePointers.size()){
-		if(i>doubleCoordinatePointers.size()){
-			doubleCoordinatePointers.resize(i+1,c);
-			coordinates.resize(i+1,vec(3));
+	if(i != coordinatesPointers.size()){
+		if(i>coordinatesPointers.size()){
+			coordinatesPointers.resize(i+1,c);
+			atoms.resize(i+1,vec(3));
 			sigmas.resize(i+1,0);
 			epsilons.resize(i+1,0);
 		}
 		
-		doubleCoordinatePointers[i]=c;
+		coordinatesPointers[i]=c;
 		sigmas[i]=p.sigma;
 		epsilons[i]=p.epsilon;
 		
 	}
 	else{
-		doubleCoordinatePointers.push_back(c);
-		coordinates.push_back(vec(3));
+		coordinatesPointers.push_back(c);
+		atoms.push_back(vec(3));
 		sigmas.push_back(p.sigma);
 		epsilons.push_back(p.epsilon);
 	}
@@ -119,16 +119,16 @@ void Molecule::addAtom(int i, double* x, double* y, double* z, string type){
 
 void Molecule::update(){
 	int i;
-	DoubleCoordinates c;
-	for(i=0; i<doubleCoordinatePointers.size(); ++i){
-		c=doubleCoordinatePointers[i];
-		coordinates[i](0)=*c.x;
-		coordinates[i](1)=*c.y;
-		coordinates[i](2)=*c.z;
+	CoordinatesPointers c;
+	for(i=0; i<coordinatesPointers.size(); ++i){
+		c=coordinatesPointers[i];
+		atoms[i](0)=*c.x;
+		atoms[i](1)=*c.y;
+		atoms[i](2)=*c.z;
 	}
 }
 
-vector<vec>* Molecule::getCoordinates(){
-	return &coordinates;
+vector<vec> &Molecule::coordinates(){
+	return atoms;
 }
 

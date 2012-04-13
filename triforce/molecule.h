@@ -1,5 +1,5 @@
-#if !defined(DEF_MOLECULE_H)
-#define DEF_MOLECULE_H
+#ifndef MOLECULE_H_
+#define MOLECULE_H_
 
 #include <iostream>
 #include <string>
@@ -20,7 +20,7 @@ typedef struct
 	double* y;
 	double* z;
 }
-DoubleCoordinates; 
+CoordinatesPointers; 
 
 
 enum ForceField {
@@ -43,11 +43,11 @@ class Molecule{
 public:
 	Molecule(ForceField forcefield);
 	void addAtom(int i, double* x, double* y, double* z, string type);
+	void update();
+	vector<Vector> &coordinates();
 	
 private:
 	
-	void update();
-	vector<Vector>* getCoordinates();
 	double string2double(string s);
 	vector<string> *split(string &s, char delimiter);
 	string string2UpperCase(string s);
@@ -55,8 +55,8 @@ private:
 
 	
 	
-	vector<DoubleCoordinates> doubleCoordinatePointers;
-	vector<Vector> coordinates;
+	vector<CoordinatesPointers> coordinatesPointers;
+	vector<Vector> atoms;
 	vector<double> sigmas;
 	vector<double> epsilons;
 	ForceField forcefield;
@@ -65,4 +65,4 @@ private:
 	
 };
 
-#endif //DEF_MOLECULE_H
+#endif //MOLECULE_H_
