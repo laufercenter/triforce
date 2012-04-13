@@ -4,15 +4,15 @@
 
 
 
-Tesselation::Tesselation(Molecule *m){
+Tesselation::Tesselation(Molecule &m){
 	molecule = m;
 	
 	build();
 }
 
 void Tesselation::build(){
-	molecule->update();
-	atoms = molecule->coordinates();
+	molecule.update();
+	atoms = molecule.coordinates();
 	int i;
 	
 	//iterate over all atoms and build the tesselation for each of them
