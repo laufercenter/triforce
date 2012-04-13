@@ -18,7 +18,21 @@
 #ifndef SPLINE_H_
 #define SPLINE_H_
 
+
+#include <string>
+#include <vector>
+
+#include <armadillo>
+
+
+using namespace std;
+using namespace arma;
+
+
+
+
 typedef vec Vector;
+typedef mat Matrix;
 
 
 class Spline{
