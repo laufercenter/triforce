@@ -1,107 +1,68 @@
 #include "tessellation.h"
 
-#include <armadillo>
-#include <cstdio>
-#include <ctime>
-#include <stdexcept>
-#include <map>
-#include <vector>
-#include <list>
-#include <set>
-
-using namespace std;
-using namespace arma;
 
 
-#define CONCAVE 0
-#define CONVEX 1
-#define ANGLE_TRESHOLD 0.001
-#define THRESHOLD_IP 0.05
-#define THRESHOLD_NUMERICAL 0.0001
-#define EPSILON 0.01
-#define ORDER_CLOCKWISE 0
-#define ORDER_COUNTERCLOCKWISE 1
-
-typedef struct
-{
-	double matrix[3][3];
-}
-Matrix3D;
 
 
-typedef struct
-{
-	vec vector;
-	int with;
-	int from;
-	bool visited;
-	bool flagged;
-	int id;
-}
-IntersectionPoint;
-
-
-typedef struct 
-{
-	int id;
-	int index;
-	vec vector;
-	vec normal;
-	double openingAngle;
-	double g;
-	double a;
-	double sphereRadius;
-//	double radius;
-	std::list<IntersectionPoint> forwardIntersections;
-	int form;
-	bool intersect;
-		
+Tesselation::Tesselation(Molecule *m){
+	molecule = m;
 	
+	build();
 }
-CircularRegion;
 
-typedef struct 
-{
-	vec k_j;
-	vec j_k;	
+void Tesselation::build(){
+	molecule->update();
+	atoms = molecule->coordinates();
+	int i;
+	
+	//iterate over all atoms and build the tesselation for each of them
+	for(i=0; i<atoms.size(); ++i){
+		
+		//buildGaussBonnetPath(atoms[i], radius, &atoms, &radii, &circularRegions);
+		
+	}
+	
+	
+
 }
-IntersectionPair;
 
 
 
-double cot(double a){
+
+
+double Tesselation::cot(double a){
 	return 1.0/tan(a);
 }
 
-double csc(double a){
+double Tesselation::csc(double a){
 	return 1.0/sin(a);
 }
 
 
 
 
-double getAngleBetweenNormals(vec &a, vec &b){
+double Tesselation::getAngleBetweenNormals(Vector &a, Vector &b){
 	return acos(dot(a,b));
 }
 
 
-double getAngle(vec &a, vec &b){
+double Tesselation::getAngle(Vector &a, Vector &b){
 	return acos(norm_dot(a,b));
 }
 
 
-bool isZero(double v){
+bool Tesselation::isZero(double v){
 	if(fabs(v) <= THRESHOLD_NUMERICAL) return true;
 	else return false;
 }
 
 
 
-void determineProjection(vec &origin, double radius, CircularRegion &circle){
+void Tesselation::determineProjection(Vector &origin, double radius, CircularRegion &circle){
 	double d_k;
 	double r_i, r_k;
 	double g;
-	vec mu;
+	Vector mu;
 	double a;
 	d_k = norm(circle.vector,2);
 	mu = circle.normal;
@@ -124,18 +85,18 @@ void determineProjection(vec &origin, double radius, CircularRegion &circle){
 }
 
 
-IntersectionPair determineIntersectionPoints(double radius, CircularRegion &K, CircularRegion &J){
+IntersectionPair Tesselation::determineIntersectionPoints(double radius, CircularRegion &K, CircularRegion &J){
 	IntersectionPair res;
 	double g_k, g_j;
 	double r_i, r_k, r_j;
 	double a_k, a_j;
-	vec mu_k, mu_j;
+	Vector mu_k, mu_j;
 	double phi_kj, phi_jk;
 	double tau_kj,tau_jk;
-	vec tmp1, tmp2;
-	vec eta_kj, eta_jk;
-	vec omega_kj, omega_jk;
-	vec p_kj, p_jk;
+	Vector tmp1, tmp2;
+	Vector eta_kj, eta_jk;
+	Vector omega_kj, omega_jk;
+	Vector p_kj, p_jk;
 	double gamma_kj,gamma_jk;
 
 
@@ -190,9 +151,9 @@ IntersectionPair determineIntersectionPoints(double radius, CircularRegion &K, C
 
 
 
-void makeCircularRegions(vec &origin, double radius, std::vector<vec> &atoms, std::vector<int> &indizee, std::vector<double> &radii, std::vector<CircularRegion> &circles){
+void Tesselation::makeCircularRegions(Vector &origin, double radius, std::vector<vec> &atoms, std::vector<int> &indizee, std::vector<double> &radii, std::vector<CircularRegion> &circles){
 	int i;
-	vec res,normal,v;
+	Vector res,normal,v;
 	CircularRegion circle;
 	double r_i = radius;
 	double r_k;
@@ -222,7 +183,7 @@ void makeCircularRegions(vec &origin, double radius, std::vector<vec> &atoms, st
 
 
 
-void filterCircularRegions(double radius, std::vector<CircularRegion> &circles){
+void Tesselation::filterCircularRegions(double radius, std::vector<CircularRegion> &circles){
 	std::vector<CircularRegion>::iterator it;
 	double angle;
 	int i;
@@ -247,7 +208,7 @@ void filterCircularRegions(double radius, std::vector<CircularRegion> &circles){
 
 }
 
-void filterEmptyCircularRegions(std::vector<CircularRegion> &circles){
+void Tesselation::filterEmptyCircularRegions(std::vector<CircularRegion> &circles){
 	std::vector<CircularRegion>::iterator it;
 	bool erased;
 	it = circles.begin();
@@ -264,7 +225,7 @@ void filterEmptyCircularRegions(std::vector<CircularRegion> &circles){
 
 
 
-void reindexCircularRegions(std::vector<CircularRegion> &circles){
+void Tesselation::reindexCircularRegions(std::vector<CircularRegion> &circles){
 	std::list<IntersectionPoint>::iterator it;
 	int i,j;
 	int currentID;
@@ -295,7 +256,7 @@ void reindexCircularRegions(std::vector<CircularRegion> &circles){
 }
 
 
-void outputCircularRegions(std::vector<CircularRegion> &circles){
+void Tesselation::outputCircularRegions(std::vector<CircularRegion> &circles){
 	std::list<IntersectionPoint>::iterator it;
 	int i,u;
 	fprintf(stdout, "......... outputting circular regions ...........");
@@ -323,7 +284,7 @@ void outputSingleCircularRegion(CircularRegion *circle){
 */
 
 
-void filterIntersectionPoints(std::vector<CircularRegion> &circles, int except){
+void Tesselation::filterIntersectionPoints(std::vector<CircularRegion> &circles, int except){
 	std::list<IntersectionPoint>::iterator it;
 	int i,u;
 	double angle;
@@ -352,7 +313,7 @@ void filterIntersectionPoints(std::vector<CircularRegion> &circles, int except){
 
 
 
-void clearFlags(std::vector<CircularRegion> &circles){
+void Tesselation::clearFlags(std::vector<CircularRegion> &circles){
 	std::list<IntersectionPoint>::iterator it;
 	int i;	
 	for(i=0;i<circles.size();i++){
@@ -364,7 +325,7 @@ void clearFlags(std::vector<CircularRegion> &circles){
 }
 
 
-std::vector<CircularRegion>* deepCopy(std::vector<CircularRegion> &circles){
+std::vector<CircularRegion>* Tesselation::deepCopy(std::vector<CircularRegion> &circles){
 	int i,j;
 	std::list<IntersectionPoint>::iterator it;
 	std::vector<CircularRegion>* newCircles;
@@ -391,7 +352,7 @@ std::vector<CircularRegion>* deepCopy(std::vector<CircularRegion> &circles){
 }
 
 
-void outputGaussBonnetPath(std::list<IntersectionPoint*> &points){
+void Tesselation::outputGaussBonnetPath(std::list<IntersectionPoint*> &points){
 	std::list<IntersectionPoint*>::iterator it;
 	int i;
 	
@@ -401,7 +362,7 @@ void outputGaussBonnetPath(std::list<IntersectionPoint*> &points){
 
 
 
-void prepareCircularRegions(std::vector<CircularRegion> &circles, std::vector<CircularRegion> **newCircles){
+void Tesselation::prepareCircularRegions(std::vector<CircularRegion> &circles, std::vector<CircularRegion> **newCircles){
 	*newCircles = deepCopy(circles);
 	
 	filterEmptyCircularRegions(**newCircles);
@@ -411,8 +372,8 @@ void prepareCircularRegions(std::vector<CircularRegion> &circles, std::vector<Ci
 }
 
 
-void insertFakeIntersectionPoints(std::vector<CircularRegion> &circles){
-	vec v,v2,o,o2;
+void Tesselation::insertFakeIntersectionPoints(std::vector<CircularRegion> &circles){
+	Vector v,v2,o,o2;
 	int k;
 	IntersectionPoint p;
 	
@@ -447,12 +408,12 @@ void insertFakeIntersectionPoints(std::vector<CircularRegion> &circles){
 
 
 
-void buildGaussBonnetPath(vec &origin, double radius, std::vector<vec> &atoms, std::vector<int> &indizee, std::vector<double> &radii, std::vector<CircularRegion> &circles){
+void Tesselation::buildGaussBonnetPath(Vector &origin, double radius, std::vector<vec> &atoms, std::vector<int> &indizee, std::vector<double> &radii, std::vector<CircularRegion> &circles){
 	IntersectionPoint p;
 	int i,k,j;
 	IntersectionPair points;
 	double angle;
-	vec v,v2,o,o2;
+	Vector v,v2,o,o2;
 	
 	srand(2);
 
@@ -513,7 +474,7 @@ void buildGaussBonnetPath(vec &origin, double radius, std::vector<vec> &atoms, s
 
 
 
-void harvestIntersectionPoints(std::vector<CircularRegion> &circles, std::vector<vec> &intersections){
+void Tesselation::harvestIntersectionPoints(std::vector<CircularRegion> &circles, std::vector<vec> &intersections){
 	int i;
 	std::list<IntersectionPoint>::iterator it;
 
@@ -525,7 +486,7 @@ void harvestIntersectionPoints(std::vector<CircularRegion> &circles, std::vector
 }
 
 
-bool hasUnflaggedIntersectionPoints(CircularRegion &circle, IntersectionPoint **ip){
+bool Tesselation::hasUnflaggedIntersectionPoints(CircularRegion &circle, IntersectionPoint **ip){
 	std::list<IntersectionPoint>::iterator it;
 	for(it = circle.forwardIntersections.begin(); it != circle.forwardIntersections.end(); ++it){
 		if(!it->visited){
@@ -537,7 +498,7 @@ bool hasUnflaggedIntersectionPoints(CircularRegion &circle, IntersectionPoint **
 }
 
 
-std::list<IntersectionPoint*>* retrieveIntersections(CircularRegion &circle){
+std::list<IntersectionPoint*>* Tesselation::retrieveIntersections(CircularRegion &circle){
 	std::list<IntersectionPoint*>* res;
 	res = new std::list<IntersectionPoint*>();
 	
@@ -553,7 +514,7 @@ std::list<IntersectionPoint*>* retrieveIntersections(CircularRegion &circle){
 }
 
 
-void showIntersections(std::list<IntersectionPoint*> &intersections){
+void Tesselation::showIntersections(std::list<IntersectionPoint*> &intersections){
 	std::list<IntersectionPoint*>::iterator it;
 	
 	for(it=intersections.begin();it!=intersections.end();++it)
@@ -563,14 +524,14 @@ void showIntersections(std::list<IntersectionPoint*> &intersections){
 /*
  * path and res needs to be deleted somewhere
  */
-std::vector<std::list<IntersectionPoint*>*>*  harvestGaussBonnetPaths(std::vector<CircularRegion> &circles){
+std::vector<std::list<IntersectionPoint*>*>*  Tesselation::harvestGaussBonnetPaths(std::vector<CircularRegion> &circles){
 	std::vector<std::list<IntersectionPoint*>*>* res;
 	std::list<IntersectionPoint*>* path;
 	std::list<IntersectionPoint*>* intersectionsTest;
 	std::list<IntersectionPoint*>* intersections;
 	std::list<IntersectionPoint*>::iterator it_i, minIt;
 
-	vec v,ortho,test,reference;
+	Vector v,ortho,test,reference;
 	IntersectionPoint  *p, *p_prev;
 	CircularRegion circle;
 	bool done;
