@@ -2,7 +2,7 @@
 
 #include <algorithm>
 #include <string>
-#include <sstream>
+#include "datafiledigest.h"
 
 
 using namespace std;
@@ -13,36 +13,17 @@ using namespace arma;
 
 
 Molecule::Molecule(ForceField forcefield){
-	ifstream *ifs;
-	string line;
-	vector<string> *content;
-	Parameters p;
-	string atom;
+	DataFileDigest d;
 	
 	Molecule::forcefield=forcefield;
 	
 	
 	//load parameter database
 	switch(forcefield){
-		case Amber99SBildn: d = DataFileDigest("Amber99SBildb.csv",Parameters); break;
+		case Amber99SBildn: d = DataFileDigest("Amber99SBildb.csv",ParametersFile); break;
 	}
 	
-	dict = d.digest();
-	
-	while(ifs){
-		std::getline(*ifs,line);
-		content=split(line,' ');
-		
-		atom=string2UpperCase((*content)[0]);
-		
-		p.mass=string2double((*content)[1]);
-		p.epsilon=string2double((*content)[2]);
-		p.sigma=string2double((*content)[3]);
-		
-		dict[atom]=p;
-				
-	}
-	
+	//dict = d.digest();
 	
 }
 

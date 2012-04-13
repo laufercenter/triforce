@@ -21,6 +21,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 #include <armadillo>
 
 
@@ -35,14 +36,28 @@ typedef mat Matrix;
 
 
 enum DataFileType{
-	SEAWater,
-	Parameters
+	SEAWaterFile,
+	ParametersFile
 };
 
 
 class DataFileDigest{
-	public:
-	private:
+public:	
+		
+	DataFileDigest(string n="", DataFileType t=ParametersFile);
+		
+private:
+	
+	string name;
+	DataFileType type;
+		
+	double string2double(string s);
+	vector<string>* split(string &s, char delimiter);
+	string string2UpperCase(string s);
+	map<string,vector<double> >* digestParametersFile();
+	vector<Matrix> *digestSEAWaterFile();
+
+		
 	
 	
 };

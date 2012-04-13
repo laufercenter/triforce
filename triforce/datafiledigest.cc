@@ -1,5 +1,7 @@
 #include "datafiledigest.h"
 
+#include <sstream>
+#include <iostream>
 
 
 DataFileDigest::DataFileDigest(string n, DataFileType t){
@@ -38,53 +40,66 @@ string DataFileDigest::string2UpperCase(string s){
 
 
 
-map<string,vector<double> > &DataFileDigest::digestParametersFile(){
+map<string,vector<double> >* DataFileDigest::digestParametersFile(){
+	ifstream *ifs;
+	vector<string> *content;
 	string line;
 	vector<double> v;
-	map<string,vector<double> > dict;
+	map<string,vector<double> > *dict = new map<string,vector<double> >();
+	string ident;
+	int i;
 	
-	ifs = new ifstream(name);
+	ifs = new ifstream(name.c_str(),ifstream::in);
 	
-	while(ifs){
+	while(ifs->good()){
 		std::getline(*ifs,line);
 		content=split(line,' ');
 		
 		ident=string2UpperCase((*content)[0]);
 		
 		v.clear();
-		for(i=1;i<content.size();i++){
-			v.push_back((*content)[1]);
+		for(i=1;i<content->size();i++){
+			v.push_back(string2double((*content)[i]));
 		}
 		
-		dict[ident]=v;
+		(*dict)[ident]=v;
 	}
 	
 	return dict;
 }
 
 
-vector<Matrix> &DataFileDigest::digestSEAWaterFile(){
+vector<Matrix> *DataFileDigest::digestSEAWaterFile(){
+	ifstream *ifs;
+	vector<string> *content;
 	string line;
 	vector<double> v;
-	vector<Matrix> B;
+	vector<Matrix> *B = new vector<Matrix>();
+	Matrix M;
 	bool sizeInformationGiven=false;
 	bool digestingBlock=false;
 	vector<double> tmpRow;
+	int rows,cols, r, c;
+	int i;
 	
 	vector<vector<double> > tmpBlock;
 	
-	ifs = new ifstream(name);
+	ifs = new ifstream(name.c_str(),ifstream::in);
 	
 	while(ifs){
 		std::getline(*ifs,line);
 		
-		if(line.length>0){
-			if(line[0]!="#"){
+		if(line.length()>0){
+			if(line[0]!='#'){
 				content=split(line,',');
-				if(content.size()==3 && !sizeInformationGiven) sizeInformationGiven=true;
+				if(content->size()==3 && !sizeInformationGiven) sizeInformationGiven=true;
 				else{
 					digestingBlock=true;
-					tmpBlock.push_back(content);
+					v.clear();
+					for(i=0; i<content->size(); ++i){
+						v.push_back(string2double((*content)[i]));
+					}
+					tmpBlock.push_back(v);
 				}
 			}
 		}
@@ -98,9 +113,9 @@ vector<Matrix> &DataFileDigest::digestSEAWaterFile(){
 				
 				for(r=0;r<rows;++r)
 					for(c=0;c<cols;++c){
-						M(r)(c) = tmpBlock[r][c];
+						M(r,c) = tmpBlock[r][c];
 					}
-				B.push_back(M);
+				B->push_back(M);
 			}
 		}
 	}
