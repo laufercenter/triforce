@@ -25,11 +25,11 @@ Spline::Spline(vector<Vector> geometry){
 
 	//padding of geometry vector
 	v=Vector(2);
-	v(0)=geometry[0][(0) - 1;
-	v(1)=geometry[0][(1);
+	v(0)=geometry[0](0) - 1;
+	v(1)=geometry[0](1);
 	geometry.insert(geometry.begin(),v);
-	v(0)=geometry[geometry.size()-1][(0) + 1;
-	v(1)=geometry[geometry.size()-1][(1);
+	v(0)=geometry[geometry.size()-1](0) + 1;
+	v(1)=geometry[geometry.size()-1](1);
 	geometry.insert(geometry.end(),v);
 	
 	//creating geometry matrices
@@ -53,7 +53,7 @@ int Spline::logSearch(double x){
 	int l,r,c;
 	l=0;
 	r=X.size()-1;
-	c=(l-r)/2
+	c=(l-r)/2;
 	while(c!=l){
 		if(X[c]>x) r=c;
 		else l=c;
@@ -63,8 +63,10 @@ int Spline::logSearch(double x){
 
 double Spline::f(double x){
 	int c;
-	double x0,x1,t;
-	Vector T;
+	double x0,x1,t,t_square,t_cubic;
+	Vector T,y;
+	double res;
+	
 	
 	//determine bin in which x resides
 	c = logSearch(x);
@@ -83,7 +85,8 @@ double Spline::f(double x){
 	T(2)=t_square;
 	T(3)=t_cubic;
 	
-	res = T * G[c];
+	y = T.t() * G[c];
+	res=y(0);
 	
 	return res;
 	

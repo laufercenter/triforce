@@ -83,7 +83,8 @@ LTLIBRARIES = $(lib_LTLIBRARIES)
 libtriforce_@TRIFORCE_API_VERSION@_la_LIBADD =
 am__dirstamp = $(am__leading_dot)dirstamp
 am_libtriforce_@TRIFORCE_API_VERSION@_la_OBJECTS =  \
-	triforce/tessellation.lo triforce/molecule.lo
+	triforce/tessellation.lo triforce/molecule.lo \
+	triforce/spline.lo
 libtriforce_@TRIFORCE_API_VERSION@_la_OBJECTS =  \
 	$(am_libtriforce_@TRIFORCE_API_VERSION@_la_OBJECTS)
 libtriforce_@TRIFORCE_API_VERSION@_la_LINK = $(LIBTOOL) --tag=CXX \
@@ -247,13 +248,15 @@ AUTOMAKE_OPTIONS = subdir-objects
 ACLOCAL_AMFLAGS = ${ACLOCAL_FLAGS}
 lib_LTLIBRARIES = libtriforce-@TRIFORCE_API_VERSION@.la
 libtriforce_@TRIFORCE_API_VERSION@_la_SOURCES = triforce/tessellation.cc \
-						triforce/molecule.cc
+						triforce/molecule.cc \
+						triforce/spline.cc
 
 libtriforce_@TRIFORCE_API_VERSION@_la_LDFLAGS = -version-info $(TRIFORCE_SO_VERSION)
 triforce_includedir = $(includedir)/triforce-$(TRIFORCE_API_VERSION)
 nobase_triforce_include_HEADERS = triforce.h \
 					triforce/tessellation.h \
-					triforce/molecule.h
+					triforce/molecule.h \
+					triforce/spline.h
 
 triforce_libincludedir = $(libdir)/triforce-$(TRIFORCE_API_VERSION)/include
 nodist_triforce_libinclude_HEADERS = triforceconfig.h
@@ -370,6 +373,8 @@ triforce/tessellation.lo: triforce/$(am__dirstamp) \
 	triforce/$(DEPDIR)/$(am__dirstamp)
 triforce/molecule.lo: triforce/$(am__dirstamp) \
 	triforce/$(DEPDIR)/$(am__dirstamp)
+triforce/spline.lo: triforce/$(am__dirstamp) \
+	triforce/$(DEPDIR)/$(am__dirstamp)
 libtriforce-@TRIFORCE_API_VERSION@.la: $(libtriforce_@TRIFORCE_API_VERSION@_la_OBJECTS) $(libtriforce_@TRIFORCE_API_VERSION@_la_DEPENDENCIES) 
 	$(libtriforce_@TRIFORCE_API_VERSION@_la_LINK) -rpath $(libdir) $(libtriforce_@TRIFORCE_API_VERSION@_la_OBJECTS) $(libtriforce_@TRIFORCE_API_VERSION@_la_LIBADD) $(LIBS)
 
@@ -377,6 +382,8 @@ mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
 	-rm -f triforce/molecule.$(OBJEXT)
 	-rm -f triforce/molecule.lo
+	-rm -f triforce/spline.$(OBJEXT)
+	-rm -f triforce/spline.lo
 	-rm -f triforce/tessellation.$(OBJEXT)
 	-rm -f triforce/tessellation.lo
 
@@ -384,6 +391,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/molecule.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/spline.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/tessellation.Plo@am__quote@
 
 .cc.o:
