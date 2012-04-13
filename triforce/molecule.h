@@ -18,7 +18,6 @@
 #ifndef MOLECULE_H_
 #define MOLECULE_H_
 
-#include <iostream>
 #include <string>
 #include <vector>
 #include <map>
