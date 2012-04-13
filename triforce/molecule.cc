@@ -10,38 +10,6 @@ using namespace arma;
 
 
 
-double Molecule::string2double(string s){
-    istringstream strm;
-    double v;
-    double d;
-    
-    strm.str(s);
-    strm >> d;
-    return d;
-}
-
-
-vector<string>* Molecule::split(string &s, char delimiter) {
-    stringstream ss(s);
-    string x;
-    vector<string> *content=new vector<string>();
-    
-    while(getline(ss, x, delimiter)) {
-        content->push_back(x);
-    }
-    return content;
-}
-
-string Molecule::string2UpperCase(string s){
-	string str=s;
-	transform(str.begin(), str.end(),str.begin(), ::toupper);
-	return str;
-}
-
-
-
-
-
 
 
 Molecule::Molecule(ForceField forcefield){
@@ -56,8 +24,10 @@ Molecule::Molecule(ForceField forcefield){
 	
 	//load parameter database
 	switch(forcefield){
-		case Amber99SBildn:ifs = new ifstream("Amber99SBildb.csv"); break;
+		case Amber99SBildn: d = DataFileDigest("Amber99SBildb.csv",Parameters); break;
 	}
+	
+	dict = d.digest();
 	
 	while(ifs){
 		std::getline(*ifs,line);

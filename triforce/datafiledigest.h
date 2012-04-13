@@ -15,13 +15,12 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#ifndef SPLINE_H_
-#define SPLINE_H_
+#ifndef DATAFILEDIGEST_H_
+#define DATAFILEDIGEST_H_
 
 
 #include <string>
 #include <vector>
-
 #include <armadillo>
 
 
@@ -35,23 +34,20 @@ typedef vec Vector;
 typedef mat Matrix;
 
 
-class Spline{
-	
-public:
-	Spline(vector<Vector> geometry);
-	double f(double x);
-	
-
-	
-private:
-	int logSearch(double x);
-	
-	Matrix B;
-	vector<double> X;
-	vector<Vector> G;
-	
+enum DataFileType{
+	SEAWater,
+	Parameters
 };
 
 
-#endif //SPLINE_H_
+class DataFileDigest{
+	public:
+	private:
+	
+	
+};
+	
 
+
+
+#endif //DATAFILEDIGEST_H_

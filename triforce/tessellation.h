@@ -53,14 +53,6 @@ typedef vec Vector;
 
 
 
-
-typedef struct
-{
-	double matrix[3][3];
-}
-Matrix3D;
-
-
 typedef struct
 {
 	Vector vector;
@@ -106,13 +98,13 @@ IntersectionPair;
 class Tesselation{
 	
 public:
-	Tesselation(Molecule *m);
+	Tesselation(Molecule &m);
 	void build();
 	
 	
 private:
 	
-	Molecule *molecule;
+	Molecule molecule;
 	vector<Vector> atoms;
 	
 
