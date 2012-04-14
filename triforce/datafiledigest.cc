@@ -3,123 +3,92 @@
 #include <sstream>
 #include <iostream>
 
+#define INT32BYTEMASK 4294967295-255
 
-DataFileDigest::DataFileDigest(string n, DataFileType t){
-	name = n;
-	type = t;
+/*
+ * 	int exponent;
+	double significand;
+	
+	significand=frexp(x,&exponent);
+
+ * 
+ * */
+
+
+void DataFileDigest::double2charArray(double x, char* data){
+	int exponent;
+	double significand;
+	int32_t significandInt32, exponentInt32;
+	
+	significand=frexp(x,&exponent);
+	
+	significandInt32 = double2FixedUnsignedInt32(significand, 31);
+	fixedSignedInt322CharArray(significandInt32, data);
+	
+	exponentInt32=int2FixedSignedInt32(exponent);
+	fixedSignedInt322CharArray(exponentInt32, data+4);
+	
+}
+
+double DataFileDigest::charArray2Double(char* data){
+	int exponent;
+	double significand;
+	int32_t significandInt32, exponentInt32;
+
+	significandInt32 = charArray2FixedSignedInt32(data);
+	significand = fixedSignedInt322Double(significandInt32, 31);
+	
+	exponentInt32 = charArray2FixedSignedInt32(data+4);
+	exponent = fixedSignedInt322Int(exponentInt32);
+	
+	return ldexp(significand, exponent);
 }
 
 
-double DataFileDigest::string2double(string s){
-    istringstream strm;
-    double v;
-    double d;
-    
-    strm.str(s);
-    strm >> d;
-    return d;
+void DataFileDigest::fixedSignedInt322CharArray(int32_t x, char *data){
+	data[0]=static_cast<char>(x>>24);
+	data[1]=static_cast<char>((x>>16) & INT32BYTEMASK);
+	data[2]=static_cast<char>((x>>8) & INT32BYTEMASK);
+	data[3]=static_cast<char>(x & INT32BYTEMASK);
 }
 
 
-vector<string>* DataFileDigest::split(string &s, char delimiter) {
-    stringstream ss(s);
-    string x;
-    vector<string> *content=new vector<string>();
-    
-    while(getline(ss, x, delimiter)) {
-        content->push_back(x);
-    }
-    return content;
+int32_t DataFileDigest::charArray2FixedSignedInt32(char *data){
+	int32_t x=0;
+	x |= (static_cast<int32_t>(data[0])) << 24;
+	x |= (static_cast<int32_t>(data[1])) << 16;
+	x |= (static_cast<int32_t>(data[2])) << 8;
+	x |= (static_cast<int32_t>(data[3])) << 0;
+}	
+
+
+int32_t DataFileDigest::double2FixedSignedInt32(double x, unsigned short fraction){
+	int32_t d;
+	int32_t factor= 1 << fraction;
+	d = static_cast<int32_t>(t*factor);
+	return d;
+	
+	
 }
 
-string DataFileDigest::string2UpperCase(string s){
-	string str=s;
-	transform(str.begin(), str.end(),str.begin(), ::toupper);
-	return str;
+double DataFileDigest::fixedSignedInt322Double(uint32_t x, unsigned short fraction){
+	double d;
+	uint32_t factor= 1 << fraction;
+
+	d = static_cast<double>(x)/factor;
+	return d;
+
 }
 
-
-
-map<string,vector<double> >* DataFileDigest::digestParametersFile(){
-	ifstream *ifs;
-	vector<string> *content;
-	string line;
-	vector<double> v;
-	map<string,vector<double> > *dict = new map<string,vector<double> >();
-	string ident;
-	int i;
+int32_t DataFileDigest::int2FixedSignedInt32(int x){
+	int32_t d;
+	d = static_cast<int32_t>(x);
+	return d;
 	
-	ifs = new ifstream(name.c_str(),ifstream::in);
-	
-	while(ifs->good()){
-		std::getline(*ifs,line);
-		content=split(line,' ');
-		
-		ident=string2UpperCase((*content)[0]);
-		
-		v.clear();
-		for(i=1;i<content->size();i++){
-			v.push_back(string2double((*content)[i]));
-		}
-		
-		(*dict)[ident]=v;
-	}
-	
-	return dict;
 }
 
-
-vector<Matrix> *DataFileDigest::digestSEAWaterFile(){
-	ifstream *ifs;
-	vector<string> *content;
-	string line;
-	vector<double> v;
-	vector<Matrix> *B = new vector<Matrix>();
-	Matrix M;
-	bool sizeInformationGiven=false;
-	bool digestingBlock=false;
-	vector<double> tmpRow;
-	int rows,cols, r, c;
-	int i;
-	
-	vector<vector<double> > tmpBlock;
-	
-	ifs = new ifstream(name.c_str(),ifstream::in);
-	
-	while(ifs){
-		std::getline(*ifs,line);
-		
-		if(line.length()>0){
-			if(line[0]!='#'){
-				content=split(line,',');
-				if(content->size()==3 && !sizeInformationGiven) sizeInformationGiven=true;
-				else{
-					digestingBlock=true;
-					v.clear();
-					for(i=0; i<content->size(); ++i){
-						v.push_back(string2double((*content)[i]));
-					}
-					tmpBlock.push_back(v);
-				}
-			}
-		}
-		else{
-			if(digestingBlock){
-				digestingBlock=false;
-				rows=tmpBlock.size();
-				cols=tmpBlock[0].size();
-				
-				M = Matrix(rows,cols);
-				
-				for(r=0;r<rows;++r)
-					for(c=0;c<cols;++c){
-						M(r,c) = tmpBlock[r][c];
-					}
-				B->push_back(M);
-			}
-		}
-	}
-	
-	return B;
+int DataFileDigest::fixedSignedInt322Int(int32_t x){
+	int d;
+	d = static_cast<int>(x);
+	return d;
 }
-
