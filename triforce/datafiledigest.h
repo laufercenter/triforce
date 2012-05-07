@@ -55,14 +55,14 @@ public:
 private:
 	
 
-	void double2charArray(double x, char* data){
-	double charArray2Double(char* data){
-	void fixedSignedInt322CharArray(int32_t x, char *data){
-	int32_t charArray2FixedSignedInt32(char *data){
-	int32_t double2FixedSignedInt32(double x, unsigned short fraction){
-	double fixedSignedInt322Double(uint32_t x, unsigned short fraction){
-	int32_t int2FixedSignedInt32(int x){
-	int fixedSignedInt322Int(int32_t x){
+	//void double2charArray(double x, char* data);
+	double charArray2Double(char* data);
+	//void fixedSignedInt322CharArray(int32_t x, char *data);
+	int32_t charArray2FixedSignedInt32(char *data);
+	//int32_t double2FixedSignedInt32(double x, unsigned short fraction);
+	double fixedSignedInt322Double(int32_t x, unsigned short fraction);
+	//int32_t int2FixedSignedInt32(int x);
+	int fixedSignedInt322Int(int32_t x);
 	
 };
 	
