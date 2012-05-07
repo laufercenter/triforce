@@ -3,7 +3,7 @@
 #include <sstream>
 #include <iostream>
 
-#define INT32BYTEMASK 4294967295-255
+#define INT32BYTEMASK 255
 
 /*
  * 	int exponent;
@@ -14,7 +14,7 @@
  * 
  * */
 
-
+/*
 void DataFileDigest::double2charArray(double x, char* data){
 	int exponent;
 	double significand;
@@ -29,6 +29,7 @@ void DataFileDigest::double2charArray(double x, char* data){
 	fixedSignedInt322CharArray(exponentInt32, data+4);
 	
 }
+*/
 
 double DataFileDigest::charArray2Double(char* data){
 	int exponent;
@@ -36,7 +37,7 @@ double DataFileDigest::charArray2Double(char* data){
 	int32_t significandInt32, exponentInt32;
 
 	significandInt32 = charArray2FixedSignedInt32(data);
-	significand = fixedSignedInt322Double(significandInt32, 31);
+	significand = fixedSignedInt322Double(significandInt32, 30);
 	
 	exponentInt32 = charArray2FixedSignedInt32(data+4);
 	exponent = fixedSignedInt322Int(exponentInt32);
@@ -44,14 +45,14 @@ double DataFileDigest::charArray2Double(char* data){
 	return ldexp(significand, exponent);
 }
 
-
+/*
 void DataFileDigest::fixedSignedInt322CharArray(int32_t x, char *data){
 	data[0]=static_cast<char>(x>>24);
 	data[1]=static_cast<char>((x>>16) & INT32BYTEMASK);
 	data[2]=static_cast<char>((x>>8) & INT32BYTEMASK);
 	data[3]=static_cast<char>(x & INT32BYTEMASK);
 }
-
+*/
 
 int32_t DataFileDigest::charArray2FixedSignedInt32(char *data){
 	int32_t x=0;
@@ -61,31 +62,34 @@ int32_t DataFileDigest::charArray2FixedSignedInt32(char *data){
 	x |= (static_cast<int32_t>(data[3])) << 0;
 }	
 
-
+/*
 int32_t DataFileDigest::double2FixedSignedInt32(double x, unsigned short fraction){
 	int32_t d;
 	int32_t factor= 1 << fraction;
-	d = static_cast<int32_t>(t*factor);
+	d = static_cast<int32_t>(x*factor);
 	return d;
 	
 	
 }
+*/
 
-double DataFileDigest::fixedSignedInt322Double(uint32_t x, unsigned short fraction){
+double DataFileDigest::fixedSignedInt322Double(int32_t x, unsigned short fraction){
 	double d;
-	uint32_t factor= 1 << fraction;
+	int32_t factor = 1 << fraction;
 
-	d = static_cast<double>(x)/factor;
+	d = (static_cast<double>(x))/factor;
 	return d;
 
 }
 
+/*
 int32_t DataFileDigest::int2FixedSignedInt32(int x){
 	int32_t d;
 	d = static_cast<int32_t>(x);
 	return d;
 	
 }
+*/
 
 int DataFileDigest::fixedSignedInt322Int(int32_t x){
 	int d;

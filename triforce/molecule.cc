@@ -19,9 +19,9 @@ Molecule::Molecule(ForceField forcefield){
 	
 	
 	//load parameter database
-	switch(forcefield){
-		case Amber99SBildn: d = DataFileDigest("Amber99SBildb.csv",ParametersFile); break;
-	}
+	//switch(forcefield){
+	//	case Amber99SBildn: d = DataFileDigest("Amber99SBildb.csv",ParametersFile); break;
+	//}
 	
 	//dict = d.digest();
 	
