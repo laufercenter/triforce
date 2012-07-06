@@ -15,12 +15,14 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#ifndef MOLECULE_H_
-#define MOLECULE_H_
+#ifndef DATA3D_H_
+#define DATA3D_H_
 
 #include <string>
 #include <vector>
 #include <map>
+#include "boost/multi_array.hpp"
+#include <boost/numeric/ublas/matrix.hpp>
 
 #include <armadillo>
 
@@ -29,53 +31,40 @@ using namespace std;
 using namespace arma;
 
 typedef vec Vector;
+typedef mat Matrix;
 
-typedef struct
-{
-	double* x;
-	double* y;
-	double* z;
-}
-CoordinatesPointers; 
-
-
-enum ForceField {
-	Amber99SBildn,
-	Amber99SB,
-	Amber99,
-	Amber96
-};
-
-typedef struct{
-	double mass;
-	double epsilon;
-	double sigma;
-}Parameters;
+//typedef boost::numeric::ublas::vector<double> Vector;
+//typedef boost::numeric::ublas::matrix<double> Matrix;
 
 
 
-class Molecule{
+typedef boost::multi_array<double,2> Table2dDouble;
+typedef boost::multi_array<double,3> Table3dDouble;
+typedef boost::multi_array<Vector,3> Table3dVector;
+typedef boost::multi_array<Matrix,3> Table3dMatrix;
+
+
+class Data3D{
 	
 public:
-	Molecule(ForceField forcefield=Amber99SBildn);
-	void addAtom(int i, double* x, double* y, double* z, string type);
-	void update();
-	vector<Vector> &coordinates();
+	Data3D(vector<int> &dimensions);
+	void setHeaderCell(int row, int col, double value);
+	void setDataCell(int x, int y, int z, double value);
+	void setGradientCell(int x, int y, int z, int i, double value);
+	void setHessianCell(int x, int y, int z, int i, int j, double value);
+	void print();
+	
 	
 private:
 	
-	string string2UpperCase(string s);
+	vector<int> dimensions;
+	Table2dDouble *header;
+	Table3dDouble *data;
+	Table3dVector *gradient;
+	Table3dMatrix *hessian;
 	
-
 	
-	
-	vector<CoordinatesPointers> coordinatesPointers;
-	vector<Vector> atoms;
-	vector<double> sigmas;
-	vector<double> epsilons;
-	ForceField forcefield;
-	DataMapCSV* dict;
 	
 };
 
-#endif //MOLECULE_H_
+#endif //DATA3D_H_
