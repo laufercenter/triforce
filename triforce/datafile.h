@@ -15,67 +15,59 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#ifndef MOLECULE_H_
-#define MOLECULE_H_
+#ifndef DATAFILE_H_
+#define DATAFILE_H_
+
 
 #include <string>
 #include <vector>
 #include <map>
-
 #include <armadillo>
+#include "data3d.h"
+#include "datamapcsv.h"
 
 
 using namespace std;
 using namespace arma;
 
-typedef vec Vector;
-
-typedef struct
-{
-	double* x;
-	double* y;
-	double* z;
-}
-CoordinatesPointers; 
 
 
-enum ForceField {
-	Amber99SBildn,
-	Amber99SB,
-	Amber99,
-	Amber96
+
+
+enum DataFileType{
+	MapCSV,
+	Binary
 };
 
-typedef struct{
-	double mass;
-	double epsilon;
-	double sigma;
-}Parameters;
 
-
-
-class Molecule{
-	
+class DataFile{
 public:
-	Molecule(ForceField forcefield=Amber99SBildn);
-	void addAtom(int i, double* x, double* y, double* z, string type);
-	void update();
-	vector<Vector> &coordinates();
-	
+	DataFile();
+	DataFile(const char* name, DataFileType type);
+	Data3D* digestBinaryTable();
+	DataMapCSV *digestMapCSV();
+
+		
 private:
 	
+	string name;
+	DataFileType type;
+	
+
+	double charArray2Double(char* data);
+	int32_t charArray2FixedSignedInt32(char *data);
+	double fixedSignedInt322Double(int32_t x, unsigned short fraction);
+	int fixedSignedInt322Int(int32_t x);	
+	
+	
+	
+	double string2double(string s);
+	vector<string>* split(string &s, char delimiter);
 	string string2UpperCase(string s);
 	
-
-	
-	
-	vector<CoordinatesPointers> coordinatesPointers;
-	vector<Vector> atoms;
-	vector<double> sigmas;
-	vector<double> epsilons;
-	ForceField forcefield;
-	DataMapCSV* dict;
-	
 };
+	
 
-#endif //MOLECULE_H_
+
+
+#endif //DATAFILE_H_

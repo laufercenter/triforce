@@ -15,8 +15,8 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#ifndef MOLECULE_H_
-#define MOLECULE_H_
+#ifndef DATAMAPCSV_H_
+#define DATAMAPCSV_H_
 
 #include <string>
 #include <vector>
@@ -28,54 +28,25 @@
 using namespace std;
 using namespace arma;
 
-typedef vec Vector;
 
-typedef struct
-{
-	double* x;
-	double* y;
-	double* z;
-}
-CoordinatesPointers; 
+typedef map<string,vector<double> > MapVector;
 
 
-enum ForceField {
-	Amber99SBildn,
-	Amber99SB,
-	Amber99,
-	Amber96
-};
-
-typedef struct{
-	double mass;
-	double epsilon;
-	double sigma;
-}Parameters;
-
-
-
-class Molecule{
+class DataMapCSV{
 	
 public:
-	Molecule(ForceField forcefield=Amber99SBildn);
-	void addAtom(int i, double* x, double* y, double* z, string type);
-	void update();
-	vector<Vector> &coordinates();
+	DataMapCSV();
+	void setCell(string ident, vector<double> v);
+
+	void print();
+	
 	
 private:
 	
-	string string2UpperCase(string s);
-	
-
+	MapVector data;
 	
 	
-	vector<CoordinatesPointers> coordinatesPointers;
-	vector<Vector> atoms;
-	vector<double> sigmas;
-	vector<double> epsilons;
-	ForceField forcefield;
-	DataMapCSV* dict;
 	
 };
 
-#endif //MOLECULE_H_
+#endif //DATAMAPCSV_H_
