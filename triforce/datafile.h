@@ -46,6 +46,7 @@ public:
 	DataFile(const char* name, DataFileType type);
 	Data3D* digestBinaryTable();
 	DataMapCSV *digestMapCSV();
+	DataMapCSV* digestTOP();
 
 		
 private:

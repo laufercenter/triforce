@@ -24,6 +24,8 @@
 
 #include <armadillo>
 
+#include "datamapcsv.h"
+
 
 using namespace std;
 using namespace arma;
@@ -57,7 +59,7 @@ typedef struct{
 class Molecule{
 	
 public:
-	Molecule(ForceField forcefield=Amber99SBildn);
+	Molecule(DataMapCSV topology);
 	void addAtom(int i, double* x, double* y, double* z, string type);
 	void update();
 	vector<Vector> &coordinates();
