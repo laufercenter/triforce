@@ -15,8 +15,8 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#ifndef DATAMAPCSV_H_
-#define DATAMAPCSV_H_
+#ifndef TOPOLOGY_H_
+#define TOPOLOGY_H_
 
 #include <string>
 #include <vector>
@@ -30,13 +30,19 @@ using namespace arma;
 
 
 typedef map<string,vector<double> > MapVector;
+typedef map<string,string> MapString;
 
 
-class DataMapCSV{
+class Topology{
 	
 public:
-	DataMapCSV();
+	Topology();
 	void setCell(string ident, vector<double> v);
+	vector<double> getCell(string ident);
+	void setCellValue(string ident, int i, double v);
+	void setAssociation(string ident0, string ident1);
+	string getAssociation(string ident);
+	bool contains(string ident);
 
 	void print();
 	
@@ -44,9 +50,10 @@ public:
 private:
 	
 	MapVector data;
+	MapString associations;
 	
 	
 	
 };
 
-#endif //DATAMAPCSV_H_
+#endif //TOPOLOGY_H_

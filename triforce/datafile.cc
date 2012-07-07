@@ -1,9 +1,11 @@
 #include "datafile.h"
 
 #include <sstream>
+#include <algorithm>
 #include <iostream>
 #include <stdint.h>
 #include "boost/multi_array.hpp"
+#include <boost/algorithm/string.hpp>
 
 #define INT32BYTEMASK 255
 #define BINARY_DATA_BLOCK_SIZE 8
@@ -242,14 +244,16 @@ double DataFile::string2double(string s){
 
 
 vector<string>* DataFile::split(string &s, char delimiter) {
-    stringstream ss(s);
-    string x;
-    vector<string> *content=new vector<string>();
-    
-    while(getline(ss, x, delimiter)) {
-        content->push_back(x);
-    }
-    return content;
+	stringstream ss(s);
+	string x;
+	vector<string> *content=new vector<string>();
+
+	while(getline(ss, x, delimiter)) {
+		boost::trim(x);
+		if(x.size()>0)
+		content->push_back(x);
+	}
+	return content;
 }
 
 string DataFile::string2UpperCase(string s){
@@ -297,6 +301,138 @@ DataMapCSV* DataFile::digestMapCSV(){
 	
 	return data;
 }
+
+
+DataMapCSV* DataFile::digestTOP(){
+	ifstream *ifs;
+	vector<string> *content;
+	string line;
+	vector<double> v;
+	string ident,ident0,ident1;
+	int i;
+	DataMapCSV *data;
+	string block;
+	
+	ifs = new ifstream(name.c_str(),ifstream::in);
+
+	data = new DataMapCSV();
+	
+	v.push_back(0);
+	v.push_back(0);
+	v.push_back(0);
+	
+	while(ifs->good()){
+		std::getline(*ifs,line);
+		content=split(line,' ');
+		
+		if(content->size()>0){
+			
+			//are we in section atomtypes?
+			if(content->size()>=3 && (*content)[0][0]=='[' && (*content)[2][0]==']')
+				block=(*content)[1];
+			else{
+				//are we collecting atomtype data?
+				if(block=="atomtypes"){
+					ident=string2UpperCase((*content)[0]);
+					//is it not a comment?
+					if((*content)[0][0]!=';'){
+						//right amount of parameters?
+						if(content->size()>=7){
+							//is it already in the map?
+							if(data->contains(ident)){
+								data->setCellValue(ident,1,string2double((*content)[6]));
+								data->setCellValue(ident,2,string2double((*content)[5]));
+							}
+							else{
+								v[0]=-1;
+								v[1]=string2double((*content)[6]);
+								v[2]=string2double((*content)[5]);
+								data->setCell(ident,v);
+							}
+						}
+					}
+				}
+				if(block=="atoms"){
+					//is it not a comment?
+					if(content[0][0]!=";"){
+						//right amount of parameters?
+						if(content->size()>=8){
+							ident1=string2UpperCase((*content)[1]);
+							ident0=string2UpperCase((*content)[4]);
+							//is it already in the map?
+							if(data->contains(ident)){
+								data->setCellValue(ident1,0,string2double((*content)[7]));
+							}
+							else{
+								v[0]=string2double((*content)[7]);
+								v[1]=-1;
+								v[2]=-1;
+								data->setCell(ident1,v);
+							}
+							data->setAssociation(ident0,ident1);
+						}
+					}
+				}
+			}
+			
+
+		}
+		
+	}
+	
+	return data;
+}
+
+
+
+
+Molecule *DataFile::digestGRO(){
+	ifstream *ifs;
+	vector<string> *content;
+	string line;
+	DataMapCSV *data;
+	int numbAtoms;
+	int i;
+	
+	Molecule* mol = new Molecule();
+	
+	ifs = new ifstream(name.c_str(),ifstream::in);
+
+	
+	//first line frame header
+	std::getline(*ifs,line);
+	//second line, number of atoms
+	std::getline(*ifs,line);
+	boost::trim(line)
+	numbAtoms = string2double(line);
+	i=0;
+		
+	while(ifs->good() && i<numbAtoms){
+		
+		content=split(line,' ');
+		
+		if(content->size()>0){
+			//is it not a comment?
+			if((*content)[0][0]!=';'){
+				//right amount of parameters?
+				if(content->size()>=6){
+					
+				}
+			}
+			
+
+		}
+		
+	}
+	
+	return data;
+}
+
+
+
+
+
+
 
 
 

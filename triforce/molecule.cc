@@ -12,18 +12,9 @@ using namespace arma;
 
 
 
-Molecule::Molecule(ForceField forcefield){
-	DataFile d;
-	
-	Molecule::forcefield=forcefield;
-	
-	
-	//load parameter database
-	switch(forcefield){
-		case Amber99SBildn: d = DataFile("/home/nils/triforce/soft/dat/Amber99SBildb.csv",MapCSV); break;
-	}
-	
-	dict = d.digestMapCSV();
+Molecule::Molecule(DataMapCSV topology){
+	this->topology=topology;
+
 	
 }
 
@@ -42,7 +33,7 @@ void Molecule::addAtom(int i, double* x, double* y, double* z, string type){
 	c.y=y;
 	c.z=z;
 	
-	v=dict[string2UpperCase(type)];
+	v=topology->getCell(string2UpperCase(type));
 	p.mass=v[0];
 	p.epsilon=v[1];
 	p.sigma=v[2];
