@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include "boost/multi_array.hpp"
 #include <boost/algorithm/string.hpp>
+#include "topology.h"
 
 #define INT32BYTEMASK 255
 #define BINARY_DATA_BLOCK_SIZE 8
@@ -264,18 +265,18 @@ string DataFile::string2UpperCase(string s){
 
 
 
-DataMapCSV* DataFile::digestMapCSV(){
-	ifstream *ifs;
+Topology* DataFile::digestMapCSV(){
+/*	ifstream *ifs;
 	vector<string> *content;
 	string line;
 	vector<double> v;
 	string ident;
 	int i;
-	DataMapCSV *data;
+	Topology *data;
 	
 	ifs = new ifstream(name.c_str(),ifstream::in);
 
-	data = new DataMapCSV();
+	data = new Topology();
 	
 	while(ifs->good()){
 		std::getline(*ifs,line);
@@ -300,26 +301,28 @@ DataMapCSV* DataFile::digestMapCSV(){
 	}
 	
 	return data;
+	*/
 }
 
 
-DataMapCSV* DataFile::digestTOP(){
+Topology* DataFile::digestTOP(){
 	ifstream *ifs;
 	vector<string> *content;
 	string line;
 	vector<double> v;
 	string ident,ident0,ident1;
 	int i;
-	DataMapCSV *data;
+	Topology *data;
 	string block;
+	Parameters p;
 	
 	ifs = new ifstream(name.c_str(),ifstream::in);
 
-	data = new DataMapCSV();
+	data = new Topology();
 	
-	v.push_back(0);
-	v.push_back(0);
-	v.push_back(0);
+	p.mass = 0;
+	p.epsilon= 0;
+	p.sigma = 0;
 	
 	while(ifs->good()){
 		std::getline(*ifs,line);
@@ -340,14 +343,14 @@ DataMapCSV* DataFile::digestTOP(){
 						if(content->size()>=7){
 							//is it already in the map?
 							if(data->contains(ident)){
-								data->setCellValue(ident,1,string2double((*content)[6]));
-								data->setCellValue(ident,2,string2double((*content)[5]));
+								data->setEpsilonValue(ident,string2double((*content)[6]));
+								data->setSigmaValue(ident,string2double((*content)[5]));
 							}
 							else{
-								v[0]=-1;
-								v[1]=string2double((*content)[6]);
-								v[2]=string2double((*content)[5]);
-								data->setCell(ident,v);
+								p.mass=-1;
+								p.epsilon=string2double((*content)[6]);
+								p.sigma=string2double((*content)[5]);
+								data->setCell(ident,p);
 							}
 						}
 					}
@@ -361,13 +364,13 @@ DataMapCSV* DataFile::digestTOP(){
 							ident0=string2UpperCase((*content)[4]);
 							//is it already in the map?
 							if(data->contains(ident)){
-								data->setCellValue(ident1,0,string2double((*content)[7]));
+								data->setMassValue(ident1,string2double((*content)[7]));
 							}
 							else{
-								v[0]=string2double((*content)[7]);
-								v[1]=-1;
-								v[2]=-1;
-								data->setCell(ident1,v);
+								p.mass=string2double((*content)[7]);
+								p.epsilon=-1;
+								p.sigma=-1;
+								data->setCell(ident1,p);
 							}
 							data->setAssociation(ident0,ident1);
 						}
@@ -386,15 +389,18 @@ DataMapCSV* DataFile::digestTOP(){
 
 
 
-Molecule *DataFile::digestGRO(){
+Molecule *DataFile::digestGRO(Topology &top){
 	ifstream *ifs;
 	vector<string> *content;
 	string line;
-	DataMapCSV *data;
 	int numbAtoms;
 	int i;
+	string block;
+	Molecule *mol;
+	double x,y,z;
+	string ident;
 	
-	Molecule* mol = new Molecule();
+	mol = new Molecule(top);
 	
 	ifs = new ifstream(name.c_str(),ifstream::in);
 
@@ -403,11 +409,12 @@ Molecule *DataFile::digestGRO(){
 	std::getline(*ifs,line);
 	//second line, number of atoms
 	std::getline(*ifs,line);
-	boost::trim(line)
+	boost::trim(line);
 	numbAtoms = string2double(line);
 	i=0;
 		
 	while(ifs->good() && i<numbAtoms){
+		std::getline(*ifs,line);
 		
 		content=split(line,' ');
 		
@@ -416,7 +423,12 @@ Molecule *DataFile::digestGRO(){
 			if((*content)[0][0]!=';'){
 				//right amount of parameters?
 				if(content->size()>=6){
-					
+					ident=string2UpperCase((*content)[1]);
+					x=string2double((*content)[3]);
+					y=string2double((*content)[4]);
+					z=string2double((*content)[5]);
+					mol->addRealAtom(x,y,z,ident);
+					i++;
 				}
 			}
 			
@@ -425,7 +437,7 @@ Molecule *DataFile::digestGRO(){
 		
 	}
 	
-	return data;
+	return mol;
 }
 
 

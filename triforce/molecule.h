@@ -24,7 +24,7 @@
 
 #include <armadillo>
 
-#include "datamapcsv.h"
+#include "topology.h"
 
 
 using namespace std;
@@ -48,35 +48,31 @@ enum ForceField {
 	Amber96
 };
 
-typedef struct{
-	double mass;
-	double epsilon;
-	double sigma;
-}Parameters;
-
-
 
 class Molecule{
 	
 public:
-	Molecule(DataMapCSV topology);
-	void addAtom(int i, double* x, double* y, double* z, string type);
+	Molecule();
+	Molecule(Topology topology);
+	void addAtom(double* x, double* y, double* z, string type, int i=-1);
 	void update();
 	vector<Vector> &coordinates();
+	void addRealAtom(double x, double y, double z, string type, int i=-1);
+	void print();
 	
 private:
 	
 	string string2UpperCase(string s);
+	void constructAtoms(int end);
 	
 
 	
-	
+	Topology topology;
 	vector<CoordinatesPointers> coordinatesPointers;
 	vector<Vector> atoms;
 	vector<double> sigmas;
 	vector<double> epsilons;
 	ForceField forcefield;
-	DataMapCSV* dict;
 	
 };
 

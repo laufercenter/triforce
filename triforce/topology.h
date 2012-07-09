@@ -29,17 +29,32 @@ using namespace std;
 using namespace arma;
 
 
-typedef map<string,vector<double> > MapVector;
+typedef struct{
+	double mass;
+	double epsilon;
+	double sigma;
+}Parameters;
+
+
+
+typedef map<string,Parameters > MapVector;
 typedef map<string,string> MapString;
+
+
+
+
 
 
 class Topology{
 	
 public:
 	Topology();
-	void setCell(string ident, vector<double> v);
-	vector<double> getCell(string ident);
-	void setCellValue(string ident, int i, double v);
+	void setCell(string ident, Parameters p);
+	Parameters getCell(string ident);
+	Parameters getAssociatedCell(string ident);
+	void setMassValue(string ident, double v);
+	void setEpsilonValue(string ident, double v);
+	void setSigmaValue(string ident, double v);
 	void setAssociation(string ident0, string ident1);
 	string getAssociation(string ident);
 	bool contains(string ident);

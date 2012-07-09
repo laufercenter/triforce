@@ -2,17 +2,18 @@
 
 #include <algorithm>
 #include <string>
-#include "datafile.h"
-
-
-using namespace std;
-using namespace arma;
 
 
 
 
 
-Molecule::Molecule(DataMapCSV topology){
+Molecule::Molecule(){
+
+	
+}
+
+
+Molecule::Molecule(Topology topology){
 	this->topology=topology;
 
 	
@@ -20,44 +21,51 @@ Molecule::Molecule(DataMapCSV topology){
 
 
 
+void Molecule::addRealAtom(double x, double y, double z, string type, int i){
+	if(i<0) i = coordinatesPointers.size();
+	
+	if(i>=coordinatesPointers.size()){
+		constructAtoms(i);
+	}
+	
+	atoms[i](0)=x;
+	atoms[i](1)=y;
+	atoms[i](2)=z;
+	
+	addAtom(&atoms[i](0),&atoms[i](1),&atoms[i](2),type,i);
+}
 
 
-
-
-
-void Molecule::addAtom(int i, double* x, double* y, double* z, string type){
+void Molecule::constructAtoms(int end){
 	CoordinatesPointers c;
-	vector<double> v;
+	if(end>=coordinatesPointers.size()){
+		coordinatesPointers.resize(end+1,c);
+		atoms.resize(end+1,vec(3));
+		sigmas.resize(end+1,0);
+		epsilons.resize(end+1,0);
+	}
+}
+
+
+void Molecule::addAtom(double* x, double* y, double* z, string type, int i){
+	CoordinatesPointers c;
 	Parameters p;
 	c.x=x;
 	c.y=y;
 	c.z=z;
 	
-	v=topology->getCell(string2UpperCase(type));
-	p.mass=v[0];
-	p.epsilon=v[1];
-	p.sigma=v[2];
+	if(i<0) i = coordinatesPointers.size();
 	
+	p=topology.getAssociatedCell(string2UpperCase(type));
 	
-	if(i != coordinatesPointers.size()){
-		if(i>coordinatesPointers.size()){
-			coordinatesPointers.resize(i+1,c);
-			atoms.resize(i+1,vec(3));
-			sigmas.resize(i+1,0);
-			epsilons.resize(i+1,0);
-		}
-		
-		coordinatesPointers[i]=c;
-		sigmas[i]=p.sigma;
-		epsilons[i]=p.epsilon;
-		
+	if(i>=coordinatesPointers.size()){
+		constructAtoms(i);
 	}
-	else{
-		coordinatesPointers.push_back(c);
-		atoms.push_back(vec(3));
-		sigmas.push_back(p.sigma);
-		epsilons.push_back(p.epsilon);
-	}
+		
+	coordinatesPointers[i]=c;
+	sigmas[i]=p.sigma;
+	epsilons[i]=p.epsilon;
+		
 		
 }
 
@@ -84,4 +92,14 @@ string Molecule::string2UpperCase(string s){
 	string str=s;
 	transform(str.begin(), str.end(),str.begin(), ::toupper);
 	return str;
+}
+
+
+void Molecule::print(){
+	printf("Molecule:\n");
+	for(int i=0;i<coordinatesPointers.size();++i){
+		printf("[%d]: (%f, %f, %f), eps: %f, sig: %f, pointers: (%d,%d,%d)\n",i,atoms[i](0),atoms[i](1),atoms[i](2),epsilons[i],sigmas[i],
+		       coordinatesPointers[i].x,coordinatesPointers[i].y,coordinatesPointers[i].z);
+		
+	}
 }
