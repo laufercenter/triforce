@@ -53,15 +53,23 @@ public:
 	void setGradientCell(int x, int y, int z, int i, double value);
 	void setHessianCell(int x, int y, int z, int i, int j, double value);
 	void print();
+	double getDataCell(int x, int y, int z);
+	Vector &getGradient(int x, int y, int z);
+	Matrix &getHessian(int x, int y, int z);
+	
+	Vector getHeaderVector(int x, int y, int z); 
+	Vector bisectFloor(Vector &x);
+	vector<Vector> surroundingPoints(Vector &x);
+	Vector standardDistance();
 	
 	
 private:
 	
 	vector<int> dimensions;
-	Table2dDouble *header;
-	Table3dDouble *data;
-	Table3dVector *gradient;
-	Table3dMatrix *hessian;
+	Table2dDouble header;
+	Table3dDouble data;
+	Table3dVector gradient;
+	Table3dMatrix hessian;
 	
 	
 	
