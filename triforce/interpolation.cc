@@ -20,7 +20,7 @@ double Interpolation::taylorExtension(int i_PHI, int i_psi, int i_lambda, Vector
 	Vector p;
 	double f;
 	Vector g;
-	Vector h;
+	Matrix h;
 	double v;
 	Vector d;
 	Vector htmp;

@@ -66,10 +66,10 @@ public:
 private:
 	
 	vector<int> dimensions;
-	Table2dDouble header;
-	Table3dDouble data;
-	Table3dVector gradient;
-	Table3dMatrix hessian;
+	Table2dDouble *header;
+	Table3dDouble *data;
+	Table3dVector *gradient;
+	Table3dMatrix *hessian;
 	
 	
 	
