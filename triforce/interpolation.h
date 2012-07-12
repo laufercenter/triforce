@@ -38,7 +38,6 @@ class Interpolation{
 	
 public:
 	Interpolation(Data3D *data);
-	double multiPointTaylor(Vector x);
 	double taylorExtension(Vector &r, Vector &x);
 	double taylorExtension(int i_PHI, int i_psi, int i_lambda, Vector &x);
 	vector<double> weights(vector<Vector> &sp, Vector &x);

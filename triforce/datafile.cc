@@ -34,7 +34,7 @@ Data3D* DataFile::digestBinaryTable(){
 	int maxdim;
 	int d;
 	
-	printf("digesting...\n");
+	//printf("digesting...\n");
 	
 	fstream f(name.c_str(),ios::binary|ios::in);
 	
@@ -61,7 +61,7 @@ Data3D* DataFile::digestBinaryTable(){
 	delete buffer;
 
 	
-	printf("dimensions: %d, rows in header: %d, maxdim: %d\n",numberDimensions,nrowsHeader,maxdim); 
+	//printf("dimensions: %d, rows in header: %d, maxdim: %d\n",numberDimensions,nrowsHeader,maxdim); 
 	
 	tbl = new Data3D(dimensions);
 	

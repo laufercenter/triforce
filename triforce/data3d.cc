@@ -20,58 +20,60 @@ Data3D::Data3D(vector<int> &dimensions){
 	for(int i=0; i<dimensions.size(); i++)
 		if(dimensions[i]>maxdim) maxdim=dimensions[i];
 		
-	header = Table2dDouble(boost::extents[3][maxdim]);
-	data = Table3dDouble(boost::extents[dimensions[0]][dimensions[1]][dimensions[2]]);
-	gradient = Table3dVector(boost::extents[dimensions[0]][dimensions[1]][dimensions[2]]);
-	hessian = Table3dMatrix(boost::extents[dimensions[0]][dimensions[1]][dimensions[2]]);
+		
+	header = new Table2dDouble(boost::extents[3][maxdim]);
+	data = new Table3dDouble(boost::extents[dimensions[0]][dimensions[1]][dimensions[2]]);
+	gradient = new Table3dVector(boost::extents[dimensions[0]][dimensions[1]][dimensions[2]]);
+	hessian = new Table3dMatrix(boost::extents[dimensions[0]][dimensions[1]][dimensions[2]]);
 	for(int x=0; x<dimensions[0]; x++)
 		for(int y=0; y<dimensions[1]; y++)
 			for(int z=0; z<dimensions[2]; z++){
 				boost::array<Table3dVector::index,3> idx = {{x,y,z}};
-				gradient(idx) = Vector(3);
-				hessian(idx) = Matrix(3,3);
+				(*gradient)(idx) = Vector(3);
+				(*hessian)(idx) = Matrix(3,3);
 			}
 }
 
 
 void Data3D::setHeaderCell(int row, int col, double value){
-	header[row][col] = value;
+	(*header)[row][col] = value;
 }
 
 void Data3D::setDataCell(int x, int y, int z, double value){
-	data[x][y][z] = value;
+	(*data)[x][y][z] = value;
 }
 
 void Data3D::setGradientCell(int x, int y, int z, int i, double value){
-	gradient[x][y][z](i) = value;
+	(*gradient)[x][y][z](i) = value;
 }
 void Data3D::setHessianCell(int x, int y, int z, int i, int j, double value){
-	hessian[x][y][z](i,j) = value;
+	(*hessian)[x][y][z](i,j) = value;
 }
 
 Vector Data3D::getHeaderVector(int x, int y, int z){
 	Vector v=Vector(3);
-	v(0) = header[0][x];
-	v(1) = header[1][y];
-	v(2) = header[2][z];
+	v(0) = (*header)[0][x];
+	v(1) = (*header)[1][y];
+	v(2) = (*header)[2][z];
 	
 	return v;
 }
 
 double Data3D::getDataCell(int x, int y, int z){
-	return data[x][y][z];
+	return (*data)[x][y][z];
 }
 
 Vector &Data3D::getGradient(int x, int y, int z){
-	return gradient[x][y][z];
+	return (*gradient)[x][y][z];
 }
 
 Matrix &Data3D::getHessian(int x, int y, int z){
-	return hessian[x][y][z];
+	return (*hessian)[x][y][z];
 }
 
 Vector Data3D::bisectFloor(Vector &x){
 	int l,r,m;
+	int s;
 	double vl,vr;
 	Vector v=Vector(3);
 	for(int i=0;i<3;i++){
@@ -79,16 +81,21 @@ Vector Data3D::bisectFloor(Vector &x){
 		vl=0;
 		r=dimensions[i]-1;
 		vr=numeric_limits<double>::max();
+		//printf("start bisection(%d): %d %d (%f)\n",i,l,r,x(i));
+		s=0;
 		while(r-l > 1){
-			m = (r-l)/2;
-			if(header[i][m]<=x(i)){
+			m = l+((r-l)/2);
+			if((*header)[i][m]<=x(i)){
 				l=m;
-				vl=header[i][m];
+				vl=(*header)[i][m];
 			}
-			else if(header[i][m]>x(i)){
+			if((*header)[i][m]>x(i)){
 				r=m;
-				vr=header[i][m];
+				vr=(*header)[i][m];
 			}
+			//printf("step: l%d m%d(%f) r%d \n",l,m,(*header)[i][m],r);
+			++s;
+			if(s>20) exit(-1);
 		}
 		v(i)=l;		
 	}
@@ -121,7 +128,7 @@ vector<Vector> Data3D::surroundingPoints(Vector &x){
 Vector Data3D::standardDistance(){
 	Vector r = Vector(3);
 	for(int i=0;i<3;i++)
-		r(i) = abs(header[i][1]-header[i][0]);
+		r(i) = abs((*header)[i][1]-(*header)[i][0]);
 	
 	return r;
 }
@@ -130,7 +137,7 @@ void Data3D::print(){
 	for(int z=0; z<dimensions[0]; z++){
 		for(int x=0; x<dimensions[1]; x++){
 			for(int y=0; y<dimensions[2]; y++){
-				double v=data[x][y][z];
+				double v=(*data)[x][y][z];
 				printf("%f ",v);
 			}
 			printf("\n");

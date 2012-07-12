@@ -24,5 +24,7 @@
 #include "triforce/data3d.h"
 #include "triforce/datafile.h"
 #include "triforce/molecule.h"
+#include "triforce/interpolation.h"
+#include "triforce/topology.h"
 
 #endif // TRIFORCE_H_
