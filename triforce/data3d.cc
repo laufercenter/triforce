@@ -128,7 +128,7 @@ vector<Vector> Data3D::surroundingPoints(Vector &x){
 Vector Data3D::standardDistance(){
 	Vector r = Vector(3);
 	for(int i=0;i<3;i++)
-		r(i) = abs((*header)[i][1]-(*header)[i][0]);
+		r(i) = fabs((*header)[i][1]-(*header)[i][0]);
 	
 	return r;
 }
@@ -146,6 +146,17 @@ void Data3D::print(){
 	}
 }
 
+void Data3D::printDataCell(int i, int j, int k){
+	printf("Cell[%d,%d,%d]: %f\n",i,j,k,(*data)[i][j][k]);
+}
 
+void Data3D::printGradientCell(int i, int j, int k){
+	printf("Gradient[%d,%d,%d]: (%f, %f, %f)\n",i,j,k,(*gradient)[i][j][k](0),(*gradient)[i][j][k](1),(*gradient)[i][j][k](2));
+}
 
-
+void Data3D::printHessianCell(int i, int j, int k){
+	printf("Hessian[%d,%d,%d]: \n");
+	printf("|%f, %f, %f|\n",i,j,k,(*hessian)[i][j][k](0,0),(*hessian)[i][j][k](0,1),(*hessian)[i][j][k](0,2));
+	printf("|%f, %f, %f|\n",i,j,k,(*hessian)[i][j][k](1,0),(*hessian)[i][j][k](1,1),(*hessian)[i][j][k](1,2));
+	printf("|%f, %f, %f|\n",i,j,k,(*hessian)[i][j][k](2,0),(*hessian)[i][j][k](2,1),(*hessian)[i][j][k](2,2));
+}

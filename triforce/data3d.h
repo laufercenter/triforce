@@ -62,6 +62,10 @@ public:
 	vector<Vector> surroundingPoints(Vector &x);
 	Vector standardDistance();
 	
+	void printDataCell(int i, int j, int k);
+	void printGradientCell(int i, int j, int k);
+	void printHessianCell(int i, int j, int k);
+	
 	
 private:
 	

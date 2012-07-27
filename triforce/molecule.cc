@@ -40,9 +40,10 @@ void Molecule::constructAtoms(int end){
 	CoordinatesPointers c;
 	if(end>=coordinatesPointers.size()){
 		coordinatesPointers.resize(end+1,c);
-		atoms.resize(end+1,vec(3));
+		atoms.resize(end+1,Vector(3));
 		sigmas.resize(end+1,0);
 		epsilons.resize(end+1,0);
+		radii.resize(end+1,0);
 	}
 }
 
@@ -65,6 +66,7 @@ void Molecule::addAtom(double* x, double* y, double* z, string type, int i){
 	coordinatesPointers[i]=c;
 	sigmas[i]=p.sigma;
 	epsilons[i]=p.epsilon;
+	radii[i]=p.sigma+1.4;
 		
 		
 }
@@ -82,8 +84,11 @@ void Molecule::update(){
 	}
 }
 
-vector<vec> &Molecule::coordinates(){
+vector<Vector> &Molecule::coordinates(){
 	return atoms;
+}
+vector<double>* Molecule::fetchRadii(){
+	return &radii;
 }
 
 
