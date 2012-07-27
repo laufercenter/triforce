@@ -76,7 +76,7 @@ typedef struct
 	double a;
 	double sphereRadius;
 //	double radius;
-	std::list<IntersectionPoint> forwardIntersections;
+	list<IntersectionPoint> forwardIntersections;
 	int form;
 	bool intersect;
 		
@@ -95,20 +95,29 @@ IntersectionPair;
 
 
 
-class Tesselation{
+class Tessellation{
 	
 public:
-	Tesselation(Molecule &m);
+	Tessellation(Molecule &m);
 	void build();
+	vector<vector<list<IntersectionPoint*>*>*>* intersectionPoints();
+	vector<vector<CircularRegion>* >* circularRegions();
 	
 	
 private:
 	
 	Molecule molecule;
 	vector<Vector> atoms;
-	
+	vector<double> *radii;
+	//#atoms #circularregions
+	vector<vector<CircularRegion>* > circles;
+	//#atoms #sasas #circularregions
+	vector<vector<list<IntersectionPoint*>*>*> intersections;
 
 
+	void emptyIntersections();
+	void emptyCircularRegions();
+	double vsign(double v);
 	double cot(double a);
 	double csc(double a);
 	double getAngleBetweenNormals(Vector &a, Vector &b);
@@ -116,23 +125,23 @@ private:
 	bool isZero(double v);
 	void determineProjection(Vector &origin, double radius, CircularRegion &circle);
 	IntersectionPair determineIntersectionPoints(double radius, CircularRegion &K, CircularRegion &J);
-	void makeCircularRegions(Vector &origin, double radius, std::vector<vec> &atoms, std::vector<int> &indizee, std::vector<double> &radii, std::vector<CircularRegion> &circles);
-	void filterCircularRegions(double radius, std::vector<CircularRegion> &circles);
-	void filterEmptyCircularRegions(std::vector<CircularRegion> &circles);
-	void reindexCircularRegions(std::vector<CircularRegion> &circles);
-	void outputCircularRegions(std::vector<CircularRegion> &circles);
-	void filterIntersectionPoints(std::vector<CircularRegion> &circles, int except);
-	void clearFlags(std::vector<CircularRegion> &circles);
-	std::vector<CircularRegion>* deepCopy(std::vector<CircularRegion> &circles);
-	void outputGaussBonnetPath(std::list<IntersectionPoint*> &points);
-	void prepareCircularRegions(std::vector<CircularRegion> &circles, std::vector<CircularRegion> **newCircles);
-	void insertFakeIntersectionPoints(std::vector<CircularRegion> &circles);
-	void buildGaussBonnetPath(Vector &origin, double radius, std::vector<vec> &atoms, std::vector<int> &indizee, std::vector<double> &radii, std::vector<CircularRegion> &circles);
-	void harvestIntersectionPoints(std::vector<CircularRegion> &circles, std::vector<vec> &intersections);
+	void makeCircularRegions(Vector &origin, double radius, vector<vec> &atoms, vector<double> &radii, vector<CircularRegion> &circles);
+	void filterCircularRegions(double radius, vector<CircularRegion> &circles);
+	void filterEmptyCircularRegions(vector<CircularRegion> &circles);
+	void reindexCircularRegions(vector<CircularRegion> &circles);
+	void outputCircularRegions(vector<CircularRegion> &circles);
+	void filterIntersectionPoints(vector<CircularRegion> &circles, int except);
+	void clearFlags(vector<CircularRegion> &circles);
+	vector<CircularRegion>* deepCopy(vector<CircularRegion> &circles);
+	void outputGaussBonnetPath(list<IntersectionPoint*> &points);
+	void prepareCircularRegions(vector<CircularRegion> &circles, vector<CircularRegion> **newCircles);
+	void insertFakeIntersectionPoints(vector<CircularRegion> &circles);
+	vector<CircularRegion>* buildGaussBonnetPath(Vector &origin, double radius, vector<Vector> &atoms, vector<double> &radii);
+	void harvestIntersectionPoints(vector<CircularRegion> &circles, vector<vec> &intersections);
 	bool hasUnflaggedIntersectionPoints(CircularRegion &circle, IntersectionPoint **ip);
-	std::list<IntersectionPoint*>* retrieveIntersections(CircularRegion &circle);
-	void showIntersections(std::list<IntersectionPoint*> &intersections);
-	std::vector<std::list<IntersectionPoint*>*>*  harvestGaussBonnetPaths(std::vector<CircularRegion> &circles);
+	list<IntersectionPoint*>* retrieveIntersections(CircularRegion &circle);
+	void showIntersections(list<IntersectionPoint*> &intersections);
+	vector<list<IntersectionPoint*>*>*  harvestGaussBonnetPaths(vector<CircularRegion> &circles);
 
 
 	

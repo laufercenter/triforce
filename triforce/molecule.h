@@ -59,6 +59,7 @@ public:
 	vector<Vector> &coordinates();
 	void addRealAtom(double x, double y, double z, string type, int i=-1);
 	void print();
+	vector<double> *fetchRadii();
 	
 private:
 	
@@ -71,6 +72,7 @@ private:
 	vector<CoordinatesPointers> coordinatesPointers;
 	vector<Vector> atoms;
 	vector<double> sigmas;
+	vector<double> radii;
 	vector<double> epsilons;
 	ForceField forcefield;
 	

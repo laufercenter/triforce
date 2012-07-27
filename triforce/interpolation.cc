@@ -29,9 +29,13 @@ double Interpolation::taylorExtension(int i_PHI, int i_psi, int i_lambda, Vector
 	g = data->getGradient(i_PHI,i_psi, i_lambda);
 	h = data->getHessian(i_PHI,i_psi, i_lambda);
 	
+	
 	d =(x-p);
 	htmp = h * d;
 	v = f + dot(g,d) + 0.5*dot(d,htmp);
+	
+	//printf("taylor extension (%d %d %d): %f\n",i_PHI,i_psi,i_lambda, v);
+	
 	//v = dataConvex[i_PHI, i_psi, i_lambda] + c(t(gradientsConvex[,i_PHI, i_psi, i_lambda]) %*% (x-p)) + 0.5 *(c(t((x-p)) %*% hessiansConvex[,,i_PHI, i_psi, i_lambda] %*% (x-p)))
 	return v;
 }
@@ -45,22 +49,40 @@ vector<double> Interpolation::weights(vector<Vector> &sp, Vector &x){
 	r = new vector<double>;
 	Vector p;
 	stddist =data->standardDistance();
+	
+	//printf("stddist: %f, %f, %f\n",stddist(0),stddist(1),stddist(2));
 	for(int i=0;i<sp.size();++i){
 		p = data->getHeaderVector(sp[i](0),sp[i](1),sp[i](2));
 		for(int j=0;j<3;++j)
-			d(j)=(abs(p(j)-x(j)) / stddist(j));
-		w = max(d(0),max(d(1),d(2)));
+			d(j)=(fabs(p(j)-x(j)) / stddist(j));
+		w = 1.0-max(d(0),max(d(1),d(2)));
 		maxw=maxw+w;
 		r->push_back(w);
+		
 		
 	}
 	for(int i=0;i<sp.size();++i){
 		r->at(i) = r->at(i)/maxw;
+		
+		//printf("weight: %f\n", r->at(i));
+		
 	}
 	return *r;
 	
 }
 
+
+double Interpolation::interpolate(Vector &x){
+	return multiPointTaylor(x);
+}
+
+double Interpolation::interpolate(double PHI, double psi, double lambda){
+	Vector v(3);
+	v(0) = PHI;
+	v(1) = psi;
+	v(2) = lambda;
+	return multiPointTaylor(v);
+}
 
 
 
@@ -69,10 +91,18 @@ double Interpolation::multiPointTaylor(Vector &x){
 	vector<double> w;
 	double v=0;
 	
+	x(0)=abs(x(0));
+	x(1)=abs(x(1));
+	x(2)=abs(x(2));
+	
 	sp = data->surroundingPoints(x);
 	w = weights(sp,x);
-	for(int i=0;i<sp.size();i++)
+	for(int i=0;i<sp.size();i++){
+		//data->printDataCell(sp[i](0),sp[i](1),sp[i](2));
+		//data->printGradientCell(sp[i](0),sp[i](1),sp[i](2));
+		//data->printHessianCell(sp[i](0),sp[i](1),sp[i](2));
 		v+=w[i]*taylorExtension(sp[i],x);
+	}
 	
 	return v;
 }
