@@ -21,10 +21,12 @@
 //This is a main header - it includes everything else.
 
 #include "triforce/tessellation.h"
+#include "triforce/data2d.h"
 #include "triforce/data3d.h"
 #include "triforce/datafile.h"
 #include "triforce/molecule.h"
 #include "triforce/interpolation.h"
 #include "triforce/topology.h"
+#include "triforce/integrator.h"
 
 #endif // TRIFORCE_H_

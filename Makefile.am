@@ -5,6 +5,7 @@ lib_LTLIBRARIES = libtriforce-@TRIFORCE_API_VERSION@.la
 
 libtriforce_@TRIFORCE_API_VERSION@_la_SOURCES = triforce/tessellation.cc \
 						triforce/molecule.cc \
+						triforce/data2d.cc \
 						triforce/data3d.cc \
 						triforce/datafile.cc \
 						triforce/topology.cc \
@@ -17,6 +18,7 @@ triforce_includedir = $(includedir)/triforce-$(TRIFORCE_API_VERSION)
 nobase_triforce_include_HEADERS = triforce.h \
 					triforce/tessellation.h \
 					triforce/molecule.h \
+					triforce/data2d.h \
 					triforce/data3d.h \
 					triforce/datafile.h \
 					triforce/topology.h \
