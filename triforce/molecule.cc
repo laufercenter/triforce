@@ -84,7 +84,7 @@ void Molecule::update(){
 	}
 }
 
-vector<Vector> &Molecule::coordinates(){
+vector<Vector> Molecule::coordinates(){
 	return atoms;
 }
 vector<double>* Molecule::fetchRadii(){

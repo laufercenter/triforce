@@ -27,6 +27,7 @@
 #include <vector>
 #include <list>
 #include <set>
+#include <stdio.h>
 
 #include "molecule.h"
 
@@ -51,7 +52,25 @@ using namespace arma;
 
 typedef vec Vector;
 
+enum OcclusionState{
+	OCCLUDED,
+	UNOBSTRUCTED,
+	UNDEFINED
+};
 
+
+
+typedef struct
+{
+	double d;
+	bool blocked;
+	map<int,OcclusionState> tertiaryIntersections;
+	bool sasa;
+	bool visited;
+	
+	
+}
+CircularIntersection;
 
 typedef struct
 {
@@ -77,8 +96,10 @@ typedef struct
 	double sphereRadius;
 //	double radius;
 	list<IntersectionPoint> forwardIntersections;
+	map<int,CircularIntersection> circularIntersections;
 	int form;
 	bool intersect;
+	bool flagged;
 		
 	
 }
@@ -92,7 +113,15 @@ typedef struct
 IntersectionPair;
 
 
-
+enum OcclusionType{
+	BOTTOM,
+	TOP,
+	BOTH,
+	INSIDE,
+	OUTSIDE,
+	TRIFORCE,
+	NA
+};
 
 
 class Tessellation{
@@ -102,6 +131,8 @@ public:
 	void build();
 	vector<vector<list<IntersectionPoint*>*>*>* intersectionPoints();
 	vector<vector<CircularRegion>* >* circularRegions();
+	void setOutputFile(string filename);
+	void outputGaussBonnetData(string filename);
 	
 	
 private:
@@ -110,9 +141,9 @@ private:
 	vector<Vector> atoms;
 	vector<double> *radii;
 	//#atoms #circularregions
-	vector<vector<CircularRegion>* > circles;
+	vector<vector<CircularRegion>* > circleSet;
 	//#atoms #sasas #circularregions
-	vector<vector<list<IntersectionPoint*>*>*> intersections;
+	vector<vector<list<IntersectionPoint*>*>*> intersectionSet;
 
 
 	void emptyIntersections();
@@ -126,7 +157,7 @@ private:
 	void determineProjection(Vector &origin, double radius, CircularRegion &circle);
 	IntersectionPair determineIntersectionPoints(double radius, CircularRegion &K, CircularRegion &J);
 	void makeCircularRegions(Vector &origin, double radius, vector<vec> &atoms, vector<double> &radii, vector<CircularRegion> &circles);
-	void filterCircularRegions(double radius, vector<CircularRegion> &circles);
+	int filterCircularRegions(double radius, vector<CircularRegion> &circles);
 	void filterEmptyCircularRegions(vector<CircularRegion> &circles);
 	void reindexCircularRegions(vector<CircularRegion> &circles);
 	void outputCircularRegions(vector<CircularRegion> &circles);
@@ -136,14 +167,24 @@ private:
 	void outputGaussBonnetPath(list<IntersectionPoint*> &points);
 	void prepareCircularRegions(vector<CircularRegion> &circles, vector<CircularRegion> **newCircles);
 	void insertFakeIntersectionPoints(vector<CircularRegion> &circles);
-	vector<CircularRegion>* buildGaussBonnetPath(Vector &origin, double radius, vector<Vector> &atoms, vector<double> &radii);
+	void buildGaussBonnetPath(Vector &origin, double radius, vector<Vector> &atoms, vector<double> &radii, vector<CircularRegion> **circles, vector<list<IntersectionPoint*>*>** intersections);
 	void harvestIntersectionPoints(vector<CircularRegion> &circles, vector<vec> &intersections);
 	bool hasUnflaggedIntersectionPoints(CircularRegion &circle, IntersectionPoint **ip);
 	list<IntersectionPoint*>* retrieveIntersections(CircularRegion &circle);
 	void showIntersections(list<IntersectionPoint*> &intersections);
 	vector<list<IntersectionPoint*>*>*  harvestGaussBonnetPaths(vector<CircularRegion> &circles);
-
-
+	void determineCircularIntersections(vector<CircularRegion> &circles);
+	double complLongAngle(Vector &vi, Vector &vj, Vector &vk);
+	OcclusionType occludesForwardIntersectionPoint(CircularRegion &I, CircularRegion &J, CircularRegion &K, double dij, double dik);
+	void buildIntersectionGraph(double radius, vector<CircularRegion> &circles, vector<list<IntersectionPoint*>*> &intersections);
+	int sgn(double d);
+	int checkIntegrityAndBlock(CircularRegion &I, CircularRegion &J);
+	void setTertiaryIntersection(CircularRegion &I, CircularRegion &J, CircularRegion &K, OcclusionState state);
+	int whoOccludes(CircularRegion *I, CircularRegion *J, vector<CircularRegion> &circles);
+	void printSasa(list<int> &sasa);
+	double intersectionDistance(CircularRegion I, CircularRegion J, CircularRegion &K, double dij, double djk);
+	int selectNextIntersectingCluster(CircularRegion &I, CircularRegion &J, vector<CircularRegion> &circles);
+	bool mergeCutList(int x, list<int>::iterator start, list<int> &sasa);
 	
 	
 	

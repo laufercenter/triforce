@@ -22,7 +22,7 @@ DataFile::DataFile(const char* name, DataFileType type){
 
 
 
-Data3D* DataFile::digestBinaryTable(){
+Data3D* DataFile::digest3DBinaryTable(){
 	char shortbuffer[2];
 	char *buffer;
 	int numberDimensions;
@@ -124,6 +124,80 @@ Data3D* DataFile::digestBinaryTable(){
 
 	return tbl;
 }	
+
+
+
+Data2D* DataFile::digest2DBinaryTable(){
+	char shortbuffer[2];
+	char *buffer;
+	int numberDimensions;
+	int nrowsHeader;
+	vector<double> tmp;
+	Data2D *tbl;
+	vector<int> dimensions;
+	int totalCells;
+	int maxdim;
+	int d;
+	
+	//printf("digesting...\n");
+	
+	fstream f(name.c_str(),ios::binary|ios::in);
+	
+	//read first row
+	f.read(shortbuffer,2);
+	numberDimensions = static_cast<int>(shortbuffer[0]);
+	
+	if(numberDimensions != 2) throw exception();
+	
+	nrowsHeader = static_cast<int>(shortbuffer[1]);
+	
+	
+	
+	
+	//read second row
+	maxdim=0;
+	buffer=new char[numberDimensions];
+	f.read(buffer,numberDimensions);
+	for(int i=0; i<numberDimensions; i++){
+		d = static_cast<int>(buffer[i]);
+		if(d>maxdim) maxdim=d;
+		dimensions.push_back(d);
+	}
+	delete buffer;
+
+	
+	//printf("dimensions: %d, rows in header: %d, maxdim: %d\n",numberDimensions,nrowsHeader,maxdim); 
+	
+	tbl = new Data2D(dimensions);
+	
+	//read header
+	buffer=new char[nrowsHeader*maxdim*BINARY_DATA_BLOCK_SIZE];
+	f.read(buffer,nrowsHeader*maxdim*BINARY_DATA_BLOCK_SIZE);
+	for(int i=0; i<maxdim; i++){
+		for(int j=0; j<nrowsHeader; j++){
+			double v = charArray2Double((buffer+(i*nrowsHeader+j)*BINARY_DATA_BLOCK_SIZE));
+			tbl->setHeaderCell(j,i,v);
+		}
+	}
+	delete buffer;
+	
+	//read data
+	totalCells = dimensions[0]*dimensions[1];
+	buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
+	f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
+	for(int y=0; y<dimensions[1]; y++)
+		for(int x=0; x<dimensions[0]; x++){
+			double v = charArray2Double(buffer+(y*dimensions[0]+x)*BINARY_DATA_BLOCK_SIZE);
+			tbl->setDataCell(x,y,v);
+		}
+	
+	delete buffer;
+	
+	
+
+	return tbl;
+}	
+
 
 
 
@@ -424,9 +498,9 @@ Molecule *DataFile::digestGRO(Topology &top){
 				//right amount of parameters?
 				if(content->size()>=6){
 					ident=string2UpperCase((*content)[1]);
-					x=string2double((*content)[3]);
-					y=string2double((*content)[4]);
-					z=string2double((*content)[5]);
+					x=string2double((*content)[3])*10;
+					y=string2double((*content)[4])*10;
+					z=string2double((*content)[5])*10;
 					mol->addRealAtom(x,y,z,ident);
 					i++;
 				}

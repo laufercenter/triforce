@@ -25,6 +25,7 @@
 #include <boost/numeric/ublas/matrix.hpp>
 #include "tessellation.h"
 #include "interpolation.h"
+#include "molecule.h"
 
 #include <armadillo>
 
@@ -36,27 +37,28 @@ class Integrator{
 	
 public:
 	Integrator();
-	Integrator(Tessellation *tessellation);
-	Integrator(Tessellation *tessellation, Interpolation *interpolation);
+	Integrator(Tessellation *tessellation, Interpolation *interpolation, Molecule *molecule);
 	
-	double Integrate();
+	double integrate();
+	void outputIntegrationData(string filename, Vector &integrationOrigin, list<IntersectionPoint*> &frontHemisphere, list<IntersectionPoint*> &backHemisphere);
 	
 	
 	
 private:
 	Interpolation *interpolation;
 	Tessellation* tessellation;
+	Molecule* molecule;
 	
-	void splitSASA(list<IntersectionPoint*> &sasa, vector<CircularRegion> &circles, int c, Vector &integrationOrigin, list<IntersectionPoint*>** frontHemisphere, list<IntersectionPoint*>** backHemisphere );
-	Vector halfSphereIntersectionPoint(Vector &integrationOrigin, CircularRegion &c);
+	void splitSASA(list<IntersectionPoint*> &sasa, vector<CircularRegion> &circles, int c, Vector &integrationOrigin, double radius, list<IntersectionPoint*>** frontHemisphere, list<IntersectionPoint*>** backHemisphere );
+	Vector halfSphereIntersectionPoint(Vector &integrationOrigin, CircularRegion &c, double radius, int sign);
 	double csc(double a);
-	double complLongAngle(Vector &n, Vector &o, Vector &a);
 	int sgn(double d);
 	double complAngle(Vector &a, Vector &b);
+	double complLongAngle(Vector &n, Vector &o, Vector &a);
 	double angle(Vector &a, Vector &b);
-	double integrateTriangle(IntersectionPoint &x0, IntersectionPoint &x1, Vector integrationOrigin, vector<CircularRegion> &circles);
-	double integrateHemisphere(list<IntersectionPoint*> &sasa, Vector &integrationOrigin, vector<CircularRegion> &circles);
-	double integrateSASA(list<IntersectionPoint*> &sasa, vector<CircularRegion> &circles, Vector &integrationOrigin);
+	double integrateTriangle(IntersectionPoint &x0, IntersectionPoint &x1, Vector integrationOrigin, vector<CircularRegion> &circles, int ci);
+	double integrateHemisphere(list<IntersectionPoint*> &sasa, Vector &integrationOrigin, vector<CircularRegion> &circles, int ci);
+	double integrateSASA(list<IntersectionPoint*> &sasa, vector<CircularRegion> &circles, Vector &integrationOrigin, double radius);
 	Vector optimalIntegrationOrigin(list<IntersectionPoint*>* sasa);
 	
 	

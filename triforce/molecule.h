@@ -56,7 +56,7 @@ public:
 	Molecule(Topology topology);
 	void addAtom(double* x, double* y, double* z, string type, int i=-1);
 	void update();
-	vector<Vector> &coordinates();
+	vector<Vector> coordinates();
 	void addRealAtom(double x, double y, double z, string type, int i=-1);
 	void print();
 	vector<double> *fetchRadii();
