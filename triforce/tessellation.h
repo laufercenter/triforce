@@ -272,7 +272,7 @@ private:
 	void createIntersectionNode(int id0, int id1, IntersectionGraph &intersectionGraph);
 	void createIntersectionNode(IntersectionAddress &address, IntersectionGraph &intersectionGraph);
 	void createIntersectionBranch(IntersectionAddress &address, Interfaces interfacesI, Interfaces interfacesJ, CircularRegion &I, CircularRegion &J, IntersectionGraph &intersectionGraph);
-	Interfaces retrieveInterfaces(Vector tessellationOrigin, CircularRegion &I, CircularRegion J, double dij);
+	Interfaces retrieveInterfaces(Vector tessellationOrigin, CircularRegion &I, CircularRegion J, double dij, double radius);
 	void printBranch(const char* s,multimap<double, IntersectionBranch>::iterator &it);
 	void printIntersectionGraph(IntersectionGraph &g);
 	
