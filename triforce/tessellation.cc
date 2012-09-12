@@ -544,6 +544,8 @@ void Tessellation::determineCircularIntersections(vector<CircularRegion> &circle
  * function will return the angle between a and the plane between 0 and PI (instead of 0 and PI/2)
  * 
  */
+
+
 double Tessellation::complLongAngle(Vector &vi, Vector &vj, Vector &vk){
 	double v;
 	int s;
@@ -586,7 +588,7 @@ a[1]*b[1]+a[2]*b[2]+a[3]*b[3]
 
 
 
-
+/*
 Interfaces Tessellation::retrieveInterfaces(Vector tessellationOrigin, CircularRegion &I, CircularRegion J, double dij){
 	double gij;
 	double eta;
@@ -616,6 +618,79 @@ Interfaces Tessellation::retrieveInterfaces(Vector tessellationOrigin, CircularR
 	
 	
 }
+
+*/
+
+Interfaces Tessellation::retrieveInterfaces(Vector tessellationOrigin, CircularRegion &I, CircularRegion J, double dij, double radius){
+	double gij;
+	double eta;
+	double mu;
+	double entryPoint, exitPoint;
+	Interfaces res;
+	Vector v(3);
+	Vector x0(3);
+	Vector x1(3);
+	IntersectionPair ip;
+	Vector vx(3);
+	Vector o(3), o2(3);
+	Vector p0(3), p1(3);
+	Vector v2(3);
+	Vector vx0(3);
+	Vector vx1(3);
+	double eta0, eta1;
+	int s0,s1;
+
+	v = tessellationOrigin;
+	v2 = I.normal * I.g;
+	
+	o = cross(v2,v);
+	o = I.a*o / norm(o,2);
+	p0 = v2+o;
+	
+	o2 = cross(v2,o);
+	o2 = I.a*o2 / norm(o2,2);
+	p1 = v2+o2;
+	
+	
+	
+	
+	ip = determineIntersectionPoints(radius, I, J);
+	x0 = ip.k_j;
+	x1 = ip.j_k;
+	
+	
+	vx0 = x0-v2;
+	vx1 = x1-v2;
+
+	eta0 = getAngle(p0,vx0);
+	eta1 = getAngle(p0,vx1);
+	
+	
+	s0 = sgn(dot(p1,vx0));
+	s1 = sgn(dot(p1,vx1));
+	
+	if(s0 > 0) eta0 = -eta0;
+	if(s1 > 0) eta1 = -eta1;
+	
+	
+	exitPoint = eta0;
+	if(exitPoint<0) exitPoint = 2*M_PI+exitPoint;
+	entryPoint = eta1;
+	if(entryPoint<0) entryPoint = 2*M_PI+entryPoint;
+	
+	res.out = exitPoint;
+	res.in = entryPoint;
+	
+	return res;
+	
+	
+	
+	
+}
+
+
+
+
 
 
 multimap<double, IntersectionBranch>::iterator Tessellation::increaseBranchInterator(multimap<double, IntersectionBranch>::iterator it){
@@ -647,7 +722,7 @@ multimap<double, IntersectionBranch>::iterator Tessellation::increaseBranchInter
 	++it;
 	if(it == p->end()) it=p->begin();
 	
-	if(it->second.id == ignore) it = increaseBranchInterator(it, ignore);
+	if(it->second.it->second.id == ignore) it = increaseBranchInterator(it, ignore);
 	
 	return it;
 	
@@ -660,7 +735,8 @@ multimap<double, IntersectionBranch>::iterator Tessellation::decreaseBranchInter
 	
 	--it;
 	
-	if(it->second.id == ignore) it = decreaseBranchInterator(it, ignore);
+	//printf("chk %d against %d\n",it->second.it->second.id, ignore);
+	if(it->second.it->second.id == ignore) it = decreaseBranchInterator(it, ignore);
 	
 	
 	return it;
@@ -803,12 +879,13 @@ void Tessellation::buildIntersectionGraph(double radius, vector<CircularRegion> 
 		I = &circles[i];
 		processed[i]=true;
 		
-		/*
+		
 		tau0 = getAngleBetweenNormals(tessellationOrigin, I->normal);
 		tau1 = getAngleBetweenNormals(reverseTessellationOrigin, I->normal);
 		if(tau0 < tau1) IO = tessellationOrigin;
 		else IO = reverseTessellationOrigin;
-		*/
+		
+		printf("IO TAU0: %f, TAU1: %f\n",tau0,tau1);
 		
 		
 		//we have to sort this circle into the intersectiongraph
@@ -818,12 +895,14 @@ void Tessellation::buildIntersectionGraph(double radius, vector<CircularRegion> 
 			j=(*it_j).first;
 			J = &circles[j];
 			
-			/*
+			
 			tau0 = getAngleBetweenNormals(tessellationOrigin, J->normal);
 			tau1 = getAngleBetweenNormals(reverseTessellationOrigin, J->normal);
 			if(tau0 < tau1) JO = tessellationOrigin;
 			else JO = reverseTessellationOrigin;
-			*/
+			
+			printf("JO TAU0: %f, TAU1: %f\n",tau0,tau1);
+			
 			
 			
 			it_p = processed.find(j);
@@ -842,8 +921,8 @@ void Tessellation::buildIntersectionGraph(double radius, vector<CircularRegion> 
 				
 				
 				//retrieve external and internal interfaces (respectively)
-				interfacesJ = retrieveInterfaces(JO, *J, *I, it_j->second.d);
-				interfacesI = retrieveInterfaces(IO, *I, *J, it_j->second.d);
+				interfacesJ = retrieveInterfaces(JO, *J, *I, it_j->second.d, radius);
+				interfacesI = retrieveInterfaces(IO, *I, *J, it_j->second.d, radius);
 				
 				createIntersectionBranch(addressIJ, interfacesI, interfacesJ, *I, *J, intersectionGraph);
 				createIntersectionBranch(addressJI, interfacesJ, interfacesI, *J, *I, intersectionGraph);
@@ -855,9 +934,9 @@ void Tessellation::buildIntersectionGraph(double radius, vector<CircularRegion> 
 			printf("circle %d\n",m);
 			for(it_main = circles[m].intersectionBranches.begin(); it_main != circles[m].intersectionBranches.end(); ++it_main){
 				if(it_main->second.direction==OUT)
-					printf("(%d,%d) d: %f (OUT)\n",it_main->second.node->id0, it_main->second.node->id1, it_main->first);
+					printf("[%d] (%d,%d) d: %f (OUT)\n",it_main->second.id, it_main->second.node->id0, it_main->second.node->id1, it_main->first);
 				else
-					printf("(%d,%d) d: %f (IN)\n",it_main->second.node->id0, it_main->second.node->id1, it_main->first);
+					printf("[%d] (%d,%d) d: %f (IN)\n",it_main->second.id, it_main->second.node->id0, it_main->second.node->id1, it_main->first);
 			}
 		}
 		
@@ -865,8 +944,14 @@ void Tessellation::buildIntersectionGraph(double radius, vector<CircularRegion> 
 			
 		//all intersectionpoints have been added, it is time to change topologies
 		//start at one of I's intersectionbranches
+		
 		for(it_main = I->intersectionBranches.begin(); it_main != I->intersectionBranches.end(); ++it_main){
-			if(!it_main->second.visited){
+			it_main->second.visited=false;
+		}
+		
+		for(it_main = I->intersectionBranches.begin(); it_main != I->intersectionBranches.end(); ++it_main){
+			//if(!it_main->second.visited)
+			{
 				it = it_main;
 				printf("investigating starts\n");
 				
@@ -883,6 +968,7 @@ void Tessellation::buildIntersectionGraph(double radius, vector<CircularRegion> 
 					it_mirror_prev_ignore = decreaseBranchInterator(it_mirror, it->second.id);
 				}
 				else{
+					printf("EMPTY\n");
 					it_mirror_next_ignore = increaseBranchInterator(it_mirror);
 					it_mirror_prev_ignore = decreaseBranchInterator(it_mirror);
 				}
@@ -923,12 +1009,16 @@ void Tessellation::buildIntersectionGraph(double radius, vector<CircularRegion> 
 						connectIntersectionPoints(*it_mirror_prev->second.node, *it_mirror->second.node);
 						connectIntersectionPoints(*it_mirror->second.node, *it_next->second.node);
 						
+						it_mirror_prev->second.visited=true;
+						
 					}
 					else{
 						printf("EXTERNAL OUT\n");
 						connectIntersectionPoints(*it_mirror->second.node, *it_mirror_next->second.node);
 						connectIntersectionPoints(*it_prev->second.node, *it->second.node);
-						//if(!empty) disconnectIntersectionPoint(*it_mirror_prev_ignore->second.node);
+						if(!empty && !it_mirror_prev_ignore->second.visited) disconnectIntersectionPoint(*it_mirror_prev_ignore->second.node);
+						
+						it_mirror_prev_ignore->second.visited=true;
 					}
 				}
 				
@@ -968,7 +1058,7 @@ void Tessellation::buildIntersectionGraph(double radius, vector<CircularRegion> 
 				}
 				
 				intersectionGraph[x].visited=true;
-				if(s > 20) exit(-1);
+				//if(s > 20) exit(-1);
 				++s;
 				
 				
