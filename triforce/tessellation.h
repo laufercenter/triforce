@@ -59,6 +59,14 @@ enum OcclusionState{
 };
 
 
+enum Direction{
+	IN,
+	OUT
+};
+
+
+
+
 
 typedef struct
 {
@@ -71,6 +79,73 @@ typedef struct
 	
 }
 CircularIntersection;
+
+typedef struct
+{
+	double out;
+	double in;
+}
+Interfaces;
+
+typedef struct
+{
+	int id0;
+	int id1;
+	
+	int pointsTo0;
+	int pointsTo1;
+	
+	Vector vector;
+	
+	bool visited;
+}
+IntersectionNode;
+
+
+typedef struct
+{
+	int id0;
+	int id1;
+}
+IntersectionAddress;
+
+
+
+
+
+
+struct InteractionNodeComparator: public std::binary_function<IntersectionAddress, IntersectionAddress, bool>
+{
+	bool operator()(const IntersectionAddress& lhs, const IntersectionAddress& rhs) const
+	{
+		if(lhs.id0 == rhs.id0){
+			return lhs.id1 < rhs.id1;
+		}
+		else return lhs.id0 < rhs.id0;
+	}
+};
+
+
+
+
+
+typedef map<IntersectionAddress, IntersectionNode, InteractionNodeComparator> IntersectionGraph;
+
+
+struct IntersectionBranch;
+
+typedef struct IntersectionBranch
+{
+	IntersectionNode* node;
+	multimap<double, IntersectionBranch>::iterator it;
+	bool visited;
+	Direction direction;
+	multimap<double, IntersectionBranch>* body;
+	int id;
+}
+IntersectionBranch;
+
+
 
 typedef struct
 {
@@ -97,6 +172,10 @@ typedef struct
 //	double radius;
 	list<IntersectionPoint> forwardIntersections;
 	map<int,CircularIntersection> circularIntersections;
+	
+	
+	multimap<double, IntersectionBranch> intersectionBranches;
+	
 	int form;
 	bool intersect;
 	bool flagged;
@@ -124,13 +203,19 @@ enum OcclusionType{
 };
 
 
+
+
+
+
 class Tessellation{
 	
 public:
 	Tessellation(Molecule &m);
 	void build();
-	vector<vector<list<IntersectionPoint*>*>*>* intersectionPoints();
+	vector<vector<list<IntersectionNode*> >*>* intersectionPoints();
+	vector<IntersectionGraph*>* intersectionGraphs();
 	vector<vector<CircularRegion>* >* circularRegions();
+	
 	void setOutputFile(string filename);
 	void outputGaussBonnetData(string filename);
 	
@@ -143,7 +228,8 @@ private:
 	//#atoms #circularregions
 	vector<vector<CircularRegion>* > circleSet;
 	//#atoms #sasas #circularregions
-	vector<vector<list<IntersectionPoint*>*>*> intersectionSet;
+	vector<vector<list<IntersectionNode*> >* > intersectionSet;
+	vector<IntersectionGraph*> intersectionGraphSet;
 
 
 	void emptyIntersections();
@@ -164,10 +250,10 @@ private:
 	void filterIntersectionPoints(vector<CircularRegion> &circles, int except);
 	void clearFlags(vector<CircularRegion> &circles);
 	vector<CircularRegion>* deepCopy(vector<CircularRegion> &circles);
-	void outputGaussBonnetPath(list<IntersectionPoint*> &points);
+	void outputGaussBonnetPath(list<IntersectionNode*> &points);
 	void prepareCircularRegions(vector<CircularRegion> &circles, vector<CircularRegion> **newCircles);
 	void insertFakeIntersectionPoints(vector<CircularRegion> &circles);
-	void buildGaussBonnetPath(Vector &origin, double radius, vector<Vector> &atoms, vector<double> &radii, vector<CircularRegion> **circles, vector<list<IntersectionPoint*>*>** intersections);
+	void buildGaussBonnetPath(Vector &origin, double radius, vector<Vector> &atoms, vector<double> &radii, vector<CircularRegion> **circles, vector<list<IntersectionNode*> > **intersections, IntersectionGraph **intersectionGraph);
 	void harvestIntersectionPoints(vector<CircularRegion> &circles, vector<vec> &intersections);
 	bool hasUnflaggedIntersectionPoints(CircularRegion &circle, IntersectionPoint **ip);
 	list<IntersectionPoint*>* retrieveIntersections(CircularRegion &circle);
@@ -175,16 +261,20 @@ private:
 	vector<list<IntersectionPoint*>*>*  harvestGaussBonnetPaths(vector<CircularRegion> &circles);
 	void determineCircularIntersections(vector<CircularRegion> &circles);
 	double complLongAngle(Vector &vi, Vector &vj, Vector &vk);
-	OcclusionType occludesForwardIntersectionPoint(CircularRegion &I, CircularRegion &J, CircularRegion &K, double dij, double dik);
-	void buildIntersectionGraph(double radius, vector<CircularRegion> &circles, vector<list<IntersectionPoint*>*> &intersections);
+	void buildIntersectionGraph(double radius, vector<CircularRegion> &circles, vector<list<IntersectionNode*> > &sasaSet, IntersectionGraph &intersectionGraph);
 	int sgn(double d);
-	int checkIntegrityAndBlock(CircularRegion &I, CircularRegion &J);
-	void setTertiaryIntersection(CircularRegion &I, CircularRegion &J, CircularRegion &K, OcclusionState state);
-	int whoOccludes(CircularRegion *I, CircularRegion *J, vector<CircularRegion> &circles);
-	void printSasa(list<int> &sasa);
-	double intersectionDistance(CircularRegion I, CircularRegion J, CircularRegion &K, double dij, double djk);
-	int selectNextIntersectingCluster(CircularRegion &I, CircularRegion &J, vector<CircularRegion> &circles);
-	bool mergeCutList(int x, list<int>::iterator start, list<int> &sasa);
+	multimap<double, IntersectionBranch>::iterator increaseBranchInterator(multimap<double, IntersectionBranch>::iterator it);
+	multimap<double, IntersectionBranch>::iterator decreaseBranchInterator(multimap<double, IntersectionBranch>::iterator it);
+	multimap<double, IntersectionBranch>::iterator increaseBranchInterator(multimap<double, IntersectionBranch>::iterator it, int ignore);
+	multimap<double, IntersectionBranch>::iterator decreaseBranchInterator(multimap<double, IntersectionBranch>::iterator it, int ignore);
+	void disconnectIntersectionPoint(IntersectionNode &a);
+	void connectIntersectionPoints(IntersectionNode &a, IntersectionNode &b);
+	void createIntersectionNode(int id0, int id1, IntersectionGraph &intersectionGraph);
+	void createIntersectionNode(IntersectionAddress &address, IntersectionGraph &intersectionGraph);
+	void createIntersectionBranch(IntersectionAddress &address, Interfaces interfacesI, Interfaces interfacesJ, CircularRegion &I, CircularRegion &J, IntersectionGraph &intersectionGraph);
+	Interfaces retrieveInterfaces(Vector tessellationOrigin, CircularRegion &I, CircularRegion J, double dij);
+	void printBranch(const char* s,multimap<double, IntersectionBranch>::iterator &it);
+	void printIntersectionGraph(IntersectionGraph &g);
 	
 	
 	
