@@ -96,6 +96,8 @@ typedef struct
 	int pointsTo1;
 	
 	Vector vector;
+	double angle0;
+	double angle1;
 	
 	bool visited;
 }
@@ -170,7 +172,6 @@ typedef struct
 	double a;
 	double sphereRadius;
 //	double radius;
-	list<IntersectionPoint> forwardIntersections;
 	map<int,CircularIntersection> circularIntersections;
 	
 	
@@ -244,21 +245,11 @@ private:
 	IntersectionPair determineIntersectionPoints(double radius, CircularRegion &K, CircularRegion &J);
 	void makeCircularRegions(Vector &origin, double radius, vector<vec> &atoms, vector<double> &radii, vector<CircularRegion> &circles);
 	int filterCircularRegions(double radius, vector<CircularRegion> &circles);
-	void filterEmptyCircularRegions(vector<CircularRegion> &circles);
 	void reindexCircularRegions(vector<CircularRegion> &circles);
 	void outputCircularRegions(vector<CircularRegion> &circles);
-	void filterIntersectionPoints(vector<CircularRegion> &circles, int except);
-	void clearFlags(vector<CircularRegion> &circles);
-	vector<CircularRegion>* deepCopy(vector<CircularRegion> &circles);
 	void outputGaussBonnetPath(list<IntersectionNode*> &points);
-	void prepareCircularRegions(vector<CircularRegion> &circles, vector<CircularRegion> **newCircles);
 	void insertFakeIntersectionPoints(vector<CircularRegion> &circles);
 	void buildGaussBonnetPath(Vector &origin, double radius, vector<Vector> &atoms, vector<double> &radii, vector<CircularRegion> **circles, vector<list<IntersectionNode*> > **intersections, IntersectionGraph **intersectionGraph);
-	void harvestIntersectionPoints(vector<CircularRegion> &circles, vector<vec> &intersections);
-	bool hasUnflaggedIntersectionPoints(CircularRegion &circle, IntersectionPoint **ip);
-	list<IntersectionPoint*>* retrieveIntersections(CircularRegion &circle);
-	void showIntersections(list<IntersectionPoint*> &intersections);
-	vector<list<IntersectionPoint*>*>*  harvestGaussBonnetPaths(vector<CircularRegion> &circles);
 	void determineCircularIntersections(vector<CircularRegion> &circles);
 	double complLongAngle(Vector &vi, Vector &vj, Vector &vk);
 	void buildIntersectionGraph(double radius, vector<CircularRegion> &circles, vector<list<IntersectionNode*> > &sasaSet, IntersectionGraph &intersectionGraph);

@@ -42,6 +42,42 @@ void Tessellation::build(){
 }
 
 
+
+
+void Tessellation::buildGaussBonnetPath(Vector &origin, double radius, vector<Vector> &atoms, vector<double> &radii, vector<CircularRegion> **circles, vector<list<IntersectionNode*> > **intersections, IntersectionGraph **intersectionGraph){
+	IntersectionPoint p;
+	int i,k,j;
+	IntersectionPair points;
+	double angle;
+	Vector v,v2,o,o2;
+	
+	*circles = new vector<CircularRegion>();
+	*intersections = new vector<list<IntersectionNode*> >();
+	*intersectionGraph = new IntersectionGraph();
+	
+	srand(2);
+
+
+	makeCircularRegions(origin, radius, atoms, radii, **circles);
+	for(i=0;i<(*circles)->size();i++){
+		determineProjection(origin, radius, (*circles)->at(i));
+	}
+	filterCircularRegions(radius, **circles);
+	reindexCircularRegions(**circles);
+	
+	buildIntersectionGraph(radius, **circles, **intersections, **intersectionGraph);
+
+	p.visited = false;
+	
+	//NSWarnLog(@"gauss bonnet path is ready...");
+	
+	insertFakeIntersectionPoints(**circles);
+	
+	
+}
+
+
+
 //	vector<vector<list<IntersectionNode*> >* > intersectionSet;
 
 
@@ -304,147 +340,7 @@ int Tessellation::filterCircularRegions(double radius, vector<CircularRegion> &c
 
 }
 
-void Tessellation::filterEmptyCircularRegions(vector<CircularRegion> &circles){
-	vector<CircularRegion>::iterator it;
-	bool erased;
-	it = circles.begin();
-	while(it != circles.end()){
-		erased=false;
-		if(it->forwardIntersections.size()==0){
-			it = circles.erase(it);
-			erased=true;
-		}
-		if(!erased) ++it;
-	}
-	
-}
 
-
-
-void Tessellation::reindexCircularRegions(vector<CircularRegion> &circles){
-	list<IntersectionPoint>::iterator it;
-	int i,j;
-	int currentID;
-	for(i=0;i<circles.size();i++){
-		currentID = circles[i].id;
-		circles[i].id = i;
-		for(it = circles[i].forwardIntersections.begin(); it != circles[i].forwardIntersections.end(); ++it){
-			it->from = i;
-		}
-
-		for(j=0;j<circles.size();j++){
-			if(j!=i){
-				it = circles[j].forwardIntersections.begin();
-				while(it != circles[j].forwardIntersections.end()){
-					if(it->with == currentID && !it->visited){
-						it->with = i;
-						it->visited=true;
-					}
-					
-					++it;
-				}
-
-				
-			}
-		}
-		
-	}
-}
-
-
-void Tessellation::outputCircularRegions(vector<CircularRegion> &circles){
-	list<IntersectionPoint>::iterator it;
-	int i,u;
-	fprintf(stdout, "......... outputting circular regions ...........\n");
-	for(i=0;i<circles.size();i++){
-		fprintf(stdout,"- circular region %d with id: %d:\n",i,circles[i].id);
-		u=0;
-		for(it = circles[i].forwardIntersections.begin(); it != circles[i].forwardIntersections.end(); ++it){
-			fprintf(stdout,"intersection %d from: %d with: %d (%f %f %f)\n",u,it->from,it->with,it->vector(0),it->vector(1),it->vector(2));
-			++u;
-		}
-	}
-	fprintf(stdout,"......... end of data  ...........\n");
-
-}
-
-/*
-void outputSingleCircularRegion(CircularRegion *circle){
-	
-	NSWarnLog(@"...............................................");
-	NSWarnLog(@"circular region [%d / %d]:",circle->id, circle->index);
-	NSWarnLog(@"vector: (%f %f %f) normal: (%f %f %f)",circle->vector.vector[0],circle->vector.vector[1],circle->vector.vector[2],circle->normal.vector[0],circle->normal.vector[1],circle->normal.vector[2]);
-	NSWarnLog(@"length: %f(%f), g: %f, a: %f, openingAngle: %f, sphereRadius: %f",circle->vector.length,circle->normal.length,circle->g, circle->a, circle->openingAngle, circle->sphereRadius); 
-	
-}
-*/
-
-
-void Tessellation::filterIntersectionPoints(vector<CircularRegion> &circles, int except){
-	list<IntersectionPoint>::iterator it;
-	int i,u;
-	double angle;
-	bool erase;
-	for(i=0; i<circles.size(); i++){
-		it = circles[i].forwardIntersections.begin();
-		while(it != circles[i].forwardIntersections.end()){
-			erase=false;
-			for(u=0; u<circles.size(); u++){
-				if(it->with != circles[u].id && circles[u].id!=circles[i].id && circles[u].id!=except){
-					angle = getAngle(it->vector, circles[u].vector);
-					if(angle < circles[u].openingAngle) erase = true;
-					
-					if(erase){
-						it = circles[i].forwardIntersections.erase(it);
-						break;
-					}
-				}
-			}
-			if(!erase) ++it;
-		}
-
-	}
-
-}
-
-
-
-void Tessellation::clearFlags(vector<CircularRegion> &circles){
-	list<IntersectionPoint>::iterator it;
-	int i;	
-	for(i=0;i<circles.size();i++){
-		it = circles[i].forwardIntersections.begin();
-		for(it = circles[i].forwardIntersections.begin(); it != circles[i].forwardIntersections.end(); ++it){
-			it->visited=false;
-		}
-	}
-}
-
-
-vector<CircularRegion>* Tessellation::deepCopy(vector<CircularRegion> &circles){
-	int i,j;
-	list<IntersectionPoint>::iterator it;
-	vector<CircularRegion>* newCircles;
-	newCircles = new vector<CircularRegion>();
-	
-	CircularRegion c;
-	for(i=0;i<circles.size();i++){
-		c.id=circles[i].id;
-		c.vector=circles[i].vector;
-		c.normal=circles[i].normal;
-		c.openingAngle=circles[i].openingAngle;
-		c.g=circles[i].g;
-		c.a=circles[i].a;
-		c.sphereRadius=circles[i].sphereRadius;
-		c.form = circles[i].form;
-		c.forwardIntersections.clear();
-		for(it = circles[i].forwardIntersections.begin(); it != circles[i].forwardIntersections.end(); ++it){
-			c.forwardIntersections.push_back(*it);	
-		}
-		newCircles->push_back(c);
-	}
-	return newCircles;
-}
 
 
 void Tessellation::outputGaussBonnetPath(list<IntersectionNode*> &points){
@@ -457,13 +353,14 @@ void Tessellation::outputGaussBonnetPath(list<IntersectionNode*> &points){
 
 
 
-void Tessellation::prepareCircularRegions(vector<CircularRegion> &circles, vector<CircularRegion> **newCircles){
-	*newCircles = deepCopy(circles);
-	
-	filterEmptyCircularRegions(**newCircles);
-	clearFlags(**newCircles);
-	reindexCircularRegions(**newCircles);
-	clearFlags(**newCircles);
+void Tessellation::reindexCircularRegions(vector<CircularRegion> &circles){
+	list<IntersectionPoint>::iterator it;
+	int i,j;
+	int currentID;
+	for(i=0;i<circles.size();i++){
+		currentID = circles[i].id;
+		circles[i].id = i;
+	}
 }
 
 
@@ -473,7 +370,7 @@ void Tessellation::insertFakeIntersectionPoints(vector<CircularRegion> &circles)
 	Vector v,v2,o,o2;
 	int k;
 	IntersectionPoint p;
-	
+/*	
 	//we have to find circles that did not intersect with other circles and we have to insert fake intersectionpoints for them
 	for(k=0;k<circles.size();k++){
 		if(circles[k].circularIntersections.size()==0){
@@ -500,7 +397,7 @@ void Tessellation::insertFakeIntersectionPoints(vector<CircularRegion> &circles)
 			
 		}
 	}
-	
+*/	
 }
 
 int Tessellation::sgn(double d){
@@ -576,50 +473,22 @@ double Tessellation::complLongAngle(Vector &vi, Vector &vj, Vector &vk){
 		
 }
 
+
+
+
 /*
-dot <- function(a,b){
-a[1]*b[1]+a[2]*b[2]+a[3]*b[3]
-}
+ * 
+[7] (7,1) d: 0.725943 (OUT)
+[7] (5,7) d: 0.769139 (IN)
+[7] (7,3) d: 1.506200 (OUT)
+[7] (7,4) d: 2.223748 (OUT)
+[7] (4,7) d: 2.265115 (IN)
+[7] (3,7) d: 3.938589 (IN)
+[7] (1,7) d: 4.631484 (IN)
+[7] (7,5) d: 4.641597 (OUT)
+
  * 
  * */
-
-
-
-
-
-
-/*
-Interfaces Tessellation::retrieveInterfaces(Vector tessellationOrigin, CircularRegion &I, CircularRegion J, double dij){
-	double gij;
-	double eta;
-	double mu;
-	double entryPoint, exitPoint;
-	Interfaces res;
-	
-	gij = (dij*dij - J.openingAngle*J.openingAngle + I.openingAngle*I.openingAngle) / (2*dij*I.openingAngle);
-	
-	
-	eta = complLongAngle(I.normal,tessellationOrigin,J.normal);
-	mu = acos(gij);
-	
-	printf("eta: %f, mu: %f\n",eta,mu);
-	
-	exitPoint = eta-mu;
-	if(exitPoint<0) exitPoint = 2*M_PI+exitPoint;
-	entryPoint = eta+mu;
-	if(entryPoint >= 2*M_PI) entryPoint = entryPoint - 2*M_PI;
-	
-	res.out = exitPoint;
-	res.in = entryPoint;
-	
-	return res;
-	
-	
-	
-	
-}
-
-*/
 
 Interfaces Tessellation::retrieveInterfaces(Vector tessellationOrigin, CircularRegion &I, CircularRegion J, double dij, double radius){
 	double gij;
@@ -649,7 +518,7 @@ Interfaces Tessellation::retrieveInterfaces(Vector tessellationOrigin, CircularR
 	
 	o2 = cross(v2,o);
 	o2 = I.a*o2 / norm(o2,2);
-	p1 = v2+o2;
+	p1 = -(v2+o2);
 	
 	
 	
@@ -662,21 +531,21 @@ Interfaces Tessellation::retrieveInterfaces(Vector tessellationOrigin, CircularR
 	vx0 = x0-v2;
 	vx1 = x1-v2;
 
-	eta0 = getAngle(p0,vx0);
-	eta1 = getAngle(p0,vx1);
+	eta0 = getAngle(p1,vx0);
+	eta1 = getAngle(p1,vx1);
 	
 	
-	s0 = sgn(dot(p1,vx0));
-	s1 = sgn(dot(p1,vx1));
+	s0 = sgn(dot(p0,vx0));
+	s1 = sgn(dot(p0,vx1));
 	
 	if(s0 > 0) eta0 = -eta0;
 	if(s1 > 0) eta1 = -eta1;
 	
 	
 	exitPoint = eta0;
-	if(exitPoint<0) exitPoint = 2*M_PI+exitPoint;
+	//if(exitPoint<0) exitPoint = 2*M_PI+exitPoint;
 	entryPoint = eta1;
-	if(entryPoint<0) entryPoint = 2*M_PI+entryPoint;
+	//if(entryPoint<0) entryPoint = 2*M_PI+entryPoint;
 	
 	res.out = exitPoint;
 	res.in = entryPoint;
@@ -806,10 +675,13 @@ void Tessellation::createIntersectionBranch(IntersectionAddress &address, Interf
 	x.second.body = &I.intersectionBranches;
 	x.second.id = address.id0;
 	it1 = I.intersectionBranches.insert(x);
-	
 	it0->second.it=it1;
 
 	printf("address %d-%d side OUT\n",address.id0, address.id1, address.id0);
+	
+	
+	intersectionGraph[address].angle0=interfacesJ.in;
+	intersectionGraph[address].angle1=interfacesI.out;
 	
 }
 
@@ -864,9 +736,9 @@ void Tessellation::buildIntersectionGraph(double radius, vector<CircularRegion> 
 	
 	
 	//todo more variety on tessellationorigins
-	tessellationOrigin(0) = 0;
+	tessellationOrigin(0) = 1;
 	tessellationOrigin(1) = 0;
-	tessellationOrigin(2) = 1;
+	tessellationOrigin(2) = 0;
 	
 	reverseTessellationOrigin = -tessellationOrigin;
 	
@@ -934,9 +806,9 @@ void Tessellation::buildIntersectionGraph(double radius, vector<CircularRegion> 
 			printf("circle %d\n",m);
 			for(it_main = circles[m].intersectionBranches.begin(); it_main != circles[m].intersectionBranches.end(); ++it_main){
 				if(it_main->second.direction==OUT)
-					printf("[%d] (%d,%d) d: %f (OUT)\n",it_main->second.id, it_main->second.node->id0, it_main->second.node->id1, it_main->first);
+					printf("[%d] (%d,%d) d: %f - (%f,%f) (OUT)\n",it_main->second.id, it_main->second.node->id0, it_main->second.node->id1, it_main->first, it_main->second.node->angle0, it_main->second.node->angle1);
 				else
-					printf("[%d] (%d,%d) d: %f (IN)\n",it_main->second.id, it_main->second.node->id0, it_main->second.node->id1, it_main->first);
+					printf("[%d] (%d,%d) d: %f - (%f,%f) (IN)\n",it_main->second.id, it_main->second.node->id0, it_main->second.node->id1, it_main->first, it_main->second.node->angle0, it_main->second.node->angle1);
 			}
 		}
 		
@@ -1107,701 +979,6 @@ void Tessellation::buildIntersectionGraph(double radius, vector<CircularRegion> 
 
 
 
-
-/**
- * Start with first circle and assume it belongs to the boundary of a sasa.
- * Take one of its circular intersections and put it in the list that defines this sasa.
- * check for 3 body intersections. if found, correct sasa list.
- * Loop until correct sasas have been established
- * 
- */
-
-/*
-void Tessellation::buildIntersectionGraph(double radius, vector<CircularRegion> &circles,vector<list<IntersectionPoint*>*> &intersections){
-	list<int> sasa;
-	map<int,CircularIntersection>::iterator it1;
-	map<int,CircularIntersection>::iterator it2;
-	
-	list<IntersectionPoint*>* path;
-	IntersectionPoint* pp;
-	
-	CircularRegion *I1;
-	
-	list<int>::iterator it_i;
-	list<int>::iterator it_j;
-	list<int>::iterator it_k;
-	list<int>::iterator it_l;
-	IntersectionPair ip;
-	IntersectionPoint p;
-	int i1,j1;
-	int i,j,k;
-	bool sasaComplete;
-	int s =0;
-	int i_prev;
-	OcclusionType type;
-	
-	
-	
-	
-	//determine all circle-circle intersections, so that each circle knows which other circles are intersecting with it
-	determineCircularIntersections(circles);
-
-	
-	
-	for(i1=0; i1 < circles.size(); ++i1){
-		I1 = &circles[i1];
-		printf("i1: %d (%d)\n",i1,I1->circularIntersections.size());
-		for(it1=I1->circularIntersections.begin(); it1 != I1->circularIntersections.end(); ++it1){
-			
-			j1=(*it1).first;
-			printf("j1: %d\n",j1);
-			
-			if(!it1->second.visited && !it1->second.blocked){
-				
-				sasa.clear();
-				it_i = sasa.insert(sasa.end(),i1);
-				i = *it_i;
-				sasa.push_back(j1);
-				
-				it_j = incIterator(it_i,sasa);
-				j = *it_j;
-				
-				
-				
-				printSasa(sasa);
-				s=0;
-				sasaComplete = false;
-				while(!sasaComplete){
-					printf("I: %d J: %d\n",i,j);
-					if(sasa.size()<2) break; // to be inspected, seems fishy
-					++s;
-					if(s>40) exit(-1);
-					
-					
-					//in this iteration we inspect I and J
-					if(circles[i].circularIntersections[j].visited){
-						sasaComplete=true;
-						break;
-					}
-					circles[i].circularIntersections[j].visited=true;
-					
-					k = whoOccludes(&circles[i], &circles[j], circles, type);
-					
-					//if there is an occlusion, we add the occluding circle to the sasa
-					if(k>=0){
-						if(circles[i].circularIntersections[k].visited){
-							sasa.erase(it_i);
-							it_i = it_j;
-							i = j;
-							it_j = incIterator(it_i,sasa);
-							j = *it_j;
-						}
-						else{
-							if(type==BOTH){
-								printf("adding blocking circle and conter-circle\n");
-								it_l = incIterator(it_j,sasa);
-								sasa.insert(it_l,k);
-								it_j = sasa.insert(it_j,k);
-								j = *it_j;
-							}
-							else{
-								printf("adding blocking circle\n");
-								it_j = sasa.insert(it_j,k);
-								j = *it_j;
-							}
-						}
-					}
-					else{
-						//I-J is free of occlusion. We will advance I to J and select a new J
-						
-						
-						k = selectNextIntersectingCluster(circles[i],circles[j],circles);
-						printf("selected next k: %d\n",k);
-						
-						if(k<0){
-							//exit(-1);
-							sasaComplete=true;
-						}
-						else{
-							it_l = incIterator(it_j,sasa);
-							
-							if(k != *it_l){
-								
-								if(mergeCutList(k,it_j,sasa)){
-									it_i = it_j;
-									i = j;
-									it_j = incIterator(it_i,sasa);
-									j = *it_j;
-									
-									printf("merge cutted\n");
-									
-								}
-								else{
-									it_i = it_j;
-									i = j;
-									it_j = sasa.insert(it_l,k);
-									sasa.insert(it_l,j);
-									j = k;
-									
-									printf("adding successor and return\n");
-									
-								}
-								
-							}
-							else{
-								//if the new selected J is the next item in our already established sasa,
-								//we simply advance i and j
-								
-								it_i = it_j;
-								i = j;
-								it_j = it_l;
-								j = k;
-								
-								printf("continuing with existing circle\n");
-							}
-							
-						}
-						
-					}
-					printSasa(sasa);
-					
-					
-				}
-				
-				
-				
-				printf("cleaning up sasa\n");
-				if(sasa.size()>1){
-					it_i = sasa.begin();
-					while(it_i != sasa.end()){
-						i = *it_i;
-						bool blocked = true;
-						for(it2 = circles[i].circularIntersections.begin(); it2!=circles[i].circularIntersections.end(); ++it2){
-							if(!it2->second.blocked){
-								blocked=false;
-								break;
-							}
-						}
-						if(blocked) it_i = sasa.erase(it_i);
-						else ++it_i;
-					}
-				}
-				
-					printSasa(sasa);
-			
-				if(sasa.size()>1){
-					path = new list<IntersectionPoint*>();
-					intersections.push_back(path);
-					for(it_i = sasa.begin(); it_i != sasa.end(); ++it_i){
-						it_j = incIterator(it_i, sasa);
-						i = *it_i;
-						j = *it_j;
-						
-						printf("found sasa ip %d-%d\n",i,j);
-						//here, we add a forwardIntersection to the circle
-						ip = determineIntersectionPoints(radius, circles[i], circles[j]);
-						p.vector = ip.k_j;
-						p.with = j;
-						p.from = i;
-						pp = &*circles[i].forwardIntersections.insert(circles[i].forwardIntersections.end(),p);	
-						circles[i].intersect = true;	
-						path->push_back(pp);
-					}
-				}
-				
-				printf("-------------------------------------------\n");
-				//return;
-			}
-		}
-	}
-	
-}
-
-*/
-
-
-/*
-void Tessellation::buildIntersectionGraph(double radius, vector<CircularRegion> &circles){
-	int i,j,k;
-	map<int,OcclusionState>::iterator it_test;
-	map<int,CircularIntersection>::iterator it;
-	map<int,CircularIntersection>::iterator it_j;
-	map<int,CircularIntersection>::iterator it_k;
-	CircularRegion *I,*J,*K;
-	IntersectionPair ip;
-	double dij,dik,djk;
-	bool foundOccludingCircle;
-	IntersectionPoint p;
-	list<IntersectionPoint>::iterator it_l;
-	int occlusion,occlusion2;
-	OcclusionState occlusionState;
-
-	//determine all circle-circle intersections, so that each circle knows which other circles are intersecting with it
-	determineCircularIntersections(circles);
-	
-	
-	//iterate over all circles
-	for(i=0; i< circles.size(); i++){
-		I = &circles[i];
-		printf("I: %d, id %d, size: %d\n",i, I->id, I->circularIntersections.size());
-		
-		
-		for(it_j=I->circularIntersections.begin(); it_j != I->circularIntersections.end(); ++it_j){
-			
-			j=(*it_j).first;
-			J=&circles[j];
-			
-			if(I->circularIntersections[j].blocked){
-				printf("BLOCKED\n");
-				continue;
-			}
-			
-			printf("J: %d, size: %d\n",j, J->circularIntersections.size());
-			
-			
-			foundOccludingCircle = false;
-			for(it_k=I->circularIntersections.begin(); it_k != I->circularIntersections.end(); ++it_k){
-				if(it_k!=it_j){
-					k = (*it_k).first;
-					it = J->circularIntersections.find(k);
-					//3body intersection
-					if(it != J->circularIntersections.end()){
-						K = &circles[k];
-						
-						it_test = I->circularIntersections[J->id].tertiaryIntersections.find(k);
-						if(it_test != I->circularIntersections[J->id].tertiaryIntersections.end()){
-							occlusionState = (*it_test).second;
-							
-							if(occlusionState == UNOBSTRUCTED){
-								continue;
-							}
-							
-						}
-						
-						
-						
-						
-							dij = I->circularIntersections[j].d;
-							dik = I->circularIntersections[k].d;
-							occlusion = occludesForwardIntersectionPoint(*I,*J,*K,dij,dik);
-							printf("3body intersection: %d-%d-%d (%d)\n",i,j,k,occlusion);
-							if(occlusion == BOTTOM || occlusion == BOTH){
-								foundOccludingCircle = true;
-								printf("does occlude\n");
-								
-							}
-							
-							if(occlusion == BOTTOM){
-								printf("BOTTOM\n");
-								if(checkIntegrityAndBlock(*K,*I)<0) exit(-1);
-								if(checkIntegrityAndBlock(*I,*J)<0) exit(-1);
-								if(checkIntegrityAndBlock(*J,*K)<0) exit(-1);
-								
-								setTertiaryIntersection(*I,*K,*J,UNOBSTRUCTED);
-								setTertiaryIntersection(*K,*J,*I,UNOBSTRUCTED);
-								setTertiaryIntersection(*J,*I,*K,UNOBSTRUCTED);
-								
-								
-							}
-							if(occlusion == BOTH){
-								printf("BOTH\n");
-								if(checkIntegrityAndBlock(*I,*J)<0) exit(-1);
-								if(checkIntegrityAndBlock(*J,*I)<0) exit(-1);
-								
-								setTertiaryIntersection(*K,*J,*I,UNOBSTRUCTED);
-								setTertiaryIntersection(*J,*K,*I,UNOBSTRUCTED);
-								setTertiaryIntersection(*I,*K,*J,UNOBSTRUCTED);
-								setTertiaryIntersection(*K,*I,*J,UNOBSTRUCTED);
-							}
-							if(occlusion == TOP){
-								printf("TOP\n");
-								if(checkIntegrityAndBlock(*I,*K)<0) exit(-1);
-								if(checkIntegrityAndBlock(*K,*J)<0) exit(-1);
-								if(checkIntegrityAndBlock(*J,*I)<0) exit(-1);
-								
-								setTertiaryIntersection(*J,*K,*I,UNOBSTRUCTED);
-								setTertiaryIntersection(*K,*I,*J,UNOBSTRUCTED);
-								
-							}
-							if(occlusion == INSIDE){
-								djk = circles[j].circularIntersections[k].d;
-								occlusion2 = occludesForwardIntersectionPoint(*J,*I,*K,dij,djk);
-								if(occlusion2 == INSIDE){
-									if(checkIntegrityAndBlock(*K,*J)<0) exit(-1);
-									if(checkIntegrityAndBlock(*J,*K)<0) exit(-1);
-									
-								}
-								else if(occlusion2 == OUTSIDE){
-									setTertiaryIntersection(*J,*K,*I,UNOBSTRUCTED);
-									setTertiaryIntersection(*K,*J,*I,UNOBSTRUCTED);
-								}
-								else exit(-1);
-								
-								printf("INSIDE\n");
-								if(checkIntegrityAndBlock(*I,*K)<0) foundOccludingCircle=true;
-								if(checkIntegrityAndBlock(*K,*I)<0) foundOccludingCircle=true;
-							}
-							if(occlusion == OUTSIDE){
-								//check for triforce
-								djk = circles[j].circularIntersections[k].d;
-								occlusion2 = occludesForwardIntersectionPoint(*J,*I,*K,dij,djk);
-								if(occlusion2 == OUTSIDE){
-									printf("TRIFORCE\n");
-									
-								}
-								else{
-
-									printf("OUTSIDE\n");
-									if(checkIntegrityAndBlock(*K,*J)<0) foundOccludingCircle=true;
-									if(checkIntegrityAndBlock(*J,*K)<0) foundOccludingCircle=true;
-									
-									setTertiaryIntersection(*I,*K,*J,UNOBSTRUCTED);
-									setTertiaryIntersection(*K,*I,*J,UNOBSTRUCTED);
-									setTertiaryIntersection(*J,*I,*K,UNOBSTRUCTED);
-									
-								}
-							}
-
-							if(occlusion == NA){
-								printf("NA\n");
-								exit(-1);
-							}
-							
-							
-						//}
-
-						
-					}
-				}
-				
-				
-			}
-			
-			
-			if(!foundOccludingCircle){
-				printf("found sasa ip %d-%d\n",i,j);
-				//here, we add a forwardIntersection to the circle
-				ip = determineIntersectionPoints(radius, *I, *J);
-				p.vector = ip.k_j;
-				p.with = j;
-				p.from = i;
-				circles[i].forwardIntersections.push_back(p);	
-				circles[i].intersect = true;
-				I->circularIntersections[j].sasa=true;
-			}			
-			
-		}
-	}
-	
-	
-	for(i=0; i< circles.size(); i++){
-		printf("circle %d\n",i);
-		for(it_l=circles[i].forwardIntersections.begin(); it_l!=circles[i].forwardIntersections.end();++it_l){
-			printf("ip: %d-%d\n",it_l->from, it_l->with);
-		}
-		
-	}
-	
-			
-	
-
-}
-*/
-
-void Tessellation::buildGaussBonnetPath(Vector &origin, double radius, vector<Vector> &atoms, vector<double> &radii, vector<CircularRegion> **circles, vector<list<IntersectionNode*> > **intersections, IntersectionGraph **intersectionGraph){
-	IntersectionPoint p;
-	int i,k,j;
-	IntersectionPair points;
-	double angle;
-	Vector v,v2,o,o2;
-	
-	*circles = new vector<CircularRegion>();
-	*intersections = new vector<list<IntersectionNode*> >();
-	*intersectionGraph = new IntersectionGraph();
-	
-	srand(2);
-
-
-	makeCircularRegions(origin, radius, atoms, radii, **circles);
-	for(i=0;i<(*circles)->size();i++){
-		determineProjection(origin, radius, (*circles)->at(i));
-	}
-	filterCircularRegions(radius, **circles);
-	
-	clearFlags(**circles);
-	reindexCircularRegions(**circles);
-	
-	buildIntersectionGraph(radius, **circles, **intersections, **intersectionGraph);
-
-	p.visited = false;
-	clearFlags(**circles);
-	
-	//NSWarnLog(@"gauss bonnet path is ready...");
-	
-	insertFakeIntersectionPoints(**circles);
-	
-	
-}
-
-
-
-
-void Tessellation::harvestIntersectionPoints(vector<CircularRegion> &circles, vector<vec> &intersections){
-	int i;
-	list<IntersectionPoint>::iterator it;
-
-	for(i=0;i<circles.size();i++)
-		for(it = circles[i].forwardIntersections.begin(); it != circles[i].forwardIntersections.end(); ++it){
-			//NSWarnLog(@"POINT: [%f %f %f]",it->vector.vector[0],it->vector.vector[1],it->vector.vector[2]);
-			intersections.push_back(it->vector);
-			}
-}
-
-
-bool Tessellation::hasUnflaggedIntersectionPoints(CircularRegion &circle, IntersectionPoint **ip){
-	list<IntersectionPoint>::iterator it;
-	for(it = circle.forwardIntersections.begin(); it != circle.forwardIntersections.end(); ++it){
-		if(!it->visited){
-			*ip=&*it;
-			return true;
-		}
-	}
-	return false;
-}
-
-
-list<IntersectionPoint*>* Tessellation::retrieveIntersections(CircularRegion &circle){
-	list<IntersectionPoint*>* res;
-	res = new list<IntersectionPoint*>();
-	
-	list<IntersectionPoint>::iterator it;
-	for(it = circle.forwardIntersections.begin(); it != circle.forwardIntersections.end(); ++it){
-		//if(!it->visited){
-			//save a pointer to the intersectionpoint
-			res->push_back(&(*it));
-		//}
-	}
-	return res;
-	
-}
-
-
-void Tessellation::showIntersections(list<IntersectionPoint*> &intersections){
-	list<IntersectionPoint*>::iterator it;
-	
-	for(it=intersections.begin();it!=intersections.end();++it)
-		fprintf(stdout,"INTERSECTION %d-%d",(*it)->from, (*it)->with);
-}
-
-/*
- * path and res needs to be deleted somewhere
- */
-vector<list<IntersectionPoint*>*>*  Tessellation::harvestGaussBonnetPaths(vector<CircularRegion> &circles){
-	vector<list<IntersectionPoint*>*>* res;
-	list<IntersectionPoint*>* path;
-	list<IntersectionPoint*>* intersectionsTest;
-	list<IntersectionPoint*>* intersections;
-	list<IntersectionPoint*>::iterator it_i, minIt;
-
-	Vector v,ortho,test,reference;
-	IntersectionPoint  *p, *p_prev;
-	CircularRegion circle;
-	bool done;
-	double minAngle,angle;
-	int i,j;
-	
-	res = new vector<list<IntersectionPoint*>*>();
-	path = new list<IntersectionPoint*>();
-	//the whole thing can actually be emtpy, in that case we better get outta here
-	if(circles.size()==0) return res;
-	//outputCircularRegions(circles);
-	
-	clearFlags(circles);
-	
-	
-	for(j=0;j<circles.size();++j){
-		if(hasUnflaggedIntersectionPoints(circles[j],&p_prev)){
-			//printf("USING SEED %d, %d-%d\n",j, p_prev->from, p_prev->with);
-			//p_prev->visited=true;
-			done=false;
-			while(!done){
-				//NSWarnLog(@"STARTING ROUND %d",p_prev->with);
-				circle = circles[p_prev->with];
-				//NSWarnLog(@"GETTING INTERSECTIONS FOR: %d",p_prev->with);
-				intersections = retrieveIntersections(circles[p_prev->with]);
-				
-				if(intersections->size() > 1){
-					//showIntersections(*intersections);
-					//NSWarnLog(@"MULTIINTERSECTIONS");
-					//determine which point we need to take, using p_prev as a reference
-					
-					//first we draw an orthogonal vector to the plane of the circular region
-					v = circle.normal * circle.g;
-					//from there we draw a vector to the last visited intersectionpoint
-					reference = p_prev->vector - v;
-		
-					//we create a plane that lies in the previously constructed vector and the plane-orthogonal vector.
-					//ortho is then the normal vector of the plane
-					ortho = cross(p_prev->vector,v);
-					ortho = ortho / norm(ortho,2);
-		
-					minAngle = 2 * M_PI;
-					for(it_i=intersections->begin(); it_i!=intersections->end(); ++it_i){
-						
-						//NSWarnLog(@"vector: (%f %f %f)",intersections[i]->vector.vector[0],intersections[i]->vector.vector[1],intersections[i]->vector.vector[2]);
-						//we draw a vector from the plane-orthogonal vector to the currently inspected intersectionpoint
-						test = (*it_i)->vector - v;
-						angle = getAngle(reference,test);
-						
-						double oldAngle = angle;
-						//here, we check on which side of the plane the intersection point is
-						//(if it is counterclockwise or clockwise oriented regarding to the reference)
-						if(circle.form == CONVEX){
-							if(dot(ortho,test) < 0) angle = 2 * M_PI - angle;
-						}
-						else{
-							if(dot(ortho,test) > 0) angle = 2 * M_PI - angle;
-						}
-						//NSWarnLog(@"EVAL: %f %f - %f",angle,minAngle,Ad3DDotProduct(&ortho,&test));
-						
-						if(isZero(angle)) angle = 2 * M_PI;
-						
-						if(angle < minAngle){
-							minAngle = angle;
-							minIt = it_i;
-						}
-						
-						//NSWarnLog(@"INT: %d-%d ANG: %f / %f [%f] %f %d",(*it_i)->from,(*it_i)->with,angle,oldAngle,minAngle,Ad3DDotProduct(&ortho,&test),circle.form);
-						
-					}
-		
-					//we got the next point :)
-					
-					p = *minIt;
-					if(!p->visited){
-						p->visited = true;
-						p->id=path->size();
-						p_prev = p;
-						path->push_back(p);
-					}
-					else done=true;
-					
-				}
-				else{
-					//NSWarnLog(@"NORMAL INTERSECTION");
-					p = (*intersections->begin());
-					if(!p->visited){
-						p->visited = true;
-						p->id = path->size();
-						p_prev = p;
-						path->push_back(p);
-					}
-					else done=true;
-				}
-				
-			
-				delete intersections;
-			}
-			res->push_back(path);
-			path = new list<IntersectionPoint*>();
-		}
-		delete intersectionsTest;
-	}
-	return res;
-}
-
-
-
-
-/*
-Vector Tessellation::getSphericalGreatArcGreatArcInterfacePoint(Vector &a, Vector &b, double radius){
-	Vector f,ab,en,n;
-	double s;
-	
-	//NSWarnLog(@"sn : (%f, %f, %f)",n->vector[0],n->vector[1],n->vector[2]);
-	//NSWarnLog(@"sa : (%f, %f, %f)",a->vector[0],a->vector[1],a->vector[2]);
-	//NSWarnLog(@"sb : (%f, %f, %f)",b->vector[0],b->vector[1],b->vector[2]);
-	
-	//create edge-plane
-	ab = b-a;
-	en = cross(a,ab);
-	
-	//the required interface is perpendicular to the two plane normals. Since the two planes also cross in the origin by definition, we
-	//immediately have found the two interfacepoints. We select the right one by considering the dot product of the normals 
-	n=cross(en,f);
-	s = vsign(dot(f,a));
-
-	flen = norm(f,2);
-	f = f * (s*radius/flen);
-
-	return f;
-}
-*/
-
-	
-/*
-CircularRegion getGreatOpeningCircle(double radius, Vector3D *K, double r_k, int index){
-	double g,a,side,alpha;
-	CircularRegion res;
-	Vector3D normal;
-
-	Ad3DVectorLength(K);
-	//check if neighbor is completely inside estimate:
-	if(radius >= K->length + r_k){
-		alpha = 0;
-		a = 0;
-		g = 0;
-		//NSWarnLog(@"SPLITTER CASE 1 %f, %f, %f",radius, K->length, r_k);
-	}
-	else
-	//check if our origin-sphere is completely inside K!!! this happens practically for all hydrogens and it's horrible!!!
-	if(r_k >= K->length + radius)
-	{
-		alpha = M_M_PI;
-		g = 0;
-		a = 0;
-		//NSWarnLog(@"SPLITTER CASE 2");
-	}
-	else
-	{
-		if(sqrt(pow(radius,2) + pow(r_k,2)) > K->length)
-		{
-			g = (K->length * K->length - r_k * r_k + radius * radius) /  (2 * K->length);
-			a = (1.0/(2.0*K->length)) * sqrt((-K->length+r_k-radius)*(-K->length-r_k+radius)*(-K->length+r_k+radius)*(K->length+r_k+radius));
-			//side = sqrt(g * g + a * a);
-
-			if(g<0)	alpha = M_M_PI - asin(a/radius);
-			else alpha = asin(a/radius);
-		//NSWarnLog(@"SPLITTER CASE 3");
-		}
-		else
-		{
-			alpha = asin(r_k/K->length);
-			g = cos(alpha) * radius;
-			a = sin(alpha) * radius;
-
-		//NSWarnLog(@"SPLITTER CASE 4");
-		}
-	}
-
-	res.openingAngle=alpha;
-	res.g = g;
-	res.a = a;
-	res.vector = *K;
-	Ad3DVectorLength(&res.vector);
-	Ad3DVectorScalarMultiply2(K, 1.0/K->length, &normal);
-	res.normal = normal;
-	Ad3DVectorLength(&res.normal);
-	res.index=index;
-	//probably not useful
-	if(g<0) res.form=CONCAVE;
-	else res.form=CONVEX;
-	//this particular sphereradius is just a construct for later calculations and does represent anything physical 
-	res.sphereRadius = sqrt((K->length-g)*(K->length-g) + a * a);
-
-	return res;
-}
-*/
 
 
 void Tessellation::outputGaussBonnetData(string filename){

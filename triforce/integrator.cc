@@ -177,7 +177,7 @@ double Integrator::integrateTriangle(IntersectionNode &x0, IntersectionNode &x1,
 	
 	printf("O: %f,%f,%f\n",o(0),o(1),o(2));
 	
-	
+	/*
 	//calculate PHI0
 	vec0 = x0.vector - c.vector;
 	PHI0 = complLongAngle(n, o, vec0);
@@ -185,6 +185,14 @@ double Integrator::integrateTriangle(IntersectionNode &x0, IntersectionNode &x1,
 	//calculate PHI1
 	vec1 = x1.vector - c.vector;
 	PHI1 = complLongAngle(n, o, vec1);
+	*/
+	
+	printf("SEGMENT (%d,%d) - (%d,%d)\n",x0.id0,x0.id1,x1.id0,x1.id1);
+	
+	PHI0 = x0.angle0;
+	PHI1 = x1.angle1;
+	
+	
 	
 	
 	maxArea = interpolation->interpolate(0, psi, lambda);
@@ -372,12 +380,17 @@ Vector Integrator::halfSphereIntersectionPoint(Vector &integrationOrigin, Circul
 	lambda = c.openingAngle;
 	psi = angle(integrationOrigin, c.normal);
 	
-	rho = acos(cos(lambda)*csc(psi));
+	if(dot(integrationOrigin, c.normal) < 0) sign = -sign;
+	
+	rho = acos(cos(lambda)*csc(psi)) + lambda;
 	v(0) = 0;
 	v(1) = cos(sign * rho);
-	v(2) = sin( sign * rho);
+	v(2) = sin(sign * rho);
 	
 	v*=radius;
+	
+	
+	
 	
 	return v;
 }
@@ -401,12 +414,22 @@ void Integrator::splitSASA(list<IntersectionNode*> &sasa, vector<CircularRegion>
 	IntersectionNode *first, *second;
 	*frontHemisphere = new list<IntersectionNode*>();
 	*backHemisphere = new list<IntersectionNode*>();
+	Vector mirrorIntegrationOrigin(3);
+	Vector orthoIntegrationOrigin(3);
+	double angleOrtho;
 	
 	IntersectionNode ip;
 	IntersectionNode *ipp;
 	IntersectionAddress a;
 	
 	
+	mirrorIntegrationOrigin(0) = -integrationOrigin(0);
+	mirrorIntegrationOrigin(1) = -integrationOrigin(1);
+	mirrorIntegrationOrigin(2) = -integrationOrigin(2);
+	
+	orthoIntegrationOrigin(0) = 0;
+	orthoIntegrationOrigin(1) = 1;
+	orthoIntegrationOrigin(2) = 0;
 	
 	
 	
@@ -430,17 +453,24 @@ void Integrator::splitSASA(list<IntersectionNode*> &sasa, vector<CircularRegion>
 		locFirst = locSecond;
 		second = *it;
 		angleSecond = angle(integrationOrigin, second->vector);
+		angleOrtho = angle(orthoIntegrationOrigin, second->vector);
 		if(angleSecond<=M_PI/2){
 			locSecond=0;
-			sign = 1;
+			
+			sign = -1;
+			
 		}
 		else{
 			locSecond=1;
-			sign = -1;
+			
+			sign = 1;
 		}
+		
+		
 
 		if(locSecond != locFirst){
 			ip.vector = halfSphereIntersectionPoint(integrationOrigin, circles[first->id1], radius, sign);
+			
 			if(locSecond==1){
 				a.id0 = first->id1;
 				a.id1 = c;
