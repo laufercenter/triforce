@@ -23,24 +23,11 @@ Integrator::Integrator(Tessellation *tessellation, Interpolation *interpolation,
 	
 }
 
-Vector Integrator::optimalIntegrationOrigin(list<IntersectionNode*>* sasa){
-	Vector v(3);
-	v(0) = 1;
-	v(1) = 0;
-	v(2) = 0;
-	
-	return v;
-	
-}
+
 
 double Integrator::integrate(){
-	vector<vector<CircularRegion>* >* circularRegions;
-	vector<vector<list<IntersectionNode*> >*>* intersections;
-	vector<IntersectionGraph*> *intersectionGraphs;
-	vector<list<IntersectionNode*> >* sasas;
-	list<IntersectionNode*>* sasa;
-	vector<CircularRegion>* circles;
-	IntersectionGraph* intersectionGraph;
+	SASAs sasas;
+	SASANodeList sasa;
 	vector<double> *radii;
 	Vector integrationOrigin;
 	double radius;
@@ -54,23 +41,16 @@ double Integrator::integrate(){
 		
 	
 	
-	intersections = tessellation->intersectionPoints();
-	circularRegions = tessellation->circularRegions();
-	intersectionGraphs = tessellation->intersectionGraphs();
+	sasas = tessellation->sasas();
  
 	//iterate over all atoms
-	for(int i=0;i<intersections->size();++i){
-		radius = radii->at(i);
+	for(int i=0;i<sasas.size();++i){
+		radius = sasas[i].radius;
+		sasa=sasas[i].sasa;
 		//iterate over all sasas
-		sasas = intersections->at(i);
-		printf("size: %d\n",sasas->size());
-		circles = circularRegions->at(i);
-		intersectionGraph = intersectionGraphs->at(i);
-		for(int j=0;j<sasas->size();++j){
-			sasa = &sasas->at(j);
-			integrationOrigin = optimalIntegrationOrigin(sasa);
-			printf("integrating...\n");
-			area += integrateSASA(*sasa,*circles, *intersectionGraph, integrationOrigin, radius);
+		printf("size: %d\n",sasa.size());
+		for(int j=0;j<sasa.size();++j){
+			area += integrateSASA(sasas[i]);
 		}
 		
 	}
@@ -80,55 +60,16 @@ double Integrator::integrate(){
 	
 }
 
-double Integrator::integrateSASA(list<IntersectionNode*> &sasa, vector<CircularRegion> &circles,  IntersectionGraph &intersectionGraph, Vector &integrationOrigin, double radius){
-	CircularRegion c;
-	list<IntersectionNode*>* frontHemisphere;
-	list<IntersectionNode*>* backHemisphere;
-	int ci;
-	double area=0;
-	Vector mirrorIntegrationOrigin(3);
-	
-	c.vector = integrationOrigin;
-	c.openingAngle = M_PI/2;
-	c.form=CONVEX;
-	circles.push_back(c);
-	ci = circles.size()-1;
-	
-	printf("ID OF DIVIDING CIRCLE: %d\n",ci);
-	
-	splitSASA(sasa, circles, ci, integrationOrigin, radius, &frontHemisphere, &backHemisphere, intersectionGraph);
-	
-	string s("intdata.csv");
-	outputIntegrationData(s,integrationOrigin,*frontHemisphere,*backHemisphere);
-	
-	
-	mirrorIntegrationOrigin(0) = -integrationOrigin(0);
-	mirrorIntegrationOrigin(1) = -integrationOrigin(1);
-	mirrorIntegrationOrigin(2) = -integrationOrigin(2);
-	
-	printf("FRONTHEMISPHERE\n");
-	area += integrateHemisphere(*frontHemisphere, integrationOrigin, circles, ci);	
-	printf("BACKHEMISPHERE\n");
-	area += integrateHemisphere(*backHemisphere, mirrorIntegrationOrigin, circles, ci);
-	
-	delete frontHemisphere;
-	delete backHemisphere;
-	
-	return area;
-	
-}
-
-
-double Integrator::integrateHemisphere(list<IntersectionNode*> &sasa, Vector &integrationOrigin, vector<CircularRegion> &circles, int ci){
-	list<IntersectionNode*>::iterator it;
-	IntersectionNode *x0, *x1;
+double Integrator::integrateSASA(SASA &sasa){
+	SASANodeList::iterator it;
+	SASANode x0, x1;
 	double area=0;
 	
-	x0 = *(--sasa.end());
-	for(it = sasa.begin(); it!=sasa.end(); ++it){
+	x0 = *(--sasa.sasa.end());
+	for(it = sasa.sasa.begin(); it!=sasa.sasa.end(); ++it){
 		x1 = *it;
 		
-		area += integrateTriangle(*x0, *x1, integrationOrigin, circles, ci);
+		area += integrateTriangle(x0, x1, sasa.tessellationOrigin);
 		
 		printf("area: %f\n",area);
 		x0=x1;
@@ -136,61 +77,33 @@ double Integrator::integrateHemisphere(list<IntersectionNode*> &sasa, Vector &in
 	}
 	
 	return area;
-
 }
 
-double Integrator::integrateTriangle(IntersectionNode &x0, IntersectionNode &x1, Vector integrationOrigin, vector<CircularRegion> &circles, int ci){
+
+
+double Integrator::integrateTriangle(SASANode &x0, SASANode &x1, Vector integrationOrigin){
 	double psi;
 	double lambda;
 	double PHI0;
 	double PHI1;
-	CircularRegion c;
 	double v0,v1;
 	double area = 0;
 	Vector vec0,vec1;
 	Vector n(3), o;
 	double maxArea;
 	
-	c = circles[x0.id1];
 	
 	
 	//calculate psi
-	psi = angle(c.vector, integrationOrigin);
+	psi = angle(x1.normalForCircularRegion, integrationOrigin);
 	//calculate lambda
-	lambda = c.openingAngle;
+	lambda = x1.lambda;
 	
-	//n = cross(c.vector, integrationOrigin);
-	if(x0.id1==ci){
-		n(0)=0;
-		n(1)=1;
-		n(2)=0;
-	}
-	else{
-		n(0)=0;
-		n(1)=-c.vector(2);
-		n(2)=c.vector(1);
-	}
-	
-	printf("N: %f,%f,%f\n",n(0),n(1),n(2));
-	
-	o = cross(n,c.vector);
-	
-	printf("O: %f,%f,%f\n",o(0),o(1),o(2));
-	
-	/*
-	//calculate PHI0
-	vec0 = x0.vector - c.vector;
-	PHI0 = complLongAngle(n, o, vec0);
-
-	//calculate PHI1
-	vec1 = x1.vector - c.vector;
-	PHI1 = complLongAngle(n, o, vec1);
-	*/
 	
 	printf("SEGMENT (%d,%d) - (%d,%d)\n",x0.id0,x0.id1,x1.id0,x1.id1);
 	
-	PHI0 = x0.angle0;
-	PHI1 = x1.angle1;
+	PHI0 = x0.angle1;
+	PHI1 = x1.angle0;
 	
 	
 	
@@ -261,6 +174,8 @@ double Integrator::integrateTriangle(IntersectionNode &x0, IntersectionNode &x1,
 	
 	
 }
+
+
 
 
 double Integrator::angle(Vector &a, Vector &b){
@@ -370,22 +285,33 @@ double Integrator::csc(double a){
 }
 
 
-
+/*
 Vector Integrator::halfSphereIntersectionPoint(Vector &integrationOrigin, CircularRegion &c, double radius, int sign){
 	double lambda;
 	double psi;
 	Vector v(3);
 	double rho;
+	Vector orthoIntegrationOrigin(3);
+	double l2;
+	Vector n(3);
+	double nu;
+	
+	orthoIntegrationOrigin(0) = 0;
+	orthoIntegrationOrigin(1) = 1;
+	orthoIntegrationOrigin(2) = 0;
 	
 	lambda = c.openingAngle;
 	psi = angle(integrationOrigin, c.normal);
+	rho = sign * acos(cos(lambda)*csc(psi));
 	
-	if(dot(integrationOrigin, c.normal) < 0) sign = -sign;
+	n = cross(c.normal, integrationOrigin);
+	nu = complAngle(n,orthoIntegrationOrigin);
 	
-	rho = acos(cos(lambda)*csc(psi)) + lambda;
+
+	
 	v(0) = 0;
-	v(1) = cos(sign * rho);
-	v(2) = sin(sign * rho);
+	v(1) = cos(rho + nu);
+	v(2) = sin(rho + nu);
 	
 	v*=radius;
 	
@@ -395,7 +321,7 @@ Vector Integrator::halfSphereIntersectionPoint(Vector &integrationOrigin, Circul
 	return v;
 }
 
-
+*/
 /*
  * sasa 1 size 4
 intersectionpoint 0 vector 1.256455 0.354529 1.150268
@@ -408,7 +334,7 @@ intersectionpoint 3 vector -0.114692 1.732367 -0.115048
  * 
  * */
 
-
+/*
 void Integrator::splitSASA(list<IntersectionNode*> &sasa, vector<CircularRegion> &circles, int c, Vector &integrationOrigin, double radius, list<IntersectionNode*>** frontHemisphere, list<IntersectionNode*>** backHemisphere, IntersectionGraph &intersectionGraph){
 	list<IntersectionNode*>::iterator it;
 	IntersectionNode *first, *second;
@@ -417,10 +343,21 @@ void Integrator::splitSASA(list<IntersectionNode*> &sasa, vector<CircularRegion>
 	Vector mirrorIntegrationOrigin(3);
 	Vector orthoIntegrationOrigin(3);
 	double angleOrtho;
+	Interfaces interfaces;
+	Vector p0(3), p1(3);
+	Vector v2(3);
+	CircularRegion C, I;
 	
 	IntersectionNode ip;
 	IntersectionNode *ipp;
 	IntersectionAddress a;
+	
+	double angleFirst, angleSecond;
+	int locFirst, locSecond;
+	int sign;
+
+	
+	C = circles[c];
 	
 	
 	mirrorIntegrationOrigin(0) = -integrationOrigin(0);
@@ -433,9 +370,6 @@ void Integrator::splitSASA(list<IntersectionNode*> &sasa, vector<CircularRegion>
 	
 	
 	
-	double angleFirst, angleSecond;
-	int locFirst, locSecond;
-	int sign;
 	
 	second = *(--sasa.end());
 	angleSecond = angle(integrationOrigin, second->vector);
@@ -469,7 +403,13 @@ void Integrator::splitSASA(list<IntersectionNode*> &sasa, vector<CircularRegion>
 		
 
 		if(locSecond != locFirst){
-			ip.vector = halfSphereIntersectionPoint(integrationOrigin, circles[first->id1], radius, sign);
+			I = circles[first->id1];
+			ip.vector = halfSphereIntersectionPoint(integrationOrigin, I, radius, sign);
+			
+			//tessellation->measurementPoints(p0, p1, integrationOrigin, I);
+			//v2 = I.normal * I.g;
+
+			//interface = tessellation->angularInterface(ip.vector, v2, p0, p1);
 			
 			if(locSecond==1){
 				a.id0 = first->id1;
@@ -504,42 +444,8 @@ void Integrator::splitSASA(list<IntersectionNode*> &sasa, vector<CircularRegion>
 	
 	
 }
+*/
 
 
-
-
-void Integrator::outputIntegrationData(string filename, Vector &integrationOrigin, list<IntersectionNode*> &frontHemisphere, list<IntersectionNode*> &backHemisphere){
-	FILE* file;
-	vector<Vector> atoms;
-	vector<double> *radii;
-	int k;
-	list<IntersectionNode*>::iterator it;
-	
-	file = fopen (filename.c_str(),"w");
-	
-	atoms = molecule->coordinates();
-	radii = molecule->fetchRadii();
-
-	int i=0;
-	fprintf(file,"atom %d radius %f crd %f %f %f\n", i, radii->at(i), atoms[i](0), atoms[i](1), atoms[i](2));
-	fprintf(file,"integrationorigin %f %f %f\n", i, integrationOrigin(0), integrationOrigin(1), integrationOrigin(2));
-	
-	fprintf(file, "sasa %d size %d\n", 0, frontHemisphere.size());
-	k=0;
-	for(it=frontHemisphere.begin();it!=frontHemisphere.end();++it,++k){
-		fprintf(file, "intersectionpoint %d vector %f %f %f\n", k, (*it)->vector(0), (*it)->vector(1), (*it)->vector(2));
-	}
-	fprintf(file, "sasa %d size %d\n", 1, backHemisphere.size());
-	k=0;
-	for(it=backHemisphere.begin();it!=backHemisphere.end();++it,++k){
-		fprintf(file, "intersectionpoint %d vector %f %f %f\n", k, (*it)->vector(0), (*it)->vector(1), (*it)->vector(2));
-	}
-	
-	fclose(file);
-	
-		
-	
-
-}
 
 

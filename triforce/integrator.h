@@ -49,17 +49,16 @@ private:
 	Tessellation* tessellation;
 	Molecule* molecule;
 	
-	void splitSASA(list<IntersectionNode*> &sasa, vector<CircularRegion> &circles, int c, Vector &integrationOrigin, double radius, list<IntersectionNode*>** frontHemisphere, list<IntersectionNode*>** backHemisphere,  IntersectionGraph &intersectionGraph);
-	Vector halfSphereIntersectionPoint(Vector &integrationOrigin, CircularRegion &c, double radius, int sign);
+	//void splitSASA(list<IntersectionNode*> &sasa, vector<CircularRegion> &circles, int c, Vector &integrationOrigin, double radius, list<IntersectionNode*>** frontHemisphere, list<IntersectionNode*>** backHemisphere,  IntersectionGraph &intersectionGraph);
+	//Vector halfSphereIntersectionPoint(Vector &integrationOrigin, CircularRegion &c, double radius, int sign);
 	double csc(double a);
 	int sgn(double d);
 	double complAngle(Vector &a, Vector &b);
 	double complLongAngle(Vector &n, Vector &o, Vector &a);
 	double angle(Vector &a, Vector &b);
-	double integrateTriangle(IntersectionNode &x0, IntersectionNode &x1, Vector integrationOrigin, vector<CircularRegion> &circles, int ci);
-	double integrateHemisphere(list<IntersectionNode*> &sasa, Vector &integrationOrigin, vector<CircularRegion> &circles, int ci);
-	double integrateSASA(list<IntersectionNode*> &sasa, vector<CircularRegion> &circles,  IntersectionGraph &intersectionGraph, Vector &integrationOrigin, double radius);
-	Vector optimalIntegrationOrigin(list<IntersectionNode*>* sasa);
+	double integrateTriangle(SASANode &x0, SASANode &x1, Vector integrationOrigin);
+	//double integrateHemisphere(list<IntersectionNode*> &sasa, Vector &integrationOrigin, vector<CircularRegion> &circles, int ci);
+	double integrateSASA(SASA &s);
 	
 	
 };
