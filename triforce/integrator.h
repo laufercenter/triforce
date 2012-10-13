@@ -33,19 +33,30 @@
 using namespace std;
 using namespace arma;
 
+
+
 class Integrator{
+public:
+	virtual double integrate(Molecule *molecule, Tessellation *tessellation)=0;
+};
+
+
+
+
+class IntegratorTriforce: public Integrator{
 	
 public:
-	Integrator();
-	Integrator(Tessellation *tessellation, Interpolation *interpolation, Molecule *molecule);
+	IntegratorTriforce();
+	IntegratorTriforce(Interpolation *dataConvex, Interpolation *dataConcave);
 	
-	double integrate();
+	double integrate(Molecule *molecule, Tessellation *tessellation);
 	void outputIntegrationData(string filename, Vector &integrationOrigin, list<IntersectionNode*> &frontHemisphere, list<IntersectionNode*> &backHemisphere);
 	
 	
 	
 private:
-	Interpolation *interpolation;
+	Interpolation *dataConvex;
+	Interpolation *dataConcave;
 	Tessellation* tessellation;
 	Molecule* molecule;
 	
@@ -56,9 +67,11 @@ private:
 	double complAngle(Vector &a, Vector &b);
 	double complLongAngle(Vector &n, Vector &o, Vector &a);
 	double angle(Vector &a, Vector &b);
-	double integrateTriangle(SASANode &x0, SASANode &x1, Vector integrationOrigin);
+	double integrateTriangle(SASANode &x0, SASANode &x1, Vector integrationOrigin, double &totalAngle);
 	//double integrateHemisphere(list<IntersectionNode*> &sasa, Vector &integrationOrigin, vector<CircularRegion> &circles, int ci);
+	double integrateAtomicSASA(SASAsForAtom sasasForAtom);
 	double integrateSASA(SASA &s);
+	double PHI2phi(double PHI, double psi, double lambda);
 	
 	
 };
