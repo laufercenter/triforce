@@ -38,8 +38,6 @@ using namespace arma;
 
 
 
-#define CONCAVE 0
-#define CONVEX 1
 #define ANGLE_TRESHOLD 0.001
 #define THRESHOLD_IP 0.05
 #define THRESHOLD_NUMERICAL 0.0000001
@@ -57,6 +55,14 @@ enum OcclusionState{
 	UNOBSTRUCTED,
 	UNDEFINED
 };
+
+
+enum CircularInterfaceForm{
+	CONCAVE,
+	CONVEX,
+	SPLITTER
+};
+
 
 
 enum Direction{
@@ -164,7 +170,7 @@ typedef struct
 	map<int,CircularIntersection> circularIntersections;
 	IntersectionBranches intersectionBranches;
 	
-	int form;
+	CircularInterfaceForm form;
 	bool intersect;
 	bool flagged;
 		
@@ -184,20 +190,29 @@ typedef struct
 	double angle1;
 	Vector normalForCircularRegion;
 	double lambda;
+	CircularInterfaceForm form;
 }
 SASANode;
 
 typedef vector<SASANode> SASANodeList;
 
+
 typedef struct{
 	Vector tessellationOrigin;
 	SASANodeList sasa;
-	double radius;
-	Vector vector;
 }
 SASA;
 
 typedef vector<SASA> SASAs;
+
+typedef struct{
+	SASAs sasas;
+	double radius;
+	Vector vector;
+}
+SASAsForAtom;
+
+typedef vector<SASAsForAtom> SASAsForMolecule;
 
 
 typedef map<IntersectionAddress, IntersectionNode, InteractionNodeComparator> IntersectionGraph;
@@ -239,7 +254,7 @@ class Tessellation{
 public:
 	Tessellation(Molecule &m);
 	void build();
-	SASAs &sasas();
+	SASAsForMolecule &sasas();
 	
 	
 private:
@@ -249,11 +264,11 @@ private:
 	vector<double> *radii;
 	//#atoms #circularregions
 	//#atoms #sasas #circularregions
-	SASAs sasasForMolecule;
+	SASAsForMolecule sasasForMolecule;
 
 
 	CircularRegionsPerAtom coverHemisphere(Vector tessellationOrigin, double radius, CircularRegionsPerAtom circles);
-	void buildGaussBonnetPath(Vector &origin, double radius, vector<Vector> &atoms, vector<double> &radii, SASAs &sasas);
+	void buildGaussBonnetPath(Vector &origin, double radius, vector<Vector> &atoms, vector<double> &radii, SASAsForMolecule &sasas);
 	double vsign(double v);
 	double cot(double a);
 	double csc(double a);

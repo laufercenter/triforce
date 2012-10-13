@@ -10,28 +10,33 @@ using namespace arma;
 using namespace boost;
 
 
-Integrator::Integrator(){
+IntegratorTriforce::IntegratorTriforce(){
 	
 }
 
 
 
-Integrator::Integrator(Tessellation *tessellation, Interpolation *interpolation, Molecule *m){
-	this->tessellation = tessellation;
-	this->interpolation = interpolation;
-	this->molecule = m;
+IntegratorTriforce::IntegratorTriforce(Interpolation *dataConvex, Interpolation *dataConcave){
+	this->dataConvex = dataConvex;
+	this->dataConcave = dataConcave;
 	
 }
 
 
 
-double Integrator::integrate(){
-	SASAs sasas;
+double IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
+	SASAsForMolecule sasas;
 	SASANodeList sasa;
 	vector<double> *radii;
 	Vector integrationOrigin;
 	double radius;
-	double area=0;
+	double area;
+	
+	this->molecule = m;
+	this->tessellation = tessellation;
+	
+	
+	
 	radii = molecule->fetchRadii();
 	
 	for(int i=0; i<radii->size();i++){
@@ -42,16 +47,11 @@ double Integrator::integrate(){
 	
 	
 	sasas = tessellation->sasas();
- 
+	area = 0;
 	//iterate over all atoms
 	for(int i=0;i<sasas.size();++i){
 		radius = sasas[i].radius;
-		sasa=sasas[i].sasa;
-		//iterate over all sasas
-		printf("size: %d\n",sasa.size());
-		for(int j=0;j<sasa.size();++j){
-			area += integrateSASA(sasas[i]);
-		}
+		area += integrateAtomicSASA(sasas[i]);
 		
 	}
 	
@@ -60,39 +60,72 @@ double Integrator::integrate(){
 	
 }
 
-double Integrator::integrateSASA(SASA &sasa){
+
+double IntegratorTriforce::integrateAtomicSASA(SASAsForAtom sasasForAtom){
+	int i;
+	double radius;
+	double area;
+	
+	radius = sasasForAtom.radius;
+	area = 0;
+	for(int i=0;i<sasasForAtom.sasas.size();++i){
+		area += integrateSASA(sasasForAtom.sasas[i]);
+		
+	}
+	
+	return area;
+	
+}
+
+double IntegratorTriforce::integrateSASA(SASA &sasa){
 	SASANodeList::iterator it;
 	SASANode x0, x1;
 	double area=0;
+	double totalAngle=0;
 	
 	x0 = *(--sasa.sasa.end());
 	for(it = sasa.sasa.begin(); it!=sasa.sasa.end(); ++it){
 		x1 = *it;
 		
-		area += integrateTriangle(x0, x1, sasa.tessellationOrigin);
+		area += integrateTriangle(x0, x1, sasa.tessellationOrigin, totalAngle);
 		
-		printf("area: %f\n",area);
+		printf("AAAREA: %f totalAngle: %f\n",area,totalAngle);
 		x0=x1;
 		
 	}
+	
+	printf("+++++ SAA END +++++\n\n");
 	
 	return area;
 }
 
 
+double IntegratorTriforce::PHI2phi(double PHI, double psi, double lambda){
 
-double Integrator::integrateTriangle(SASANode &x0, SASANode &x1, Vector integrationOrigin){
+	return acos( 	(-cos(PHI)*cos(psi)*sin(lambda)+cos(lambda)*sin(psi)) /
+			(sqrt(pow(abs(cos(psi)*sin(lambda)*sin(PHI)),2) + pow(abs(sin(lambda)*sin(PHI)*sin(psi)),2)
+			+ pow(abs(cos(PHI)*cos(psi)*sin(lambda) - cos(lambda) * sin(psi)),2))));
+
+
+}
+
+
+
+
+double IntegratorTriforce::integrateTriangle(SASANode &x0, SASANode &x1, Vector integrationOrigin, double &totalAngle){
 	double psi;
 	double lambda;
 	double PHI0;
 	double PHI1;
+	double aPHI0;
+	double aPHI1;
 	double v0,v1;
 	double area = 0;
 	Vector vec0,vec1;
 	Vector n(3), o;
 	double maxArea;
-	
-	
+	int form;
+	double phi0, phi1;
 	
 	//calculate psi
 	psi = angle(x1.normalForCircularRegion, integrationOrigin);
@@ -105,67 +138,84 @@ double Integrator::integrateTriangle(SASANode &x0, SASANode &x1, Vector integrat
 	PHI0 = x0.angle1;
 	PHI1 = x1.angle0;
 	
+	aPHI0 = abs(PHI0);
+	aPHI1 = abs(PHI1);
+	
+	phi0 = abs(PHI2phi(PHI0,psi,lambda));
+	if(PHI0<0) phi0=-phi0;
+	phi1 = abs(PHI2phi(PHI1,psi,lambda));
+	if(PHI1<0) phi1=-phi1;
+	
+	
+	if(x1.form==CONCAVE)
+		totalAngle -= phi1 - phi0;
+	else
+		totalAngle += phi1 - phi0;
 	
 	
 	
-	maxArea = interpolation->interpolate(0, psi, lambda);
-	printf("MAXAREA: %f, psi %f, lambda %f, PHI0 %f, PHI1 %f, CIRCLE: %d\n",maxArea,psi,lambda,PHI0,PHI1,x0.id1);
+	maxArea = dataConvex->interpolate(0, psi, lambda);
+	printf("MAXAREA: %f, psi %f, lambda %f, PHI0 %f, PHI1 %f, phi0: %f, phi1: %f,totalAngle: %f, CIRCLE: %d\n",maxArea,psi,lambda,PHI0,PHI1,phi0,phi1,totalAngle,x0.id1);
 	
 	if(PHI0 >= 0){
 		if(PHI1 >= 0){
 			if(PHI0 <= PHI1){
-				area += interpolation->interpolate(PHI0, psi, lambda);
+				area += dataConcave->interpolate(aPHI1, psi, lambda);
 				printf("CASE 0 0 %f\n",area);
-				area -= interpolation->interpolate(PHI1, psi, lambda);
+				area -= dataConcave->interpolate(aPHI0, psi, lambda);
 				printf("CASE 0 1 %f\n",area);
 			}
 			else{
-				area += interpolation->interpolate(PHI0, psi, lambda);
+				area += dataConcave->interpolate(aPHI1, psi, lambda);
 				printf("CASE 1 0 %f\n",area);
-				area -= interpolation->interpolate(PHI1, psi, lambda);
+				area += dataConvex->interpolate(aPHI0, psi, lambda);
 				printf("CASE 1 1 %f\n",area);
-				
 				area += maxArea;
-				area += maxArea;
+				printf("CASE 1 2 %f\n",area);
 				
 			}
 		}
 		else{
-			area += interpolation->interpolate(PHI0, psi, lambda);
+			area += dataConvex->interpolate(aPHI0, psi, lambda);
 				printf("CASE 2 0 %f\n",area);
-			area += interpolation->interpolate(PHI1, psi, lambda);
+			area += dataConvex->interpolate(aPHI1, psi, lambda);
 				printf("CASE 2 1 %f\n",area);
 		}
 	}
 	else{
 		if(PHI1 >= 0){
-			area -= interpolation->interpolate(PHI0, psi, lambda);
+			area += dataConcave->interpolate(aPHI0, psi, lambda);
 				printf("CASE 3 0 %f\n",area);
-			area -= interpolation->interpolate(PHI1, psi, lambda);
+			area += dataConcave->interpolate(aPHI1, psi, lambda);
 				printf("CASE 3 1 %f\n",area);
-			area += maxArea;
-			area += maxArea;
 			
 		}
 		else{
 			if(PHI0 <= PHI1){
-				area += interpolation->interpolate(PHI1, psi, lambda);
+				area += dataConcave->interpolate(aPHI0, psi, lambda);
 				printf("CASE 4 0 %f\n",area);
-				area -= interpolation->interpolate(PHI0, psi, lambda);
+				area -= dataConcave->interpolate(aPHI1, psi, lambda);
 				printf("CASE 4 1 %f\n",area);
 			}
 			else{
-				area -= interpolation->interpolate(PHI0, psi, lambda);
+				area += dataConcave->interpolate(aPHI0, psi, lambda);
 				printf("CASE 5 0 %f\n",area);
-				area += interpolation->interpolate(PHI1, psi, lambda);
-				printf("CASE 5 1 %f\n",area);
-				
 				area += maxArea;
+				printf("CASE 5 1 %f\n",area);
+				area += dataConvex->interpolate(aPHI1, psi, lambda);
+				printf("CASE 5 2 %f\n",area);
+				
 				area += maxArea;
 			}
 		}
 		
 	}
+	
+	
+	if(x1.form==CONCAVE) area=-area;
+	printf("SUBTOTAL AREA %f\n",area);
+	
+	
 	
 	
 	return area;
@@ -178,15 +228,15 @@ double Integrator::integrateTriangle(SASANode &x0, SASANode &x1, Vector integrat
 
 
 
-double Integrator::angle(Vector &a, Vector &b){
+double IntegratorTriforce::angle(Vector &a, Vector &b){
 	return acos(norm_dot(a,b));
 }
 
-double Integrator::complAngle(Vector &a, Vector &b){
+double IntegratorTriforce::complAngle(Vector &a, Vector &b){
 	return asin(norm_dot(a,b));
 }
 
-int Integrator::sgn(double d){
+int IntegratorTriforce::sgn(double d){
 	if(d>=0) return 1;
 	else return -1;
 }
@@ -203,7 +253,7 @@ int Integrator::sgn(double d){
 
 
 
-double Integrator::complLongAngle(Vector &n, Vector &o, Vector &a){
+double IntegratorTriforce::complLongAngle(Vector &n, Vector &o, Vector &a){
         double v;
         int s;
 
@@ -280,13 +330,13 @@ cross <- function(a,b){
 
 
 
-double Integrator::csc(double a){
+double IntegratorTriforce::csc(double a){
 	return 1.0/sin(a);
 }
 
 
 /*
-Vector Integrator::halfSphereIntersectionPoint(Vector &integrationOrigin, CircularRegion &c, double radius, int sign){
+Vector IntegratorTriforce::halfSphereIntersectionPoint(Vector &integrationOrigin, CircularRegion &c, double radius, int sign){
 	double lambda;
 	double psi;
 	Vector v(3);
@@ -335,7 +385,7 @@ intersectionpoint 3 vector -0.114692 1.732367 -0.115048
  * */
 
 /*
-void Integrator::splitSASA(list<IntersectionNode*> &sasa, vector<CircularRegion> &circles, int c, Vector &integrationOrigin, double radius, list<IntersectionNode*>** frontHemisphere, list<IntersectionNode*>** backHemisphere, IntersectionGraph &intersectionGraph){
+void IntegratorTriforce::splitSASA(list<IntersectionNode*> &sasa, vector<CircularRegion> &circles, int c, Vector &integrationOrigin, double radius, list<IntersectionNode*>** frontHemisphere, list<IntersectionNode*>** backHemisphere, IntersectionGraph &intersectionGraph){
 	list<IntersectionNode*>::iterator it;
 	IntersectionNode *first, *second;
 	*frontHemisphere = new list<IntersectionNode*>();

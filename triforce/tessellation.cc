@@ -24,9 +24,9 @@ void Tessellation::build(){
 		
 		
 		
-		for(int i=0; i<sasasForMolecule[0].sasa.size(); ++i){
+		for(int i=0; i<sasasForMolecule[0].sasas.size(); ++i){
 			printf("SASA %d\n",i);
-			outputGaussBonnetPath(sasasForMolecule[0]);
+			outputGaussBonnetPath(sasasForMolecule[0].sasas[i]);
 		}
 
 
@@ -51,7 +51,7 @@ CircularRegionsPerAtom Tessellation::coverHemisphere(Vector tessellationOrigin, 
 	C.g=0;
 	C.vector = v;
 	C.normal = v;
-	C.form = CONVEX;
+	C.form = SPLITTER;
 	C.id = circles.size();
 	
 	circles.push_back(C);
@@ -62,7 +62,7 @@ CircularRegionsPerAtom Tessellation::coverHemisphere(Vector tessellationOrigin, 
 
 
 
-void Tessellation::buildGaussBonnetPath(Vector &origin, double radius, vector<Vector> &atoms, vector<double> &radii, SASAs &sasas){
+void Tessellation::buildGaussBonnetPath(Vector &origin, double radius, vector<Vector> &atoms, vector<double> &radii, SASAsForMolecule &sasas){
 	int i,k,j;
 	CircularRegionsPerAtom circles;
 	CircularRegionsPerAtom circlesFrontHemisphere;
@@ -77,11 +77,15 @@ void Tessellation::buildGaussBonnetPath(Vector &origin, double radius, vector<Ve
 	frontTessellationOrigin(2) = 0;
 
 	backTessellationOrigin = -frontTessellationOrigin;
-	
+	SASAs *newSasas;
 	
 	srand(2);
 	
+	SASAsForAtom sasasForAtom;
+	sasasForAtom.radius = radius;
+	sasasForAtom.vector = origin;
 	
+	newSasas = &(sasas.insert(sasas.end(),sasasForAtom)->sasas);
 	
 
 
@@ -106,8 +110,8 @@ void Tessellation::buildGaussBonnetPath(Vector &origin, double radius, vector<Ve
 	
 	printf("CIRC: %d, FRONT: %d, BACK: %d\n",circles.size(), circlesFrontHemisphere.size(), circlesBackHemisphere.size());
 	
-	buildIntersectionGraph(radius, frontTessellationOrigin, circlesFrontHemisphere, sasas,string("gbonnet0.csv"));
-	buildIntersectionGraph(radius, backTessellationOrigin, circlesBackHemisphere, sasas,string("gbonnet1.csv"));
+	buildIntersectionGraph(radius, frontTessellationOrigin, circlesFrontHemisphere, *newSasas,string("gbonnet0.csv"));
+	buildIntersectionGraph(radius, backTessellationOrigin, circlesBackHemisphere, *newSasas,string("gbonnet1.csv"));
 	
 }
 
@@ -116,7 +120,7 @@ void Tessellation::buildGaussBonnetPath(Vector &origin, double radius, vector<Ve
 
 
 
-SASAs &Tessellation::sasas(){
+SASAsForMolecule &Tessellation::sasas(){
 	return sasasForMolecule;
 }
 
@@ -566,10 +570,10 @@ Interfaces Tessellation::angularInterfaces(Vector &x0, Vector &x1, Vector &tesse
 	res.in = angularInterface(x1,v,p0,p1);
 	res.vectorIn = x1;
 	
-	if(I.form == CONCAVE){
-		res.out = -res.out;
-		res.in = -res.in;
-	}
+	//if(I.form == CONCAVE){
+	//	res.out = -res.out;
+	//	res.in = -res.in;
+	//}
 	
 	return res;
 	
@@ -884,6 +888,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 				
 				//external
 				if(it_mirror_prev_ignore->second.direction == IN && it_mirror_next_ignore->second.direction == OUT){
+					//if((circles[it->second.id].form==CONVEX && it->second.direction == IN) || (circles[it->second.id].form==CONCAVE && it->second.direction == OUT)){
 					if(it->second.direction == IN){
 						printf("EXTERNAL IN\n");
 						connectIntersectionPoints(*it_mirror_prev->second.node, *it_mirror->second.node);
@@ -961,6 +966,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 				sasaNode.lambda = circles[x.id0].openingAngle;
 				sasaNode.vector = intersectionGraph[x].vector;
 				sasaNode.normalForCircularRegion = circles[x.id0].normal;
+				sasaNode.form = circles[x.id0].form;
 				
 				potentialSasa.sasa.push_back(sasaNode);
 				
@@ -977,7 +983,6 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 			
 			if(valid){
 				potentialSasa.tessellationOrigin = tessellationOrigin;
-				potentialSasa.radius = radius;
 				sasas.push_back(potentialSasa);
 			}
 		}
