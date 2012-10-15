@@ -179,7 +179,10 @@ void Tessellation::determineProjection(Vector &origin, double radius, CircularRe
 	g = (d_k * d_k + r_i * r_i - r_k * r_k ) / (2 * d_k);
 	a = sqrt(r_i * r_i - g * g);
 	
-	if(g<0) circle.form=CONCAVE;
+	if(g<0){
+		circle.form=CONCAVE;
+		g = abs(g);
+	}
 	else circle.form=CONVEX;
 
 	circle.openingAngle = acos(g / r_i);
@@ -505,17 +508,22 @@ double Tessellation::complLongAngle(Vector &vi, Vector &vj, Vector &vk){
 
 double Tessellation::angularInterface(Vector &x0, Vector &v, Vector &p0, Vector &p1){
 	Vector vx(3);
+	Vector vp0(3);
+	Vector vp1(3);
 	double eta;
 	int s;
 	
 	
 	
+	
 	vx = x0-v;
+	vp0 = p0-v;
+	vp1 = p1-v;
 
-	eta = getAngle(p1,vx);
+	eta = getAngle(vp1,vx);
 	
 	
-	s = sgn(dot(p0,vx));
+	s = sgn(dot(vp0,vx));
 	
 	if(s > 0) eta = -eta;
 	

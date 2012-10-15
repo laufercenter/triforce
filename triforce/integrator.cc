@@ -110,6 +110,114 @@ double IntegratorTriforce::PHI2phi(double PHI, double psi, double lambda){
 }
 
 
+mat33 IntegratorTriforce::rotz(double theta){
+	mat33 m;
+	m(0,0) = cos(theta);
+	m(0,1) = -sin(theta);
+	m(0,2) = 0;
+	
+	m(1,0) = sin(theta);
+	m(1,1) = cos(theta);
+	m(1,2) = 0;
+	
+	m(2,0) = 0;
+	m(2,1) = 0;
+	m(2,2) = 1;
+	
+	return m;
+		
+}
+
+double IntegratorTriforce::PHI2phi2(Vector integrationOrigin, double PHI, double psi, double lambda){
+	mat33 T;
+	mat33 r0, r1;
+	Vector n(3);
+	Vector n0(3);
+	Vector n1(3);
+	Vector v(3),v2(2);
+	Vector ex(3);
+	Vector p(3);
+	double ux,uy,uz;
+	double C,S,t;
+	double g;
+	
+	ex(0) = 1;
+	ex(1) = 0;
+	ex(2) = 0;
+
+	r0 = rotz(psi);
+	r1 = rotz(psi-lambda);
+	
+	g = 1-cos(lambda);
+
+	n = r0 * ex;
+	n0=g*n;
+	n1 = r1 * ex;
+	
+	v = n1-n0;
+	
+	ux=n(0);
+	uy=n(1);
+	uz=n(2);
+	C=cos(PHI);
+	S=sin(PHI);
+	t=1-cos(PHI);
+	
+	
+	T(0,0) = t*ux*ux + C;
+	T(0,1) = t*ux*uy - S*uz;
+	T(0,2) = t*ux*uz + S*uy;
+	
+	T(1,0) = t*ux*uy + S*uz;
+	T(1,1) = t*uy*uy + C;
+	T(1,2) = t*uy*uz - S*ux;
+	
+	T(2,0) = t*ux*uz - S*uy;
+	T(2,1) = t*uy*uz + S*ux;
+	T(2,2) = t*uz*uz + C;
+	
+	v2 = T * v;
+	
+	p= n0 + v2;
+	
+	return V2phi(integrationOrigin, n0, p);
+	
+	
+
+
+}
+
+bool IntegratorTriforce::isInPositiveEpsilonRange(double v, double eps){
+	if(eps-(v+THRESHOLD_NUMERICAL) <= 0) return true;
+	else return false;
+}
+
+
+double IntegratorTriforce::V2phi(Vector &integrationOrigin, Vector cv, Vector &v){
+	Vector up(3);
+	Vector n_origin(3);
+	Vector n_v(3);
+	Vector n_cv(3);
+
+	
+	up(0) = 0;
+	up(1) = 1;
+	up(2) = 0;
+	
+	
+	if(isInPositiveEpsilonRange(fabs(norm_dot(integrationOrigin,cv)),1.0) ){
+		cv = up;
+	}
+	
+	
+	
+	n_origin = cross(up,integrationOrigin);
+	n_v = cross(v, integrationOrigin);
+	n_cv = cross(cv, integrationOrigin);
+	
+	return abs(acos(norm_dot(n_cv,n_v)));
+}
+
 
 
 double IntegratorTriforce::integrateTriangle(SASANode &x0, SASANode &x1, Vector integrationOrigin, double &totalAngle){
@@ -120,15 +228,21 @@ double IntegratorTriforce::integrateTriangle(SASANode &x0, SASANode &x1, Vector 
 	double aPHI0;
 	double aPHI1;
 	double v0,v1;
-	double area = 0;
-	Vector vec0,vec1;
-	Vector n(3), o;
+	double area;
 	double maxArea;
 	int form;
-	double phi0, phi1;
+	double phi0, phi1, phi0a, phi1a, phi0b, phi1b;
+	Vector n(3);
+	
+	
+	area = 0;
 	
 	//calculate psi
-	psi = angle(x1.normalForCircularRegion, integrationOrigin);
+	n = x1.normalForCircularRegion;
+	if(x1.form!=CONVEX)
+		n = -n;
+	psi = angle(n, integrationOrigin);
+	
 	//calculate lambda
 	lambda = x1.lambda;
 	
@@ -142,12 +256,25 @@ double IntegratorTriforce::integrateTriangle(SASANode &x0, SASANode &x1, Vector 
 	aPHI1 = abs(PHI1);
 	
 	phi0 = abs(PHI2phi(PHI0,psi,lambda));
-	if(PHI0<0) phi0=-phi0;
+	phi0a = V2phi(integrationOrigin, x1.normalForCircularRegion, x0.vector);
+	phi0b = PHI2phi2(integrationOrigin, PHI0, psi, lambda);
+	if(PHI0<0){
+		phi0=-phi0;
+		phi0a=-phi0a;
+		phi0b=-phi0b;
+	}
+	
 	phi1 = abs(PHI2phi(PHI1,psi,lambda));
-	if(PHI1<0) phi1=-phi1;
+	phi1a = V2phi(integrationOrigin, x1.normalForCircularRegion, x1.vector);
+	phi1b = PHI2phi2(integrationOrigin, PHI1, psi, lambda);
+	if(PHI1<0) {
+		phi1=-phi1;
+		phi1a=-phi1a;
+		phi1b=-phi1b;
+	}
 	
 	
-	if(x1.form==CONCAVE)
+	if(x1.form!=CONVEX)
 		totalAngle -= phi1 - phi0;
 	else
 		totalAngle += phi1 - phi0;
@@ -155,7 +282,7 @@ double IntegratorTriforce::integrateTriangle(SASANode &x0, SASANode &x1, Vector 
 	
 	
 	maxArea = dataConvex->interpolate(0, psi, lambda);
-	printf("MAXAREA: %f, psi %f, lambda %f, PHI0 %f, PHI1 %f, phi0: %f, phi1: %f,totalAngle: %f, CIRCLE: %d\n",maxArea,psi,lambda,PHI0,PHI1,phi0,phi1,totalAngle,x0.id1);
+	printf("MAXAREA: %f, psi %f, lambda %f, PHI0 %f, PHI1 %f, phi0: %f (%f) [%f], phi1: %f (%f) [%f],totalAngle: %f, CIRCLE: %d\n",maxArea,psi,lambda,PHI0,PHI1,phi0,phi0a,phi0b,phi1,phi1a,phi1b,totalAngle,x0.id1);
 	
 	if(PHI0 >= 0){
 		if(PHI1 >= 0){
@@ -212,7 +339,7 @@ double IntegratorTriforce::integrateTriangle(SASANode &x0, SASANode &x1, Vector 
 	}
 	
 	
-	if(x1.form==CONCAVE) area=-area;
+	if(x1.form!=CONVEX) area=-area;
 	printf("SUBTOTAL AREA %f\n",area);
 	
 	
