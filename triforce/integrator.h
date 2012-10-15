@@ -72,6 +72,10 @@ private:
 	double integrateAtomicSASA(SASAsForAtom sasasForAtom);
 	double integrateSASA(SASA &s);
 	double PHI2phi(double PHI, double psi, double lambda);
+	double V2phi(Vector &integrationOrigin, Vector cv, Vector &v);
+	bool isInPositiveEpsilonRange(double v, double eps);
+	mat33 rotz(double theta);
+	double PHI2phi2(Vector integrationOrigin, double PHI, double psi, double lambda);
 	
 	
 };
