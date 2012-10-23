@@ -76,6 +76,7 @@ double IntegratorGaussBonnet::integrateSASA(SASA &sasa){
 		x0=x1;
 		
 	}
+	printf("GBONNET: %f\n",area);
 	area = 2*M_PI+area;
 	
 	

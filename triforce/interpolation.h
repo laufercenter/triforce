@@ -45,9 +45,9 @@ public:
 private:
 	Data3D *data;
 
-	double taylorExtension(Vector &r, Vector &x);
+	double taylorExtension(VectorInt &r, Vector &x);
 	double taylorExtension(int i_PHI, int i_psi, int i_lambda, Vector &x);
-	vector<double> weights(vector<Vector> &sp, Vector &x);
+	vector<double> weights(vector<VectorInt> &sp, Vector &x, Vector &lengths);
 	double multiPointTaylor(Vector &x);
 	
 	

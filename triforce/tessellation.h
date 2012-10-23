@@ -49,6 +49,7 @@ using namespace arma;
 
 
 typedef vec Vector;
+typedef Col<int> VectorInt;
 
 enum OcclusionState{
 	OCCLUDED,
@@ -145,7 +146,7 @@ typedef struct IntersectionBranch
 {
 	IntersectionNode* node;
 	IntersectionBranches::iterator it;
-	bool visited;
+	int visited;
 	Direction direction;
 	IntersectionBranches* body;
 	int id;
@@ -253,7 +254,7 @@ class Tessellation{
 	
 public:
 	Tessellation(Molecule &m);
-	void build();
+	void build(bool split);
 	SASAsForMolecule &sasas();
 	
 	
@@ -268,7 +269,7 @@ private:
 
 
 	CircularRegionsPerAtom coverHemisphere(Vector tessellationOrigin, double radius, CircularRegionsPerAtom circles);
-	void buildGaussBonnetPath(Vector &origin, double radius, vector<Vector> &atoms, vector<double> &radii, SASAsForMolecule &sasas);
+	void buildGaussBonnetPath(Vector &origin, double radius, vector<Vector> &atoms, vector<double> &radii, SASAsForMolecule &sasas, bool split);
 	double vsign(double v);
 	double cot(double a);
 	double csc(double a);

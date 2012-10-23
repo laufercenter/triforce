@@ -12,7 +12,7 @@ Interpolation::Interpolation(Data3D *data){
 	this->data=data;
 }
 
-double Interpolation::taylorExtension(Vector &r, Vector &x){
+double Interpolation::taylorExtension(VectorInt &r, Vector &x){
 	return taylorExtension(r(0),r(1),r(2),x);
 }
 
@@ -29,10 +29,10 @@ double Interpolation::taylorExtension(int i_PHI, int i_psi, int i_lambda, Vector
 	g = data->getGradient(i_PHI,i_psi, i_lambda);
 	h = data->getHessian(i_PHI,i_psi, i_lambda);
 	
-	
 	d =(x-p);
 	htmp = h * d;
 	v = f + dot(g,d) + 0.5*dot(d,htmp);
+	
 	
 	//printf("taylor extension (%d %d %d): %f\n",i_PHI,i_psi,i_lambda, v);
 	
@@ -40,7 +40,7 @@ double Interpolation::taylorExtension(int i_PHI, int i_psi, int i_lambda, Vector
 	return v;
 }
 
-vector<double> Interpolation::weights(vector<Vector> &sp, Vector &x){
+vector<double> Interpolation::weights(vector<VectorInt> &sp, Vector &x, Vector &lengths){
 	Vector d=Vector(3);
 	vector<double> *r;
 	Vector stddist;
@@ -48,13 +48,12 @@ vector<double> Interpolation::weights(vector<Vector> &sp, Vector &x){
 	double maxw=0;
 	r = new vector<double>;
 	Vector p;
-	stddist =data->standardDistance();
 	
 	//printf("stddist: %f, %f, %f\n",stddist(0),stddist(1),stddist(2));
 	for(int i=0;i<sp.size();++i){
 		p = data->getHeaderVector(sp[i](0),sp[i](1),sp[i](2));
 		for(int j=0;j<3;++j)
-			d(j)=(fabs(p(j)-x(j)) / stddist(j));
+			d(j)=(abs(p(j)-x(j)) / lengths(j));
 		w = 1.0-max(d(0),max(d(1),d(2)));
 		maxw=maxw+w;
 		r->push_back(w);
@@ -87,16 +86,18 @@ double Interpolation::interpolate(double PHI, double psi, double lambda){
 
 
 double Interpolation::multiPointTaylor(Vector &x){
-	vector<Vector> sp;
+	vector<VectorInt> sp;
 	vector<double> w;
+	Vector lengths(3);
 	double v=0;
 	
 	x(0)=abs(x(0));
 	x(1)=abs(x(1));
 	x(2)=abs(x(2));
 	
-	sp = data->surroundingPoints(x);
-	w = weights(sp,x);
+	
+	data->surroundingPointsandCellLengths(x,sp,lengths);
+	w = weights(sp,x,lengths);
 	for(int i=0;i<sp.size();i++){
 		//data->printDataCell(sp[i](0),sp[i](1),sp[i](2));
 		//data->printGradientCell(sp[i](0),sp[i](1),sp[i](2));
