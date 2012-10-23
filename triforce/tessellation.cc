@@ -7,7 +7,7 @@ Tessellation::Tessellation(Molecule &m){
 
 
 
-void Tessellation::build(){
+void Tessellation::build(bool split){
 	CircularRegionsPerAtom circlesPerAtom;
 	sasasForMolecule.clear();
 	
@@ -20,7 +20,7 @@ void Tessellation::build(){
 	//iterate over all atoms and build the tessellation for each of them
 	//for(int i=0; i<atoms.size(); ++i){
 		int i=0;
-		buildGaussBonnetPath(atoms[i], radii->at(i), atoms, *radii, sasasForMolecule);
+		buildGaussBonnetPath(atoms[i], radii->at(i), atoms, *radii, sasasForMolecule, split);
 		
 		
 		
@@ -62,7 +62,7 @@ CircularRegionsPerAtom Tessellation::coverHemisphere(Vector tessellationOrigin, 
 
 
 
-void Tessellation::buildGaussBonnetPath(Vector &origin, double radius, vector<Vector> &atoms, vector<double> &radii, SASAsForMolecule &sasas){
+void Tessellation::buildGaussBonnetPath(Vector &origin, double radius, vector<Vector> &atoms, vector<double> &radii, SASAsForMolecule &sasas, bool split){
 	int i,k,j;
 	CircularRegionsPerAtom circles;
 	CircularRegionsPerAtom circlesFrontHemisphere;
@@ -96,22 +96,35 @@ void Tessellation::buildGaussBonnetPath(Vector &origin, double radius, vector<Ve
 	
 	//there is room for optimisation here...
 	
-	circlesFrontHemisphere = coverHemisphere(frontTessellationOrigin, radius, circles);
-	circlesBackHemisphere = coverHemisphere(backTessellationOrigin, radius, circles);
+	if(split){
 	
-	
-	filterCircularRegions(radius, circlesFrontHemisphere);
-	filterCircularRegions(radius, circlesBackHemisphere);
-	reindexCircularRegions(circlesFrontHemisphere);
-	reindexCircularRegions(circlesBackHemisphere);
-	
-	determineCircularIntersections(circlesFrontHemisphere);
-	determineCircularIntersections(circlesBackHemisphere);
-	
-	printf("CIRC: %d, FRONT: %d, BACK: %d\n",circles.size(), circlesFrontHemisphere.size(), circlesBackHemisphere.size());
-	
-	buildIntersectionGraph(radius, frontTessellationOrigin, circlesFrontHemisphere, *newSasas,string("gbonnet0.csv"));
-	buildIntersectionGraph(radius, backTessellationOrigin, circlesBackHemisphere, *newSasas,string("gbonnet1.csv"));
+		circlesFrontHemisphere = coverHemisphere(frontTessellationOrigin, radius, circles);
+		circlesBackHemisphere = coverHemisphere(backTessellationOrigin, radius, circles);
+		
+		
+		filterCircularRegions(radius, circlesFrontHemisphere);
+		filterCircularRegions(radius, circlesBackHemisphere);
+		reindexCircularRegions(circlesFrontHemisphere);
+		reindexCircularRegions(circlesBackHemisphere);
+		
+		determineCircularIntersections(circlesFrontHemisphere);
+		determineCircularIntersections(circlesBackHemisphere);
+		
+		printf("CIRC: %d, FRONT: %d, BACK: %d\n",circles.size(), circlesFrontHemisphere.size(), circlesBackHemisphere.size());
+		
+		buildIntersectionGraph(radius, frontTessellationOrigin, circlesFrontHemisphere, *newSasas,string("gbonnet0.csv"));
+		buildIntersectionGraph(radius, backTessellationOrigin, circlesBackHemisphere, *newSasas,string("gbonnet1.csv"));
+	}
+	else{
+		
+		
+		filterCircularRegions(radius, circles);
+		reindexCircularRegions(circles);
+		
+		determineCircularIntersections(circles);
+		
+		buildIntersectionGraph(radius, frontTessellationOrigin, circles, *newSasas,string("gbonnet0.csv"));
+	}
 	
 }
 
@@ -709,7 +722,7 @@ void Tessellation::createIntersectionBranch(IntersectionAddress &address, Interf
 	IntersectionBranches::iterator it0;
 	IntersectionBranches::iterator it1;
 	
-	x.second.visited = false;
+	x.second.visited = -1;
 	
 	x.first = interfacesJ.in;
 	x.second.node=&intersectionGraph[address];
@@ -850,7 +863,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 		//start at one of I's intersectionbranches
 		
 		for(it_main = I->intersectionBranches.begin(); it_main != I->intersectionBranches.end(); ++it_main){
-			it_main->second.visited=false;
+			it_main->second.visited=-1;
 		}
 		
 		for(it_main = I->intersectionBranches.begin(); it_main != I->intersectionBranches.end(); ++it_main){
@@ -893,38 +906,42 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 				printBranch("it_next",it_next);
 				printBranch("it_prev",it_prev);
 				
-				
-				//external
-				if(it_mirror_prev_ignore->second.direction == IN && it_mirror_next_ignore->second.direction == OUT){
-					//if((circles[it->second.id].form==CONVEX && it->second.direction == IN) || (circles[it->second.id].form==CONCAVE && it->second.direction == OUT)){
-					if(it->second.direction == IN){
-						printf("EXTERNAL IN\n");
-						connectIntersectionPoints(*it_mirror_prev->second.node, *it_mirror->second.node);
-						connectIntersectionPoints(*it_mirror->second.node, *it_next->second.node);
-						
-						it_mirror_prev->second.visited=true;
-						
-					}
-					else{
-						printf("EXTERNAL OUT\n");
-						connectIntersectionPoints(*it_mirror->second.node, *it_mirror_next->second.node);
-						connectIntersectionPoints(*it_prev->second.node, *it->second.node);
-						if(!empty && !it_mirror_prev_ignore->second.visited) disconnectIntersectionPoint(*it_mirror_prev_ignore->second.node);
-						
-						it_mirror_prev_ignore->second.visited=true;
-					}
+				if(empty){
+					connectIntersectionPoints(*it_mirror->second.node, *it_next->second.node);
 				}
-				//internal
 				else{
-					if(it->second.direction == IN){
-						printf("INTERNAL IN\n");
-						disconnectIntersectionPoint(*it_mirror_next->second.node);
+					//external
+					if(it_mirror_prev_ignore->second.direction == IN && it_mirror_next_ignore->second.direction == OUT){
+						//if((circles[it->second.id].form==CONVEX && it->second.direction == IN) || (circles[it->second.id].form==CONCAVE && it->second.direction == OUT)){
+						if(it->second.direction == IN){
+							printf("EXTERNAL IN\n");
+							connectIntersectionPoints(*it_mirror_prev->second.node, *it_mirror->second.node);
+							connectIntersectionPoints(*it_mirror->second.node, *it_next->second.node);
+							
+							it_mirror_prev->second.visited=i;
+							
+						}
+						else{
+							printf("EXTERNAL OUT\n");
+							connectIntersectionPoints(*it_mirror->second.node, *it_mirror_next->second.node);
+							connectIntersectionPoints(*it_prev->second.node, *it->second.node);
+							if(!empty && !(it_mirror_prev_ignore->second.visited==i)) disconnectIntersectionPoint(*it_mirror_prev_ignore->second.node);
+							
+							it_mirror_prev_ignore->second.visited=i;
+						}
 					}
+					//internal
 					else{
-						printf("INTERNAL OUT\n");
-						disconnectIntersectionPoint(*it_mirror_prev->second.node);
+						if(it->second.direction == IN){
+							printf("INTERNAL IN\n");
+							disconnectIntersectionPoint(*it_mirror_next->second.node);
+						}
+						else{
+							printf("INTERNAL OUT\n");
+							disconnectIntersectionPoint(*it_mirror_prev->second.node);
+						}
+							
 					}
-						
 				}
 				
 				
@@ -990,6 +1007,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 			while(!(intersectionGraph[x].id0 == start.id0 && intersectionGraph[x].id1 == start.id1));
 			
 			if(valid){
+				printf("ADDING SASA\n");
 				potentialSasa.tessellationOrigin = tessellationOrigin;
 				sasas.push_back(potentialSasa);
 			}

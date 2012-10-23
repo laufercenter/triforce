@@ -31,6 +31,8 @@ using namespace std;
 using namespace arma;
 
 typedef vec Vector;
+typedef Col<int> VectorInt;
+
 typedef mat Matrix;
 
 //typedef boost::numeric::ublas::vector<double> Vector;
@@ -38,6 +40,7 @@ typedef mat Matrix;
 
 
 
+typedef boost::multi_array<double,1> Table1dDouble;
 typedef boost::multi_array<double,2> Table2dDouble;
 typedef boost::multi_array<double,3> Table3dDouble;
 typedef boost::multi_array<Vector,3> Table3dVector;
@@ -47,8 +50,10 @@ typedef boost::multi_array<Matrix,3> Table3dMatrix;
 class Data3D{
 	
 public:
-	Data3D(vector<int> &dimensions);
-	void setHeaderCell(int row, int col, double value);
+	Data3D(int PHIDim0, int PHIDim1, int PHIDim2, int psiDim0, int psiDim1, int lambdaDim);
+	void setHeaderPHICell(int x, int y, int z, double value);
+	void setHeaderPsiCell(int y, int z, double value);
+	void setHeaderLambdaCell(int z, double value);
 	void setDataCell(int x, int y, int z, double value);
 	void setGradientCell(int x, int y, int z, int i, double value);
 	void setHessianCell(int x, int y, int z, int i, int j, double value);
@@ -57,10 +62,16 @@ public:
 	Vector &getGradient(int x, int y, int z);
 	Matrix &getHessian(int x, int y, int z);
 	
-	Vector getHeaderVector(int x, int y, int z); 
-	Vector bisectFloor(Vector &x);
-	vector<Vector> surroundingPoints(Vector &x);
-	Vector standardDistance();
+	Vector getHeaderVector(int PHI, int psi, int lambda);
+	//Vector bisectFloor(Vector &x);
+	void surroundingPointsandCellLengths(Vector &x, vector<VectorInt> &r, Vector &lengths);
+	void lowestGridPointAndCellLengths(Vector &x, VectorInt &p, Vector &lengths);
+	double lambdaCellLength();
+	double psiCellLength(int lambda);
+	double PHICellLength(int psi, int lambda);
+	double lambdaGridLength();
+	double psiGridLength(int lambda);
+	double PHIGridLength(int psi, int lambda);
 	
 	void printDataCell(int i, int j, int k);
 	void printGradientCell(int i, int j, int k);
@@ -69,8 +80,12 @@ public:
 	
 private:
 	
-	vector<int> dimensions;
-	Table2dDouble *header;
+	int PHIDim0, PHIDim1, PHIDim2;
+	int psiDim0, psiDim1;
+	int lambdaDim;
+	Table3dDouble *headerPHI;
+	Table2dDouble *headerPsi;
+	Table1dDouble *headerLambda;
 	Table3dDouble *data;
 	Table3dVector *gradient;
 	Table3dMatrix *hessian;

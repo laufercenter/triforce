@@ -86,7 +86,8 @@ am_libtriforce_@TRIFORCE_API_VERSION@_la_OBJECTS =  \
 	triforce/data2d.lo triforce/data3d.lo triforce/datafile.lo \
 	triforce/topology.lo triforce/interpolation.lo \
 	triforce/integrator.lo triforce/integratorStatistical.lo \
-	triforce/integratorGaussBonnet.lo
+	triforce/integratorGaussBonnet.lo \
+	triforce/integratorNumerical.lo
 libtriforce_@TRIFORCE_API_VERSION@_la_OBJECTS =  \
 	$(am_libtriforce_@TRIFORCE_API_VERSION@_la_OBJECTS)
 libtriforce_@TRIFORCE_API_VERSION@_la_LINK = $(LIBTOOL) --tag=CXX \
@@ -258,7 +259,8 @@ libtriforce_@TRIFORCE_API_VERSION@_la_SOURCES = triforce/tessellation.cc \
 						triforce/interpolation.cc \
 						triforce/integrator.cc \
 						triforce/integratorStatistical.cc \
-						triforce/integratorGaussBonnet.cc
+						triforce/integratorGaussBonnet.cc \
+						triforce/integratorNumerical.cc
 
 libtriforce_@TRIFORCE_API_VERSION@_la_LDFLAGS = -version-info $(TRIFORCE_SO_VERSION)
 triforce_includedir = $(includedir)/triforce-$(TRIFORCE_API_VERSION)
@@ -272,7 +274,8 @@ nobase_triforce_include_HEADERS = triforce.h \
 					triforce/interpolation.h \
 					triforce/integrator.h \
 					triforce/integratorStatistical.h \
-					triforce/integratorGaussBonnet.h
+					triforce/integratorGaussBonnet.h \
+					triforce/integratorNumerical.h
 
 triforce_libincludedir = $(libdir)/triforce-$(TRIFORCE_API_VERSION)/include
 nodist_triforce_libinclude_HEADERS = triforceconfig.h
@@ -404,6 +407,8 @@ triforce/integratorStatistical.lo: triforce/$(am__dirstamp) \
 	triforce/$(DEPDIR)/$(am__dirstamp)
 triforce/integratorGaussBonnet.lo: triforce/$(am__dirstamp) \
 	triforce/$(DEPDIR)/$(am__dirstamp)
+triforce/integratorNumerical.lo: triforce/$(am__dirstamp) \
+	triforce/$(DEPDIR)/$(am__dirstamp)
 libtriforce-@TRIFORCE_API_VERSION@.la: $(libtriforce_@TRIFORCE_API_VERSION@_la_OBJECTS) $(libtriforce_@TRIFORCE_API_VERSION@_la_DEPENDENCIES) 
 	$(libtriforce_@TRIFORCE_API_VERSION@_la_LINK) -rpath $(libdir) $(libtriforce_@TRIFORCE_API_VERSION@_la_OBJECTS) $(libtriforce_@TRIFORCE_API_VERSION@_la_LIBADD) $(LIBS)
 
@@ -419,6 +424,8 @@ mostlyclean-compile:
 	-rm -f triforce/integrator.lo
 	-rm -f triforce/integratorGaussBonnet.$(OBJEXT)
 	-rm -f triforce/integratorGaussBonnet.lo
+	-rm -f triforce/integratorNumerical.$(OBJEXT)
+	-rm -f triforce/integratorNumerical.lo
 	-rm -f triforce/integratorStatistical.$(OBJEXT)
 	-rm -f triforce/integratorStatistical.lo
 	-rm -f triforce/interpolation.$(OBJEXT)
@@ -438,6 +445,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/datafile.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/integrator.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/integratorGaussBonnet.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/integratorNumerical.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/integratorStatistical.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/interpolation.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/molecule.Plo@am__quote@
