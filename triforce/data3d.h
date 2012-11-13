@@ -50,10 +50,10 @@ typedef boost::multi_array<Matrix,3> Table3dMatrix;
 class Data3D{
 	
 public:
-	Data3D(int PHIDim0, int PHIDim1, int PHIDim2, int psiDim0, int psiDim1, int lambdaDim);
-	void setHeaderPHICell(int x, int y, int z, double value);
-	void setHeaderPsiCell(int y, int z, double value);
-	void setHeaderLambdaCell(int z, double value);
+	Data3D(int PHIDim, int psiDim, int lambdaDim);
+	void setHeaderPHICell(int x, double value);
+	void setHeaderPsiCell(int x, double value);
+	void setHeaderLambdaCell(int x, double value);
 	void setDataCell(int x, int y, int z, double value);
 	void setGradientCell(int x, int y, int z, int i, double value);
 	void setHessianCell(int x, int y, int z, int i, int j, double value);
@@ -64,11 +64,7 @@ public:
 	
 	Vector getHeaderVector(int PHI, int psi, int lambda);
 	//Vector bisectFloor(Vector &x);
-	void surroundingPointsandCellLengths(Vector &x, vector<VectorInt> &r, Vector &lengths);
-	void lowestGridPointAndCellLengths(Vector &x, VectorInt &p, Vector &lengths);
-	double lambdaCellLength();
-	double psiCellLength(int lambda);
-	double PHICellLength(int psi, int lambda);
+	Vector cellLength();
 	double lambdaGridLength();
 	double psiGridLength(int lambda);
 	double PHIGridLength(int psi, int lambda);
@@ -77,14 +73,18 @@ public:
 	void printGradientCell(int i, int j, int k);
 	void printHessianCell(int i, int j, int k);
 	
+	void closestGridPoint(Vector &x, VectorInt &p, Vector &l);
+	void surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Vector &lengths);
+	
+
 	
 private:
 	
-	int PHIDim0, PHIDim1, PHIDim2;
-	int psiDim0, psiDim1;
+	int PHIDim;
+	int psiDim;
 	int lambdaDim;
-	Table3dDouble *headerPHI;
-	Table2dDouble *headerPsi;
+	Table1dDouble *headerPHI;
+	Table1dDouble *headerPsi;
 	Table1dDouble *headerLambda;
 	Table3dDouble *data;
 	Table3dVector *gradient;

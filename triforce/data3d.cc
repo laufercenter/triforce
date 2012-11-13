@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <string>
 #include <limits>
+#include <math.h>
 
 
 using namespace std;
@@ -12,26 +13,23 @@ using namespace boost;
 
 
 
-Data3D::Data3D(int PHIDim0, int PHIDim1, int PHIDim2, int psiDim0, int psiDim1, int lambdaDim){
+Data3D::Data3D(int PHIDim, int psiDim, int lambdaDim){
 	int maxdim=0;
-	this->PHIDim0 = PHIDim0;
-	this->PHIDim1 = PHIDim1;
-	this->PHIDim2 = PHIDim2;
-	this->psiDim0 = psiDim0;
-	this->psiDim1 = psiDim1;
+	this->PHIDim = PHIDim;
+	this->psiDim = psiDim;
 	this->lambdaDim = lambdaDim;
 	
 	
 		
 		
-	headerPHI = new Table3dDouble(boost::extents[PHIDim0][PHIDim1][PHIDim2]);
-	headerPsi = new Table2dDouble(boost::extents[psiDim0][psiDim1]);
+	headerPHI = new Table1dDouble(boost::extents[PHIDim]);
+	headerPsi = new Table1dDouble(boost::extents[psiDim]);
 	headerLambda = new Table1dDouble(boost::extents[lambdaDim]);
-	data = new Table3dDouble(boost::extents[PHIDim0][psiDim0][lambdaDim]);
-	gradient = new Table3dVector(boost::extents[PHIDim0][psiDim0][lambdaDim]);
-	hessian = new Table3dMatrix(boost::extents[PHIDim0][psiDim0][lambdaDim]);
-	for(int x=0; x<PHIDim0; x++)
-		for(int y=0; y<psiDim0; y++)
+	data = new Table3dDouble(boost::extents[PHIDim][psiDim][lambdaDim]);
+	gradient = new Table3dVector(boost::extents[PHIDim][psiDim][lambdaDim]);
+	hessian = new Table3dMatrix(boost::extents[PHIDim][psiDim][lambdaDim]);
+	for(int x=0; x<PHIDim; x++)
+		for(int y=0; y<psiDim; y++)
 			for(int z=0; z<lambdaDim; z++){
 				boost::array<Table3dVector::index,3> idx = {{x,y,z}};
 				(*gradient)(idx) = Vector(3);
@@ -40,16 +38,16 @@ Data3D::Data3D(int PHIDim0, int PHIDim1, int PHIDim2, int psiDim0, int psiDim1, 
 }
 
 
-void Data3D::setHeaderPHICell(int x, int y, int z, double value){
-	(*headerPHI)[x][y][z] = value;
+void Data3D::setHeaderPHICell(int x, double value){
+	(*headerPHI)[x] = value;
 }
 
-void Data3D::setHeaderPsiCell(int y, int z, double value){
-	(*headerPsi)[y][z] = value;
+void Data3D::setHeaderPsiCell(int x, double value){
+	(*headerPsi)[x] = value;
 }
 
-void Data3D::setHeaderLambdaCell(int z, double value){
-	(*headerLambda)[z] = value;
+void Data3D::setHeaderLambdaCell(int x, double value){
+	(*headerLambda)[x] = value;
 }
 
 
@@ -65,36 +63,36 @@ void Data3D::setHessianCell(int x, int y, int z, int i, int j, double value){
 }
 
 Vector Data3D::getHeaderVector(int PHI, int psi, int lambda){
+	//printf("HEADER VECTOR: %d %d %d\n",PHI,psi,lambda);
 	Vector v=Vector(3);
-	v(0) = (*headerPHI)[PHI][psi][lambda];
-	v(1) = (*headerPsi)[psi][lambda];
+	v(0) = (*headerPHI)[PHI];
+	v(1) = (*headerPsi)[psi];
 	v(2) = (*headerLambda)[lambda];
 	
 	return v;
 }
 
-double Data3D::lambdaCellLength(){
-	return abs((*headerLambda)[1]-(*headerLambda)[0]);
+Vector Data3D::cellLength(){
+	Vector v(3);
+	
+	v(0) = abs((*headerPHI)[1]-(*headerPHI)[0]);
+	v(1) = abs((*headerPsi)[1]-(*headerPsi)[0]);
+	v(2) = abs((*headerLambda)[1]-(*headerLambda)[0]);
+	
+	return v;
 }
 
-double Data3D::psiCellLength(int lambda){
-	return abs((*headerPsi)[1][lambda]-(*headerPsi)[0][lambda]);
-}
-
-double Data3D::PHICellLength(int psi, int lambda){
-	return abs((*headerPHI)[1][psi][lambda]-(*headerPHI)[0][psi][lambda]);
-}
 
 double Data3D::lambdaGridLength(){
 	return abs((*headerLambda)[lambdaDim-1]-(*headerLambda)[0]);
 }
 
 double Data3D::psiGridLength(int lambda){
-	return abs((*headerPsi)[psiDim0-1][lambda]-(*headerPsi)[0][lambda]);
+	return abs((*headerPsi)[psiDim-1]-(*headerPsi)[0]);
 }
 
 double Data3D::PHIGridLength(int psi, int lambda){
-	return abs((*headerPHI)[PHIDim0-1][psi][lambda]-(*headerPHI)[0][psi][lambda]);
+	return abs((*headerPHI)[PHIDim-1]-(*headerPHI)[0]);
 }
 
 
@@ -143,48 +141,68 @@ Vector Data3D::bisectFloor(Vector &x){
 	return v;
 }
 */
-void Data3D::lowestGridPointAndCellLengths(Vector &x, VectorInt &p, Vector &lengths){
-	double lengthLambda, lengthPsi, lengthPHI;
-	int i_lambda, i_psi, i_PHI;
+
+
+
+
+
+void Data3D::closestGridPoint(Vector &x, VectorInt &p, Vector &l){
+	double lengthPHI;
+	int i_PHI;
+	double lengthPsi;
+	int i_psi;
+	double lengthLambda;
+	int i_lambda;
 	
-	//first, lambda:
-	lengthLambda = lambdaCellLength();
-	i_lambda = floor(x(2)/(double)lengthLambda);
+	l = cellLength();
 	
-	lengthPsi = psiCellLength(i_lambda);
-	i_psi = floor(x(1)/(double)lengthPsi);
+	//printf("CELL LENGTHS: %f %f %f\n",l(0),l(1),l(2));
 	
-	lengthPHI = PHICellLength(i_psi,i_lambda);
-	i_PHI = floor(x(1)/(double)lengthPHI);
+	lengthPHI = l(0);
+	i_PHI = static_cast<int>(x(0)/lengthPHI);
+	
+	lengthPsi = l(1);
+	i_psi = static_cast<int>(x(1)/lengthPsi);
+	
+	lengthLambda = l(2);
+	i_lambda = static_cast<int>(x(2)/lengthLambda);
 	
 	p(0) = i_PHI;
 	p(1) = i_psi;
 	p(2) = i_lambda;
-	
-	lengths(0) = lengthPHI;
-	lengths(1) = lengthPsi;
-	lengths(2) = lengthLambda;
-	
 }
 
 
-void Data3D::surroundingPointsandCellLengths(Vector &x, vector<VectorInt> &r, Vector &lengths){
-	VectorInt v;
-	VectorInt *v2;
+
+
+void Data3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Vector &lengths){
+	VectorInt v2(3);
 	int i,j,k;
+	VectorInt v(3);
+	
+	closestGridPoint(x, v, lengths);
+	
+	//printf("CLOSEST GRIDPOINT: %d %d %d\n",v(0),v(1),v(2));
 	
 	
-	lowestGridPointAndCellLengths(x,v,lengths);
 	r.clear();
 	for(i=0;i<2;++i)
 		for(j=0;j<2;++j)
 			for(k=0;k<2;++k){
-				v2=new VectorInt(3);
-				(*v2)(0)=v(0)+i;
-				(*v2)(1)=v(1)+j;
-				(*v2)(2)=v(2)+k;
-				r.push_back(*v2);
+				v2(0)=v(0)+i;
+				v2(1)=v(1)+j;
+				v2(2)=v(2)+k;
+				if(v2(0)<PHIDim && v2(1)<psiDim && v2(2)<lambdaDim){
+					if(!isnan((*data)[v2(0)][v2(1)][v2(2)])){
+						printf("ACCEPTED %d %d %d\n",v2(0),v2(1),v2(2));
+						r.push_back(v2);
+					}
+					else	printf("REJECTED %d %d %d\n",v2(0),v2(1),v2(2));
+
+				}
+				else	printf("PRE-REJECTED %d %d %d\n",v2(0),v2(1),v2(2));
 			}
+
 			
 }
 

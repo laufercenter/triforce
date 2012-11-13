@@ -26,15 +26,19 @@ double Interpolation::taylorExtension(int i_PHI, int i_psi, int i_lambda, Vector
 	Vector htmp;
 	p = data->getHeaderVector(i_PHI,i_psi, i_lambda);
 	f = data->getDataCell(i_PHI,i_psi, i_lambda);
+	
 	g = data->getGradient(i_PHI,i_psi, i_lambda);
 	h = data->getHessian(i_PHI,i_psi, i_lambda);
+	
 	
 	d =(x-p);
 	htmp = h * d;
 	v = f + dot(g,d) + 0.5*dot(d,htmp);
 	
-	
 	//printf("taylor extension (%d %d %d): %f\n",i_PHI,i_psi,i_lambda, v);
+	
+	//printf("taylor extension (%d %d %d): d:%f grad:(%f %f %f) v:%f\n",i_PHI,i_psi,i_lambda,f,g(0),g(1),g(2), v);
+	
 	
 	//v = dataConvex[i_PHI, i_psi, i_lambda] + c(t(gradientsConvex[,i_PHI, i_psi, i_lambda]) %*% (x-p)) + 0.5 *(c(t((x-p)) %*% hessiansConvex[,,i_PHI, i_psi, i_lambda] %*% (x-p)))
 	return v;
@@ -53,7 +57,7 @@ vector<double> Interpolation::weights(vector<VectorInt> &sp, Vector &x, Vector &
 	for(int i=0;i<sp.size();++i){
 		p = data->getHeaderVector(sp[i](0),sp[i](1),sp[i](2));
 		for(int j=0;j<3;++j)
-			d(j)=(abs(p(j)-x(j)) / lengths(j));
+			d(j)=(fabs(p(j)-x(j)) / lengths(j));
 		w = 1.0-max(d(0),max(d(1),d(2)));
 		maxw=maxw+w;
 		r->push_back(w);
@@ -88,21 +92,24 @@ double Interpolation::interpolate(double PHI, double psi, double lambda){
 double Interpolation::multiPointTaylor(Vector &x){
 	vector<VectorInt> sp;
 	vector<double> w;
-	Vector lengths(3);
 	double v=0;
+	Vector lengths(3);
 	
 	x(0)=abs(x(0));
 	x(1)=abs(x(1));
 	x(2)=abs(x(2));
 	
-	
-	data->surroundingPointsandCellLengths(x,sp,lengths);
+	data->surroundingPointsAndCellLengths(x,sp,lengths);
 	w = weights(sp,x,lengths);
 	for(int i=0;i<sp.size();i++){
 		//data->printDataCell(sp[i](0),sp[i](1),sp[i](2));
 		//data->printGradientCell(sp[i](0),sp[i](1),sp[i](2));
 		//data->printHessianCell(sp[i](0),sp[i](1),sp[i](2));
-		v+=w[i]*taylorExtension(sp[i],x);
+		
+		double t = taylorExtension(sp[i],x);
+		
+		//printf("taylor %d: %f [%f]\n",i,t,w[i]);
+		v+=w[i]*t;
 	}
 	
 	return v;

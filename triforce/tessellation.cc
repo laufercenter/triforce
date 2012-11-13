@@ -915,19 +915,24 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 						//if((circles[it->second.id].form==CONVEX && it->second.direction == IN) || (circles[it->second.id].form==CONCAVE && it->second.direction == OUT)){
 						if(it->second.direction == IN){
 							printf("EXTERNAL IN\n");
-							connectIntersectionPoints(*it_mirror_prev->second.node, *it_mirror->second.node);
-							connectIntersectionPoints(*it_mirror->second.node, *it_next->second.node);
 							
-							it_mirror_prev->second.visited=i;
+							if(it_mirror_prev->second.direction==IN && it_next->second.direction==OUT){
+								connectIntersectionPoints(*it_mirror_prev->second.node, *it_mirror->second.node);
+								connectIntersectionPoints(*it_mirror->second.node, *it_next->second.node);
+								
+								it_mirror_prev->second.visited=i;
+							}
 							
 						}
 						else{
 							printf("EXTERNAL OUT\n");
-							connectIntersectionPoints(*it_mirror->second.node, *it_mirror_next->second.node);
-							connectIntersectionPoints(*it_prev->second.node, *it->second.node);
-							if(!empty && !(it_mirror_prev_ignore->second.visited==i)) disconnectIntersectionPoint(*it_mirror_prev_ignore->second.node);
+							if(it_prev->second.direction==IN && it_mirror_next->second.direction==OUT){
+								connectIntersectionPoints(*it_mirror->second.node, *it_mirror_next->second.node);
+								connectIntersectionPoints(*it_prev->second.node, *it->second.node);
+								if(!empty && !(it_mirror_prev_ignore->second.visited==i)) disconnectIntersectionPoint(*it_mirror_prev_ignore->second.node);
+								it_mirror_prev_ignore->second.visited=i;
+							}
 							
-							it_mirror_prev_ignore->second.visited=i;
 						}
 					}
 					//internal
