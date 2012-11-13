@@ -62,16 +62,19 @@ double IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 
 
 double IntegratorTriforce::integrateAtomicSASA(SASAsForAtom sasasForAtom){
-	int i;
 	double radius;
 	double area;
 	
 	radius = sasasForAtom.radius;
 	area = 0;
 	for(int i=0;i<sasasForAtom.sasas.size();++i){
+		//int i=1;
 		area += integrateSASA(sasasForAtom.sasas[i]);
 		
 	}
+	
+	if(area<0) area = -area;
+	else area=4*M_PI - area;
 	
 	return area;
 	
@@ -233,6 +236,7 @@ double IntegratorTriforce::integrateTriangle(SASANode &x0, SASANode &x1, Vector 
 	int form;
 	double phi0, phi1, phi0a, phi1a, phi0b, phi1b;
 	Vector n(3);
+	double a;
 	
 	
 	area = 0;
@@ -288,19 +292,34 @@ double IntegratorTriforce::integrateTriangle(SASANode &x0, SASANode &x1, Vector 
 		if(PHI1 >= 0){
 			if(PHI0 <= PHI1){
 				if(psi<=lambda){
-					area -= dataConvex->interpolate(aPHI1, psi, lambda);
+					a = maxArea;
+					a -= dataConvex->interpolate(aPHI1, psi, lambda);
+					
+					area += a;
+					
 					printf("CASE 0 0 B %f\n",area);
+					
+					a = maxArea;
+					a -= dataConvex->interpolate(aPHI0, psi, lambda);
+					
+					area -= a;
+					
+					printf("CASE 0 1 B %f\n",area);
 				}
 				else{
 					area += dataConcave->interpolate(aPHI1, psi, lambda);
 					printf("CASE 0 0 %f\n",area);
+					area -= dataConcave->interpolate(aPHI0, psi, lambda);
+					printf("CASE 0 1 %f\n",area);
+					
 				}
-				area -= dataConcave->interpolate(aPHI0, psi, lambda);
-				printf("CASE 0 1 %f\n",area);
 			}
 			else{
 				if(psi<=lambda){
-					area -= dataConvex->interpolate(aPHI1, psi, lambda);
+					a = maxArea;
+					a -= dataConvex->interpolate(aPHI1, psi, lambda);
+					
+					area += a;
 					printf("CASE 1 0 B %f\n",area);
 				}
 				else{
@@ -324,10 +343,17 @@ double IntegratorTriforce::integrateTriangle(SASANode &x0, SASANode &x1, Vector 
 	else{
 		if(PHI1 >= 0){
 			if(psi<=lambda){
-				area -= dataConvex->interpolate(aPHI0, psi, lambda);
+				a = maxArea;
+				a -= dataConvex->interpolate(aPHI0, psi, lambda);
 					printf("CASE 3 0 B %f\n",area);
-				area -= dataConvex->interpolate(aPHI1, psi, lambda);
+					
+				area += a;
+				
+				a = maxArea;
+				a -= dataConvex->interpolate(aPHI1, psi, lambda);
 					printf("CASE 3 1 B %f\n",area);
+					
+				area += a;
 			}
 			else{
 				area += dataConcave->interpolate(aPHI0, psi, lambda);
@@ -340,9 +366,16 @@ double IntegratorTriforce::integrateTriangle(SASANode &x0, SASANode &x1, Vector 
 		else{
 			if(PHI0 <= PHI1){
 				if(psi<=lambda){
-					area -= dataConvex->interpolate(aPHI0, psi, lambda);
+					a = maxArea;
+					a -= dataConvex->interpolate(aPHI0, psi, lambda);
+					
+					area += a;
 					printf("CASE 4 0 B %f\n",area);
-					area += dataConvex->interpolate(aPHI1, psi, lambda);
+					
+					a = maxArea;
+					a -= dataConvex->interpolate(aPHI1, psi, lambda);
+					
+					area -= a;
 					printf("CASE 4 1 B %f\n",area);
 				}
 				else{
@@ -354,7 +387,10 @@ double IntegratorTriforce::integrateTriangle(SASANode &x0, SASANode &x1, Vector 
 			}
 			else{
 				if(psi<=lambda){
-					area -= dataConvex->interpolate(aPHI0, psi, lambda);
+					a = maxArea;
+					a -= dataConvex->interpolate(aPHI0, psi, lambda);
+					
+					area += a;
 					printf("CASE 5 0 B %f\n",area);
 				}
 				else{

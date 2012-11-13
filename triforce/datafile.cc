@@ -36,8 +36,8 @@ Data3D* DataFile::digest3DBinaryTable(){
 	int totalCells;
 	int maxdim;
 	int d;
-	int phiDim0,phiDim1,phiDim2;
-	int psiDim0,psiDim1;
+	int PHIDim;
+	int psiDim;
 	int lambdaDim;
 	
 	//printf("digesting...\n");
@@ -54,49 +54,37 @@ Data3D* DataFile::digest3DBinaryTable(){
 	
 	//read headers
 	//header for PHI
-	f.read(buffer2,8);
-	//zeroth byte is how many dimensions the PHI header has. should be 3
-	//first byte is number of cols of PHI header (psi)
-	//second byte is number of rows of PHI headers (lambda)
-	//third byte is number of PHI blocks
-	phiDim0 = static_cast<int>(buffer2[1]);
-	phiDim1 = static_cast<int>(buffer2[2]);
-	phiDim2 = static_cast<int>(buffer2[3]);
-	//4th byte is number of psi dimensions (should be 2)
-	//5th byte is number of psi rows
-	//6th byte is number of psi cols
-	//7th byte is number of lambda dimensions (should be 1)
-	//8th byte is number of lambda entries
-	psiDim0 = static_cast<int>(buffer2[5]);
-	psiDim1 = static_cast<int>(buffer2[6]);
-	lambdaDim = static_cast<int>(buffer2[8]);
+	f.read(buffer2,6);
+	//zeroth byte is how many dimensions the PHI header has. should be 1
+	//first byte is number of PHI entries
+	PHIDim = static_cast<int>(buffer2[1]);
+	//2nd byte is number of psi dimensions (should be 1)
+	//3rd byte is number of psi entries
+	//4th byte is number of lambda dimensions (should be 1)
+	//5th byte is number of lambda entries
+	psiDim = static_cast<int>(buffer2[3]);
+	lambdaDim = static_cast<int>(buffer2[5]);
 	
 
 	
 	//printf("dimensions: %d, rows in header: %d, maxdim: %d\n",numberDimensions,nrowsHeader,maxdim); 
 	
-	tbl = new Data3D(phiDim0,phiDim1,phiDim2,psiDim0,psiDim1,lambdaDim);
+	tbl = new Data3D(PHIDim, psiDim, lambdaDim);
 	
 	//read PHI header
-	buffer=new char[phiDim0*phiDim1*phiDim2*BINARY_DATA_BLOCK_SIZE];
-	f.read(buffer,phiDim0*phiDim1*phiDim2*BINARY_DATA_BLOCK_SIZE);
-	for(int i=0; i<phiDim2; i++){
-		for(int j=0; j<phiDim1; j++){
-			for(int k=0; k<phiDim0; k++){
-				double v = charArray2Double(buffer+((i*phiDim1+j)*phiDim0+k)*BINARY_DATA_BLOCK_SIZE);
-				tbl->setHeaderPHICell(k,j,i,v);
-			}
-		}
+	buffer=new char[PHIDim*BINARY_DATA_BLOCK_SIZE];
+	f.read(buffer,PHIDim*BINARY_DATA_BLOCK_SIZE);
+	for(int i=0; i<PHIDim; i++){
+		double v = charArray2Double(buffer+i*BINARY_DATA_BLOCK_SIZE);
+		tbl->setHeaderPHICell(i,v);
 	}
 	delete buffer;
 	//read psi header
-	buffer=new char[psiDim0*psiDim1*BINARY_DATA_BLOCK_SIZE];
-	f.read(buffer,psiDim0*psiDim1*BINARY_DATA_BLOCK_SIZE);
-	for(int i=0; i<psiDim1; i++){
-		for(int j=0; j<psiDim1; j++){
-			double v = charArray2Double(buffer+(j*psiDim0+i)*BINARY_DATA_BLOCK_SIZE);
-			tbl->setHeaderPsiCell(j,i,v);
-		}
+	buffer=new char[psiDim*BINARY_DATA_BLOCK_SIZE];
+	f.read(buffer,psiDim*BINARY_DATA_BLOCK_SIZE);
+	for(int i=0; i<psiDim; i++){
+		double v = charArray2Double(buffer+i*BINARY_DATA_BLOCK_SIZE);
+		tbl->setHeaderPsiCell(i,v);
 	}
 	delete buffer;
 	//read lambda header
@@ -109,13 +97,13 @@ Data3D* DataFile::digest3DBinaryTable(){
 	delete buffer;
 	
 	//read data
-	totalCells = phiDim0*psiDim0*lambdaDim;
+	totalCells = PHIDim*psiDim*lambdaDim;
 	buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
 	f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
 	for(int z=0; z<lambdaDim; z++)
-		for(int y=0; y<psiDim0; y++)
-			for(int x=0; x<phiDim0; x++){
-				double v = charArray2Double(buffer+((z*psiDim0+y)*phiDim0+x)*BINARY_DATA_BLOCK_SIZE);
+		for(int y=0; y<psiDim; y++)
+			for(int x=0; x<PHIDim; x++){
+				double v = charArray2Double(buffer+((z*psiDim+y)*PHIDim+x)*BINARY_DATA_BLOCK_SIZE);
 				tbl->setDataCell(x,y,z,v);
 			}
 	
@@ -124,14 +112,14 @@ Data3D* DataFile::digest3DBinaryTable(){
 	
 	
 	//read gradients
-	totalCells = phiDim0*psiDim0*lambdaDim*3;
+	totalCells = PHIDim*psiDim*lambdaDim*3;
 	buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
 	f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
 	for(int z=0; z<lambdaDim; z++)
-		for(int y=0; y<psiDim0; y++)
-			for(int x=0; x<phiDim0; x++)
+		for(int y=0; y<psiDim; y++)
+			for(int x=0; x<PHIDim; x++)
 				for(int i=0; i<3; i++){
-					double v = charArray2Double(buffer+(((z*psiDim0+y)*phiDim0+x)*3+i)*BINARY_DATA_BLOCK_SIZE);
+					double v = charArray2Double(buffer+(((z*psiDim+y)*PHIDim+x)*3+i)*BINARY_DATA_BLOCK_SIZE);
 					tbl->setGradientCell(x,y,z,i,v);
 				}
 	
@@ -139,15 +127,15 @@ Data3D* DataFile::digest3DBinaryTable(){
 	
 
 	//read hessians
-	totalCells = phiDim0*psiDim0*lambdaDim*3*3;
+	totalCells = PHIDim*psiDim*lambdaDim*3*3;
 	buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
 	f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
 	for(int z=0; z<lambdaDim; z++)
-		for(int y=0; y<psiDim0; y++)
-			for(int x=0; x<phiDim0; x++)
+		for(int y=0; y<psiDim; y++)
+			for(int x=0; x<PHIDim; x++)
 				for(int j=0; j<3; j++)
 					for(int i=0; i<3; i++){
-						double v = charArray2Double(buffer+((((z*psiDim0+y)*phiDim0+x)*3+j)*3+i)*BINARY_DATA_BLOCK_SIZE);
+						double v = charArray2Double(buffer+((((z*psiDim+y)*PHIDim+x)*3+j)*3+i)*BINARY_DATA_BLOCK_SIZE);
 						tbl->setHessianCell(x,y,z,j,i,v);
 					}
 	
@@ -254,16 +242,30 @@ double DataFile::charArray2Double(char* data){
 	int exponent;
 	double significand;
 	int32_t significandInt32, exponentInt32;
+	int32_t t0,t1,t2,t3;
+	int32_t t4,t5,t6,t7;
+	
+	t0 = static_cast<uint32_t>(data[0]) & 255;
+	t1 = static_cast<uint32_t>(data[1]) & 255;
+	t2 = static_cast<uint32_t>(data[2]) & 255;
+	t3 = static_cast<uint32_t>(data[3]) & 255;
+	t4 = static_cast<uint32_t>(data[4]) & 255;
+	t5 = static_cast<uint32_t>(data[5]) & 255;
+	t6 = static_cast<uint32_t>(data[6]) & 255;
+	t7 = static_cast<uint32_t>(data[7]) & 255;
+	
 	
 	//this is how we save nan in the tables
-	if(	data[0] == 255 &&
-		data[1] == 255 &&
-		data[2] == 255 &&
-		data[3] == 255 &&
-		data[4] == 255 &&
-		data[5] == 255 &&
-		data[6] == 255 &&
-		data[7] == 255) return numeric_limits<double>::quiet_NaN();
+	if(	t0 == 255 &&
+		t1 == 255 &&
+		t2 == 255 &&
+		t3 == 255 &&
+		t4 == 255 &&
+		t5 == 255 &&
+		t6 == 255 &&
+		t7 == 255){
+			return numeric_limits<double>::quiet_NaN();
+	}
 
 	significandInt32 = charArray2FixedSignedInt32(data);
 	
