@@ -101,6 +101,9 @@ typedef struct
 	int pointsTo0;
 	int pointsTo1;
 	
+	int prev0;
+	int prev1;
+	
 	Vector vector;
 	double angle0;
 	double angle1;
@@ -296,7 +299,7 @@ private:
 	IntersectionBranches::iterator increaseBranchInterator(multimap<double, IntersectionBranch>::iterator it, int ignore);
 	IntersectionBranches::iterator decreaseBranchInterator(IntersectionBranches::iterator it, int ignore);
 	void disconnectIntersectionPoint(IntersectionNode &a);
-	void connectIntersectionPoints(IntersectionNode &a, IntersectionNode &b);
+	void connectIntersectionPoints(IntersectionNode &a, IntersectionNode &b, IntersectionGraph &intersectionGraph);
 	void createIntersectionNode(IntersectionAddress &address, IntersectionGraph &intersectionGraph);
 	void createIntersectionNode(int id0, int id1, IntersectionGraph &intersectionGraph);
 	void createIntersectionBranch(IntersectionAddress &address, Interfaces interfacesI, Interfaces interfacesJ, CircularRegion &I, CircularRegion &J, IntersectionGraph &intersectionGraph);
@@ -304,6 +307,7 @@ private:
 	void printIntersectionGraph(IntersectionGraph &g);
 	void buildIntersectionGraph(double radius, Vector &tessellationOrigin, CircularRegionsPerAtom &circles, SASAs &sasas, string filename);
 	void outputGaussBonnetData(string filename, CircularRegionsPerAtom &circles, SASAs &sasas, IntersectionGraph &intersectionGraph);
+	void deleteIntersectionPoint(IntersectionBranches::iterator &it,IntersectionGraph &intersectionGraph);
 
 	
 	

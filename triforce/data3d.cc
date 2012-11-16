@@ -194,13 +194,13 @@ void Data3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Ve
 				v2(2)=v(2)+k;
 				if(v2(0)<PHIDim && v2(1)<psiDim && v2(2)<lambdaDim){
 					if(!isnan((*data)[v2(0)][v2(1)][v2(2)])){
-						printf("ACCEPTED %d %d %d\n",v2(0),v2(1),v2(2));
+						//printf("ACCEPTED %d %d %d\n",v2(0),v2(1),v2(2));
 						r.push_back(v2);
 					}
-					else	printf("REJECTED %d %d %d\n",v2(0),v2(1),v2(2));
+					//else	printf("REJECTED %d %d %d\n",v2(0),v2(1),v2(2));
 
 				}
-				else	printf("PRE-REJECTED %d %d %d\n",v2(0),v2(1),v2(2));
+				//else	printf("PRE-REJECTED %d %d %d\n",v2(0),v2(1),v2(2));
 			}
 
 			
