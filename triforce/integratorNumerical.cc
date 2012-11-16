@@ -40,16 +40,22 @@ double IntegratorNumerical::integrate(Molecule *molecule, Tessellation *tessella
 	this->tessellation = tessellation;
 	
 	SASAsForMolecule sasas;
-	double area;
+	double area,a;
+	double radius;
+	vector<double> *radii;
+	
+	radii = molecule->fetchRadii();
+	
 	
 	sasas = tessellation->sasas();
 	
 	area = 0;
 	//iterate over all atoms
-	//for(int i=0;i<sasas.size();++i){
-		int i=0;
-		area += integrateAtomicSASA(sasas[i]);
-	//}
+	for(int i=0;i<sasas.size();++i){
+		radius = sasas[i].radius;
+		a = radius*radius * integrateAtomicSASA(sasas[i]);
+		area += a;
+	}
 	
 	return area;
 	
