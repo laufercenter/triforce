@@ -19,7 +19,7 @@ void Tessellation::build(bool split){
 	//atoms.size()
 	//iterate over all atoms and build the tessellation for each of them
 	//for(int i=0; i<2; ++i){
-		int i=1;
+		int i=2;
 		buildGaussBonnetPath(atoms[i], radii->at(i), atoms, *radii, sasasForMolecule, split);
 		
 		
@@ -852,7 +852,8 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 	bool empty;
 	IntersectionAddress start, x, t;
 	bool valid;
-	vector<IntersectionBranches::iterator> eraseList;
+	map<IntersectionBranches::iterator,bool,IteratorComparator> eraseList;
+	map<IntersectionBranches::iterator,bool,IteratorComparator>::iterator it_e;
 	
 	IntersectionPair ip;
 	
@@ -988,7 +989,8 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 								connectIntersectionPoints(*it_mirror->second.node, *it_next->second.node, intersectionGraph);
 								
 								if(!empty && I->form!=CONVEX && it_mirror_next->second.it->second.id != it->second.id){
-									deleteIntersectionPoint(it_mirror_next, intersectionGraph);
+									//deleteIntersectionPoint(it_mirror_next, intersectionGraph);
+									eraseList[it_mirror_next]=true;
 									printf("DELETE %d-%d (NEXT)\n",it_mirror_next->second.node->id0,it_mirror_next->second.node->id1);
 
 								}
@@ -1004,7 +1006,8 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 								connectIntersectionPoints(*it_prev->second.node, *it->second.node, intersectionGraph);
 								
 								if(!empty && I->form==CONVEX && it_mirror_prev->second.it->second.id != it->second.id){
-									deleteIntersectionPoint(it_mirror_prev, intersectionGraph);
+									//deleteIntersectionPoint(it_mirror_prev, intersectionGraph);
+									eraseList[it_mirror_prev]=true;
 									printf("DELETE %d-%d (PREV)\n",it_mirror_prev->second.node->id0,it_mirror_prev->second.node->id1);
 									
 								}
@@ -1016,7 +1019,28 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 					}
 					//internal
 					else{
-						eraseList.push_back(it);
+							
+							if(it->second.direction == IN){
+								if(!empty && it_mirror_next->second.it->second.id != it->second.id){
+									//deleteIntersectionPoint(it_mirror_next, intersectionGraph);
+									eraseList[it_mirror_next]=true;
+									
+									printf("DELETE CONV IN  %d-%d (NEXT)\n",it_mirror_next->second.node->id0,it_mirror_next->second.node->id1);
+								}
+							}
+							else{
+								if(!empty && it_mirror_prev->second.it->second.id != it->second.id){
+									//deleteIntersectionPoint(it_mirror_prev, intersectionGraph);
+									eraseList[it_mirror_prev]=true;
+									
+									printf("DELETE CONV OUT %d-%d (PREV)\n",it_mirror_prev->second.node->id0,it_mirror_prev->second.node->id1);
+									
+								}
+							}
+							
+						
+						
+						eraseList[it]=true;
 						//deleteIntersectionPoint(it, intersectionGraph);
 						printf("DELETE POINT\n");
 					}
@@ -1032,8 +1056,12 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 		}
 		
 		printf("REMOVING IPS\n");
-		for(int m=0; m<eraseList.size(); ++m){
-			deleteIntersectionPoint(eraseList[m],intersectionGraph);
+		for(it_e=eraseList.begin(); it_e != eraseList.end(); ++it_e){
+			it = it_e->first;
+			
+			printf("REMOVING IP: %d\n",&*it);
+			printf("--: %d-%d\n",it->second.node->id0,it->second.node->id1);
+			deleteIntersectionPoint(it,intersectionGraph);
 		}
 		printf("REMOVING IPS - DONE\n");
 		
