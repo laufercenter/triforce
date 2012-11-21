@@ -287,128 +287,225 @@ double IntegratorTriforce::integrateTriangle(SASANode &x0, SASANode &x1, Vector 
 	
 	
 	
-	maxArea = dataConvex->interpolate(0, psi, lambda);
-	//printf("MAXAREA: %f, psi %f, lambda %f, PHI0 %f, PHI1 %f, phi0: %f (%f) [%f], phi1: %f (%f) [%f],totalAngle: %f, CIRCLE: %d\n",maxArea,psi,lambda,PHI0,PHI1,phi0,phi0a,phi0b,phi1,phi1a,phi1b,totalAngle,x0.id1);
+		
+	if(psi+lambda>=M_PI){
+		printf("MAXAREA 0\n");
+		maxArea = dataConcave->interpolate(M_PI, psi, lambda);	
+	}
+	else{
+		printf("MAXAREA 1\n");
+		maxArea = dataConvex->interpolate(0, psi, lambda);
+	}
+	printf("MAXAREA: %f, psi %f, lambda %f, PHI0 %f, PHI1 %f, phi0: %f (%f) [%f], phi1: %f (%f) [%f],totalAngle: %f, CIRCLE: %d\n",maxArea,psi,lambda,PHI0,PHI1,phi0,phi0a,phi0b,phi1,phi1a,phi1b,totalAngle,x0.id1);
 	
 	if(PHI0 >= 0){
 		if(PHI1 >= 0){
 			if(PHI0 <= PHI1){
 				if(psi<=lambda){
+					printf("CASE 0 A\n");
 					a = maxArea;
 					a -= dataConvex->interpolate(aPHI1, psi, lambda);
 					
 					area += a;
-					
-					//printf("CASE 0 0 B %f\n",area);
+					printf("CASE 0 0 A %f\n",area);
 					
 					a = maxArea;
 					a -= dataConvex->interpolate(aPHI0, psi, lambda);
-					
 					area -= a;
 					
-					//printf("CASE 0 1 B %f\n",area);
+					printf("CASE 0 1 A %f\n",area);
 				}
 				else{
+					printf("CASE 0 B\n");
 					area += dataConcave->interpolate(aPHI1, psi, lambda);
-					//printf("CASE 0 0 %f\n",area);
+					printf("CASE 0 0 B %f\n",area);
 					area -= dataConcave->interpolate(aPHI0, psi, lambda);
-					//printf("CASE 0 1 %f\n",area);
+					printf("CASE 0 1 B% f\n",area);
 					
 				}
 			}
 			else{
 				if(psi<=lambda){
+					printf("CASE 1 A\n");
 					a = maxArea;
 					a -= dataConvex->interpolate(aPHI1, psi, lambda);
-					
 					area += a;
-					//printf("CASE 1 0 B %f\n",area);
+					printf("CASE 1 0 A %f\n",area);
+					
+					area += dataConvex->interpolate(aPHI0, psi, lambda);
+					printf("CASE 1 1 A %f\n",area);
+					area += maxArea;
+					printf("CASE 1 2 A %f\n",area);
+					
+				}
+				else if(psi+lambda>=M_PI){
+					printf("CASE 1 B\n");
+					
+					a = maxArea;
+					a -= dataConcave->interpolate(aPHI0, psi, lambda);
+					area += a;
+					printf("CASE 1 0 B%f\n",area);
+
+					area += dataConcave->interpolate(aPHI1, psi, lambda);
+					printf("CASE 1 1 B %f\n",area);
+					
+					area += maxArea;
+					printf("CASE 1 2 B %f\n",area);
+					
 				}
 				else{
+					printf("CASE 1 C\n");
+					
 					area += dataConcave->interpolate(aPHI1, psi, lambda);
-					//printf("CASE 1 0 %f\n",area);
+					printf("CASE 1 0 C %f\n",area);
+					
+					area += dataConvex->interpolate(aPHI0, psi, lambda);
+					printf("CASE 1 1 C %f\n",area);
+					
+					area += maxArea;
+					printf("CASE 1 2 C %f\n",area);
+					
 				}
-				area += dataConvex->interpolate(aPHI0, psi, lambda);
-				//printf("CASE 1 1 %f\n",area);
-				area += maxArea;
-				//printf("CASE 1 2 %f\n",area);
 				
 			}
 		}
 		else{
-			area += dataConvex->interpolate(aPHI0, psi, lambda);
-				//printf("CASE 2 0 %f\n",area);
-			area += dataConvex->interpolate(aPHI1, psi, lambda);
-				//printf("CASE 2 1 %f\n",area);
+			if(psi <= lambda){
+				printf("CASE 2 A\n");
+				area += dataConvex->interpolate(aPHI0, psi, lambda);
+					printf("CASE 2 0 A %f\n",area);
+				area += dataConvex->interpolate(aPHI1, psi, lambda);
+					printf("CASE 2 1 A %f\n",area);
+			}
+			else if(psi+lambda>=M_PI){
+					printf("CASE 2 B\n");
+					a = maxArea;
+					a -= dataConcave->interpolate(aPHI0, psi, lambda);
+					area += a;
+					printf("CASE 2 0 B %f\n",area);
+					
+					a = maxArea;
+					a -= dataConcave->interpolate(aPHI1, psi, lambda);
+					area += a;
+					printf("CASE 2 1 B %f\n",area);
+					
+			}
+			else{
+				printf("CASE 2 C\n");
+				area += dataConvex->interpolate(aPHI0, psi, lambda);
+				printf("CASE 2 0 C %f\n",area);
+				area += dataConvex->interpolate(aPHI1, psi, lambda);
+				printf("CASE 2 1 C %f\n",area);
+			}
+				
 		}
 	}
 	else{
 		if(PHI1 >= 0){
 			if(psi<=lambda){
+				printf("CASE 3 A\n");
 				a = maxArea;
 				a -= dataConvex->interpolate(aPHI0, psi, lambda);
-					//printf("CASE 3 0 B %f\n",area);
-					
 				area += a;
+				printf("CASE 3 0 A %f\n",area);
 				
 				a = maxArea;
 				a -= dataConvex->interpolate(aPHI1, psi, lambda);
-					//printf("CASE 3 1 B %f\n",area);
-					
 				area += a;
+				printf("CASE 3 1 A %f\n",area);
+			}
+			else if(psi+lambda>=M_PI){
+				printf("CASE 3 B\n");
+				area += dataConcave->interpolate(aPHI0, psi, lambda);
+				printf("CASE 3 0 B %f\n",area);
+				area += dataConcave->interpolate(aPHI1, psi, lambda);
+				printf("CASE 3 1 B %f\n",area);
+				
 			}
 			else{
+				printf("CASE 3 C\n");
 				area += dataConcave->interpolate(aPHI0, psi, lambda);
-					//printf("CASE 3 0 %f\n",area);
+				printf("CASE 3 0 C %f\n",area);
 				area += dataConcave->interpolate(aPHI1, psi, lambda);
-					//printf("CASE 3 1 %f\n",area);
+				printf("CASE 3 1 C %f\n",area);
 			}
 			
 		}
 		else{
 			if(PHI0 <= PHI1){
 				if(psi<=lambda){
+					printf("CASE 4 A\n");
 					a = maxArea;
 					a -= dataConvex->interpolate(aPHI0, psi, lambda);
-					
 					area += a;
-					//printf("CASE 4 0 B %f\n",area);
+					printf("CASE 4 0 A %f\n",area);
 					
 					a = maxArea;
 					a -= dataConvex->interpolate(aPHI1, psi, lambda);
-					
 					area -= a;
-					//printf("CASE 4 1 B %f\n",area);
+					printf("CASE 4 1 A %f\n",area);
+				}
+				else if(psi+lambda>=M_PI){
+					printf("CASE 4 B\n");
+					area += dataConcave->interpolate(aPHI0, psi, lambda);
+					printf("CASE 4 0 B %f\n",area);
+					area -= dataConcave->interpolate(aPHI1, psi, lambda);
+					printf("CASE 4 1 B %f\n",area);
+					
 				}
 				else{
+					printf("CASE 4 C\n");
 					area += dataConcave->interpolate(aPHI0, psi, lambda);
-					//printf("CASE 4 0 %f\n",area);
+					printf("CASE 4 0 C %f\n",area);
 					area -= dataConcave->interpolate(aPHI1, psi, lambda);
-					//printf("CASE 4 1 %f\n",area);
+					printf("CASE 4 1 C %f\n",area);
 				}
 			}
 			else{
 				if(psi<=lambda){
+					printf("CASE 5 A\n");
 					a = maxArea;
 					a -= dataConvex->interpolate(aPHI0, psi, lambda);
-					
 					area += a;
-					//printf("CASE 5 0 B %f\n",area);
+					printf("CASE 5 0 A %f\n",area);
+					
+					area += maxArea;
+					printf("CASE 5 1 A %f\n",area);
+					
+					area += dataConvex->interpolate(aPHI1, psi, lambda);
+					printf("CASE 5 2 A %f\n",area);
+					
+				}
+				else if(psi+lambda>=M_PI){
+					printf("CASE 5 B\n");
+					area += dataConcave->interpolate(aPHI0, psi, lambda);
+					printf("CASE 5 0 B %f\n",area);
+					area += maxArea;
+					printf("CASE 5 1 B %f\n",area);
+					
+					a = maxArea;
+					a -= dataConcave->interpolate(aPHI1, psi, lambda);
+					area += a;
+					printf("CASE 5 2 B %f\n",area);
+					
+					
 				}
 				else{
+					printf("CASE 5 C\n");
 					area += dataConcave->interpolate(aPHI0, psi, lambda);
-					//printf("CASE 5 0 %f\n",area);
+					printf("CASE 5 0 C %f\n",area);
+					area += maxArea;
+					printf("CASE 5 1 C %f\n",area);
+					area += dataConvex->interpolate(aPHI1, psi, lambda);
+					printf("CASE 5 2 C %f\n",area);
+					
 				}
-				area += maxArea;
-				//printf("CASE 5 1 %f\n",area);
-				area += dataConvex->interpolate(aPHI1, psi, lambda);
-				//printf("CASE 5 2 %f\n",area);
-				
-				area += maxArea;
 			}
 		}
 		
 	}
+	
+	
 	
 	
 	if(x1.form!=CONVEX) area=-area;

@@ -18,8 +18,8 @@ void Tessellation::build(bool split){
 	
 	//atoms.size()
 	//iterate over all atoms and build the tessellation for each of them
-	//for(int i=0; i<2; ++i){
-		int i=2;
+	for(int i=0; i<atoms.size(); ++i){
+		//int i=2;
 		buildGaussBonnetPath(atoms[i], radii->at(i), atoms, *radii, sasasForMolecule, split);
 		
 		
@@ -33,7 +33,7 @@ void Tessellation::build(bool split){
 		
 		//outputCircularRegions(*circles[circles.size()-1]);
 
-	//}
+	}
 	
 	
 	

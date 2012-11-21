@@ -35,6 +35,8 @@ typedef Col<int> VectorInt;
 
 typedef mat Matrix;
 
+//#define THRESHOLD_NUMERICAL 0.00001
+
 //typedef boost::numeric::ublas::vector<double> Vector;
 //typedef boost::numeric::ublas::matrix<double> Matrix;
 
@@ -75,6 +77,7 @@ public:
 	
 	void closestGridPoint(Vector &x, VectorInt &p, Vector &l);
 	void surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Vector &lengths);
+	bool isWithinNumericalLimits(double x, double t);
 	
 
 	
