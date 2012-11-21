@@ -10,6 +10,7 @@ using namespace std;
 using namespace arma;
 using namespace boost;
 
+#define THRESHOLD_NUMERICAL 0.00001
 
 
 
@@ -109,6 +110,13 @@ Matrix &Data3D::getHessian(int x, int y, int z){
 	return (*hessian)[x][y][z];
 }
 
+bool Data3D::isWithinNumericalLimits(double x, double t){
+	if(abs(x-t) <= THRESHOLD_NUMERICAL) return true;
+	else return false;
+}
+
+
+
 /*
 Vector Data3D::bisectFloor(Vector &x){
 	int l,r,m;
@@ -179,8 +187,13 @@ void Data3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Ve
 	VectorInt v2(3);
 	int i,j,k;
 	VectorInt v(3);
+	bool neg;
 	
 	closestGridPoint(x, v, lengths);
+	
+	if((*headerPsi)[v(1)]+(*headerLambda)[v(2)] < M_PI && !isWithinNumericalLimits((*headerPsi)[v(1)]+(*headerLambda)[v(2)],M_PI)) neg=true;
+	else neg=false;
+	
 	
 	//printf("CLOSEST GRIDPOINT: %d %d %d\n",v(0),v(1),v(2));
 	
@@ -194,13 +207,17 @@ void Data3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Ve
 				v2(2)=v(2)+k;
 				if(v2(0)<PHIDim && v2(1)<psiDim && v2(2)<lambdaDim){
 					if(!isnan((*data)[v2(0)][v2(1)][v2(2)])){
-						//printf("ACCEPTED %d %d %d\n",v2(0),v2(1),v2(2));
-						r.push_back(v2);
+						if(!neg || ((*headerPsi)[v2(1)]+(*headerLambda)[v2(2)]<M_PI && !isWithinNumericalLimits((*headerPsi)[v2(1)]+(*headerLambda)[v2(2)],M_PI))){
+							r.push_back(v2);
+							printf("ACCEPTED %d %d %d (%f %f [%d/%d])\n",v2(0),v2(1),v2(2),(*headerPsi)[v2(1)],(*headerLambda)[v2(2)],neg,isWithinNumericalLimits((*headerPsi)[v2(1)]+(*headerLambda)[v2(2)],M_PI));
+						}
+						else	printf("REJECTED 0 %d %d %d (%f %f [%d/%d])\n",v2(0),v2(1),v2(2),(*headerPsi)[v2(1)],(*headerLambda)[v2(2)],neg,isWithinNumericalLimits((*headerPsi)[v2(1)]+(*headerLambda)[v2(2)],M_PI));
+
 					}
-					//else	printf("REJECTED %d %d %d\n",v2(0),v2(1),v2(2));
+					else	printf("REJECTED 1 %d %d %d\n",v2(0),v2(1),v2(2));
 
 				}
-				//else	printf("PRE-REJECTED %d %d %d\n",v2(0),v2(1),v2(2));
+				else	printf("PRE-REJECTED 2 %d %d %d\n",v2(0),v2(1),v2(2));
 			}
 
 			

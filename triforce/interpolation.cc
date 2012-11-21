@@ -37,7 +37,7 @@ double Interpolation::taylorExtension(int i_PHI, int i_psi, int i_lambda, Vector
 	
 	//printf("taylor extension (%d %d %d): %f\n",i_PHI,i_psi,i_lambda, v);
 	
-	//printf("taylor extension (%d %d %d): d:%f grad:(%f %f %f) v:%f\n",i_PHI,i_psi,i_lambda,f,g(0),g(1),g(2), v);
+	printf("taylor extension (%d %d %d): d:%f grad:(%f %f %f) v:%f\n",i_PHI,i_psi,i_lambda,f,g(0),g(1),g(2), v);
 	
 	
 	//v = dataConvex[i_PHI, i_psi, i_lambda] + c(t(gradientsConvex[,i_PHI, i_psi, i_lambda]) %*% (x-p)) + 0.5 *(c(t((x-p)) %*% hessiansConvex[,,i_PHI, i_psi, i_lambda] %*% (x-p)))
@@ -100,6 +100,12 @@ double Interpolation::multiPointTaylor(Vector &x){
 	x(2)=abs(x(2));
 	
 	data->surroundingPointsAndCellLengths(x,sp,lengths);
+	
+	if(sp.size()==0){
+		printf("NO SPs FOUND. IT's OUTRAGEOUS! (%f, %f, %f)\n",x(0),x(1),x(2));
+		exit(-1);
+	}
+		
 	w = weights(sp,x,lengths);
 	for(int i=0;i<sp.size();i++){
 		//data->printDataCell(sp[i](0),sp[i](1),sp[i](2));
@@ -108,9 +114,21 @@ double Interpolation::multiPointTaylor(Vector &x){
 		
 		double t = taylorExtension(sp[i],x);
 		
-		//printf("taylor %d: %f [%f]\n",i,t,w[i]);
+		printf("taylor %d: %f [%f]\n",i,t,w[i]);
 		v+=w[i]*t;
 	}
+	
+	for(int i=0;i<sp.size();i++){
+		double t = taylorExtension(sp[i],x);
+		
+		if(abs(t-v) > 0.4){
+			printf("THIS INTERPOLATION IS OUTRAGEOUS\n");
+			exit(-1);
+		}
+	}
+	
+	
+	printf("---- %f\n",v);
 	
 	return v;
 }
