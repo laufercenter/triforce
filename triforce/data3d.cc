@@ -209,15 +209,15 @@ void Data3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Ve
 					if(!isnan((*data)[v2(0)][v2(1)][v2(2)])){
 						if(!neg || ((*headerPsi)[v2(1)]+(*headerLambda)[v2(2)]<M_PI && !isWithinNumericalLimits((*headerPsi)[v2(1)]+(*headerLambda)[v2(2)],M_PI))){
 							r.push_back(v2);
-							printf("ACCEPTED %d %d %d (%f %f [%d/%d])\n",v2(0),v2(1),v2(2),(*headerPsi)[v2(1)],(*headerLambda)[v2(2)],neg,isWithinNumericalLimits((*headerPsi)[v2(1)]+(*headerLambda)[v2(2)],M_PI));
+							//printf("ACCEPTED %d %d %d (%f %f [%d/%d])\n",v2(0),v2(1),v2(2),(*headerPsi)[v2(1)],(*headerLambda)[v2(2)],neg,isWithinNumericalLimits((*headerPsi)[v2(1)]+(*headerLambda)[v2(2)],M_PI));
 						}
-						else	printf("REJECTED 0 %d %d %d (%f %f [%d/%d])\n",v2(0),v2(1),v2(2),(*headerPsi)[v2(1)],(*headerLambda)[v2(2)],neg,isWithinNumericalLimits((*headerPsi)[v2(1)]+(*headerLambda)[v2(2)],M_PI));
+						//else	printf("REJECTED 0 %d %d %d (%f %f [%d/%d])\n",v2(0),v2(1),v2(2),(*headerPsi)[v2(1)],(*headerLambda)[v2(2)],neg,isWithinNumericalLimits((*headerPsi)[v2(1)]+(*headerLambda)[v2(2)],M_PI));
 
 					}
-					else	printf("REJECTED 1 %d %d %d\n",v2(0),v2(1),v2(2));
+					//else	printf("REJECTED 1 %d %d %d\n",v2(0),v2(1),v2(2));
 
 				}
-				else	printf("PRE-REJECTED 2 %d %d %d\n",v2(0),v2(1),v2(2));
+				//else	printf("PRE-REJECTED 2 %d %d %d\n",v2(0),v2(1),v2(2));
 			}
 
 			
