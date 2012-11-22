@@ -301,7 +301,7 @@ private:
 	int filterCircularRegions(double radius, vector<CircularRegion> &circles);
 	void outputGaussBonnetPath(SASA &points);
 	void reindexCircularRegions(CircularRegionsPerAtom &circles);
-	void insertFakeIntersectionPoints(vector<CircularRegion> &circles);
+	void insertFakeIntersectionPoints(CircularRegion &I, IntersectionGraph &intersectionGraph, Vector &tessellationOrigin);
 	int sgn(double d);
 	void determineCircularIntersections(CircularRegionsPerAtom &circles);
 	double complLongAngle(Vector &vi, Vector &vj, Vector &vk);
