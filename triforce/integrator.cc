@@ -41,7 +41,7 @@ double IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 	
 	for(int i=0; i<radii->size();i++){
 		radius = radii->at(i);
-		//printf("RADIUS[%d]: %f\n",i,radius);
+		printf("RADIUS[%d]: %f\n",i,radius);
 	}
 		
 	

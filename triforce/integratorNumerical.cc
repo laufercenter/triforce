@@ -49,6 +49,10 @@ double IntegratorNumerical::integrate(Molecule *molecule, Tessellation *tessella
 	
 	sasas = tessellation->sasas();
 	
+	
+	file = fopen ("gbonnet0.csv","a");
+
+	
 	area = 0;
 	//iterate over all atoms
 	for(int i=0;i<sasas.size();++i){
@@ -59,6 +63,7 @@ double IntegratorNumerical::integrate(Molecule *molecule, Tessellation *tessella
 	
 	return area;
 	
+	fclose(file);
 	
 }
 
@@ -161,7 +166,7 @@ double IntegratorNumerical::integrateAtomicSASA(SASAsForAtom sasasForAtom){
 							//printf("ANGLE: %f, LAMBDA: %f\n",angle(v,n),l);
 						}
 						else{
-							n = -n;
+							//n = -n;
 							if(angle(v,n) >= l) occluded=true; 
 						}
 					}
@@ -169,10 +174,15 @@ double IntegratorNumerical::integrateAtomicSASA(SASAsForAtom sasasForAtom){
 					n(1)=0;
 					n(2)=0;
 					//if(angle(v,n) <= M_PI/2) occluded=true; 
+					
+					
+
 							
 				}
 				
 			}
+
+			fprintf(file, "ray %f %f %f occluded %d\n", v(0),v(1),v(2),occluded);
 			
 			if(!occluded) sasaCount++;
 			else sesaCount++;
