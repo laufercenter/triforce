@@ -45,6 +45,7 @@ private:
 	Tessellation* tessellation;
 	Molecule* molecule;
 	int trials;
+	FILE* file;
 	
 	double angle(Vector &a, Vector &b);
 	double integrateAtomicSASA(SASAsForAtom sasasForAtom);

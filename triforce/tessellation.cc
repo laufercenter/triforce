@@ -15,12 +15,18 @@ void Tessellation::build(bool split){
 	atoms = molecule.coordinates();
 	radii = molecule.fetchRadii();
 	
+	for(int i=0; i<radii->size();i++){
+		double radius = radii->at(i);
+		printf("RADIUS[%d]: %f\n",i,radius);
+	}
+	
+	
 	
 	//atoms.size()
 	//iterate over all atoms and build the tessellation for each of them
 	//for(int i=0; i<atoms.size(); ++i){
 		int i=0;
-		buildGaussBonnetPath(atoms[i], radii->at(i), atoms, *radii, sasasForMolecule, split);
+		buildGaussBonnetPath(i, atoms, *radii, sasasForMolecule, split);
 		
 		
 		
@@ -62,14 +68,20 @@ CircularRegionsPerAtom Tessellation::coverHemisphere(Vector tessellationOrigin, 
 
 
 
-void Tessellation::buildGaussBonnetPath(Vector &origin, double radius, vector<Vector> &atoms, vector<double> &radii, SASAsForMolecule &sasas, bool split){
-	int i,k,j;
+void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<double> &radii, SASAsForMolecule &sasas, bool split){
+	int k,j;
 	CircularRegionsPerAtom circles;
 	CircularRegionsPerAtom circlesFrontHemisphere;
 	CircularRegionsPerAtom circlesBackHemisphere;
 	
 	Vector frontTessellationOrigin(3);
 	Vector backTessellationOrigin(3);
+	Vector origin;
+	double radius;
+	
+	
+	origin = atoms[i];
+	radius = radii[i];
 	
 	
 	frontTessellationOrigin(0) = 1;
@@ -89,9 +101,9 @@ void Tessellation::buildGaussBonnetPath(Vector &origin, double radius, vector<Ve
 	
 
 
-	makeCircularRegions(origin, radius, atoms, radii, circles);
-	for(i=0;i<circles.size();i++){
-		determineProjection(origin, radius, circles[i]);
+	makeCircularRegions(i,origin, radius, atoms, radii, circles);
+	for(j=0;j<circles.size();j++){
+		determineProjection(origin, radius, circles[j]);
 	}
 	
 	//there is room for optimisation here...
@@ -203,10 +215,10 @@ void Tessellation::determineProjection(Vector &origin, double radius, CircularRe
 	circle.g = g;
 	circle.a = a;
 
-	//NSWarnLog(@"DET: [%f %f %f] %f %f %f %f",circle.normal.vector[0],circle.normal.vector[1],circle.normal.vector[2], r_i, r_k, g, circle.openingAngle);
+	printf("DET: [%f %f %f] %f %f %f %f\n",circle.normal(0),circle.normal(1),circle.normal(2), r_i, r_k, g, circle.openingAngle);
 
 
-	//NSWarnLog(@"%f %f %f %f %f",d_k, r_i, r_k, g, circle.openingAngle);
+	printf("%f %f %f %f %f\n",d_k, r_i, r_k, g, circle.openingAngle);
 }
 
 
@@ -276,35 +288,37 @@ IntersectionPair Tessellation::determineIntersectionPoints(double radius, Circul
 
 
 
-void Tessellation::makeCircularRegions(Vector &origin, double radius, vector<vec> &atoms, vector<double> &radii, vector<CircularRegion> &circles){
-	int i;
+void Tessellation::makeCircularRegions(int i,Vector &origin, double radius, vector<vec> &atoms, vector<double> &radii, vector<CircularRegion> &circles){
+	int j;
 	Vector res,normal,v;
 	CircularRegion circle;
 	double r_i = radius;
 	double r_k;
 	double lenv;
 
-	for(i=0;i<atoms.size();i++){
-		v=atoms[i] - origin;
-		r_k = radii[i];
-		
-		
-		lenv = norm(v,2);
-		
-		//printf("RADIUS: %f LEN: %f\n",r_k,lenv);
-		
-
-		//reject, if no intersection
-		if(lenv < r_i + r_k && lenv+r_k > r_i){
-			normal = v / lenv;
-			circle.id = circles.size()+1;
-			circle.vector = v;
-			circle.normal = normal;
-			circle.sphereRadius = r_k;
-			circle.intersect = false;
-			circles.push_back(circle);
+	for(j=0;j<atoms.size();j++){
+		if(i != j){
+			v=atoms[j] - origin;
+			r_k = radii[j];
 			
-			//printf("CIRCLE[%d]: (%f, %f, %f) %f\n",circle.id, circle.vector(0), circle.vector(1), circle.vector(2), circle.sphereRadius);
+			
+			lenv = norm(v,2);
+			
+			printf("RADIUS: %f LEN: %f\n",r_k,lenv);
+			
+
+			//reject, if no intersection
+			if(lenv < r_i + r_k && lenv+r_k > r_i && lenv+r_i > r_k){
+				normal = v / lenv;
+				circle.id = circles.size()+1;
+				circle.vector = v;
+				circle.normal = normal;
+				circle.sphereRadius = r_k;
+				circle.intersect = false;
+				circles.push_back(circle);
+				
+				printf("CIRCLE[%d]: (%f, %f, %f) %f\n",circle.id, circle.vector(0), circle.vector(1), circle.vector(2), circle.sphereRadius);
+			}
 		}
 	}
 }
@@ -336,7 +350,7 @@ int Tessellation::filterCircularRegions(double radius, vector<CircularRegion> &c
 				//angle = getAngleBetweenNormals(it->normal, circles[i].normal);
 				//printf("ANGLE: %f %f %f\n",angle,it->openingAngle, circles[i].openingAngle);
 				
-				if(it->form==CONVEX){
+				if(it->form==CONVEX || circles[i].form==SPLITTER){
 					if(circles[i].form == CONVEX){
 						n0 = it->normal;
 						n1 = circles[i].normal;
@@ -372,7 +386,7 @@ int Tessellation::filterCircularRegions(double radius, vector<CircularRegion> &c
 					}
 					
 				}
-				else{
+				else if(it->form==CONCAVE){
 					if(circles[i].form == CONVEX){
 						n0 = -it->normal;
 						n1 = circles[i].normal;
@@ -401,11 +415,18 @@ int Tessellation::filterCircularRegions(double radius, vector<CircularRegion> &c
 							erased=true;
 							break;
 						}
+						else if(angle > it->openingAngle + circles[i].openingAngle){
+							//in this special case, the atom is completely buried and the sasa is 0
+							printf("CASE 3 SPEC\n");
+							return -1;
+							
+						}
 							printf("CASE -3\n");
 						
 					}
 
-				}		
+				}	
+				
 						
 					
 			}
@@ -636,9 +657,15 @@ Interfaces Tessellation::angularInterfaces(Vector &x0, Vector &x1, Vector &tesse
 	Vector p0(3), p1(3);
 	Interfaces res;
 	Vector v(3);
+	Vector t;
+	
 	
 	//measurement points will be written into p0 and p1
-	measurementPoints(p0,p1,tessellationOrigin,I);
+	if(I.form != CONVEX){
+		t = -tessellationOrigin;
+		measurementPoints(p0,p1,t,I);
+	}
+	else measurementPoints(p0,p1,tessellationOrigin,I);
 	
 	
 	v = I.normal * I.g;
@@ -649,10 +676,10 @@ Interfaces Tessellation::angularInterfaces(Vector &x0, Vector &x1, Vector &tesse
 	res.in = angularInterface(x1,v,p0,p1);
 	res.vectorIn = x1;
 	
-	//if(I.form == CONCAVE){
-	//	res.out = -res.out;
-	//	res.in = -res.in;
-	//}
+	if(I.form != CONVEX){
+		res.out = -res.out;
+		res.in = -res.in;
+	}
 	
 	return res;
 	
@@ -1194,7 +1221,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 	
 
 
-	outputGaussBonnetData(filename, circles, sasas, intersectionGraph);
+	outputGaussBonnetData(filename, radius, circles, sasas, intersectionGraph);
 
 	
 	
@@ -1211,7 +1238,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 
 
 
-void Tessellation::outputGaussBonnetData(string filename, CircularRegionsPerAtom &circles, SASAs &sasas, IntersectionGraph &intersectionGraph){
+void Tessellation::outputGaussBonnetData(string filename, double radius, CircularRegionsPerAtom &circles, SASAs &sasas, IntersectionGraph &intersectionGraph){
 	FILE* file;
 	
 	file = fopen (filename.c_str(),"w");
@@ -1221,6 +1248,8 @@ void Tessellation::outputGaussBonnetData(string filename, CircularRegionsPerAtom
 	CircularRegion circle;
 	double area=0;
 	int k;
+	
+	fprintf(file, "atom radius %f\n", radius);
 	
 	
 	for(int i=0; i< circles.size(); ++i){

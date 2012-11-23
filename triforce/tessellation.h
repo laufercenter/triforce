@@ -287,7 +287,7 @@ private:
 
 
 	CircularRegionsPerAtom coverHemisphere(Vector tessellationOrigin, double radius, CircularRegionsPerAtom circles);
-	void buildGaussBonnetPath(Vector &origin, double radius, vector<Vector> &atoms, vector<double> &radii, SASAsForMolecule &sasas, bool split);
+	void buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<double> &radii, SASAsForMolecule &sasas, bool split);
 	double vsign(double v);
 	double cot(double a);
 	double csc(double a);
@@ -297,7 +297,7 @@ private:
 	bool isInPositiveEpsilonRange(double v, double eps);
 	void determineProjection(Vector &origin, double radius, CircularRegion &circle);
 	IntersectionPair determineIntersectionPoints(double radius, CircularRegion &K, CircularRegion &J);
-	void makeCircularRegions(Vector &origin, double radius, vector<vec> &atoms, vector<double> &radii, vector<CircularRegion> &circles);
+	void makeCircularRegions(int i,Vector &origin, double radius, vector<vec> &atoms, vector<double> &radii, vector<CircularRegion> &circles);
 	int filterCircularRegions(double radius, vector<CircularRegion> &circles);
 	void outputGaussBonnetPath(SASA &points);
 	void reindexCircularRegions(CircularRegionsPerAtom &circles);
@@ -321,7 +321,7 @@ private:
 	void printBranch(const char* s, multimap<double, IntersectionBranch>::iterator &it);
 	void printIntersectionGraph(IntersectionGraph &g);
 	void buildIntersectionGraph(double radius, Vector &tessellationOrigin, CircularRegionsPerAtom &circles, SASAs &sasas, string filename);
-	void outputGaussBonnetData(string filename, CircularRegionsPerAtom &circles, SASAs &sasas, IntersectionGraph &intersectionGraph);
+	void outputGaussBonnetData(string filename, double radius, CircularRegionsPerAtom &circles, SASAs &sasas, IntersectionGraph &intersectionGraph);
 	void deleteIntersectionPoint(IntersectionBranches::iterator &it,IntersectionGraph &intersectionGraph);
 
 	
