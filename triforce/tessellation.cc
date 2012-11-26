@@ -46,7 +46,7 @@ void Tessellation::build(bool split){
 }
 
 
-CircularRegionsPerAtom Tessellation::coverHemisphere(Vector tessellationOrigin, double radius, CircularRegionsPerAtom circles){
+CircularRegionsPerAtom Tessellation::coverHemisphere(Vector tessellationOrigin, double radius, CircularRegionsPerAtom circles, CircularInterfaceForm form){
 	CircularRegion C;
 	Vector v(3);
 	
@@ -57,7 +57,7 @@ CircularRegionsPerAtom Tessellation::coverHemisphere(Vector tessellationOrigin, 
 	C.g=0;
 	C.vector = v;
 	C.normal = v;
-	C.form = SPLITTER;
+	C.form = form;
 	C.id = circles.size()+1;
 	
 	circles.push_back(C);
@@ -110,32 +110,32 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 	
 	if(split){
 	
-		circlesFrontHemisphere = coverHemisphere(frontTessellationOrigin, radius, circles);
-		circlesBackHemisphere = coverHemisphere(backTessellationOrigin, radius, circles);
+		circlesFrontHemisphere = coverHemisphere(frontTessellationOrigin, radius, circles, SPLITTER);
+		circlesBackHemisphere = coverHemisphere(backTessellationOrigin, radius, circles, SPLITTER);
 		
 		
-		filterCircularRegions(radius, circlesFrontHemisphere);
-		filterCircularRegions(radius, circlesBackHemisphere);
+		filterCircularRegions(frontTessellationOrigin,radius, circlesFrontHemisphere);
+		filterCircularRegions(backTessellationOrigin,radius, circlesBackHemisphere);
 		reindexCircularRegions(circlesFrontHemisphere);
 		reindexCircularRegions(circlesBackHemisphere);
 		
 		determineCircularIntersections(circlesFrontHemisphere);
 		determineCircularIntersections(circlesBackHemisphere);
 		
-		//printf("CIRC: %d, FRONT: %d, BACK: %d\n",circles.size(), circlesFrontHemisphere.size(), circlesBackHemisphere.size());
+		printf("CIRC: %d, FRONT: %d, BACK: %d\n",circles.size(), circlesFrontHemisphere.size(), circlesBackHemisphere.size());
 		
-		buildIntersectionGraph(radius, frontTessellationOrigin, circlesFrontHemisphere, *newSasas,string("gbonnet0.csv"));
-		buildIntersectionGraph(radius, backTessellationOrigin, circlesBackHemisphere, *newSasas,string("gbonnet1.csv"));
+		buildIntersectionGraph(radius, frontTessellationOrigin, circlesFrontHemisphere, *newSasas, FRONTHEMISPHERE, string("gbonnet0.csv"));
+		buildIntersectionGraph(radius, backTessellationOrigin, circlesBackHemisphere, *newSasas, BACKHEMISPHERE, string("gbonnet1.csv"));
 	}
 	else{
 		
 		
-		filterCircularRegions(radius, circles);
+		filterCircularRegions(frontTessellationOrigin, radius, circles);
 		reindexCircularRegions(circles);
 		
 		determineCircularIntersections(circles);
 		
-		buildIntersectionGraph(radius, frontTessellationOrigin, circles, *newSasas,string("gbonnet0.csv"));
+		buildIntersectionGraph(radius, frontTessellationOrigin, circles, *newSasas, FRONTHEMISPHERE, string("gbonnet0.csv"));
 	}
 	
 }
@@ -325,7 +325,14 @@ void Tessellation::makeCircularRegions(int i,Vector &origin, double radius, vect
 
 
 
-int Tessellation::filterCircularRegions(double radius, vector<CircularRegion> &circles){
+void Tessellation::depleteCircularRegions(Vector tessellationOrigin, double radius, vector<CircularRegion> &circles){
+	circles.clear();
+	Vector t;
+	t = -tessellationOrigin;
+	circles = coverHemisphere(t, radius, circles, CONCAVE);
+}
+
+int Tessellation::filterCircularRegions(Vector tessellationOrigin, double radius, vector<CircularRegion> &circles){
 	vector<CircularRegion>::iterator it;
 	double angle;
 	int i;
@@ -336,28 +343,32 @@ int Tessellation::filterCircularRegions(double radius, vector<CircularRegion> &c
 	while(it != circles.end()){
 		erased=false;
 		printf("I HAVE :%d\n",it->id);
+	
+		if(it->form==CONVEX) n0 = it->normal;
+		else n0 = -it->normal;
+		
 		for(i=0;i<circles.size();i++){
 			if(it->id != circles[i].id){
 				printf("I LOOK AT :%d\n",circles[i].id);
 				
-						n0 = it->normal;
-						n1 = circles[i].normal;
+				if(circles[i].form == CONVEX) n1 = circles[i].normal;
+				else n1 = -circles[i].normal;
+				
+				
+				
+				angle = getAngleBetweenNormals(n0,n1);
+				printf("ANGLE: %f %f %f\n",angle,it->openingAngle, circles[i].openingAngle);
 						
 						
-						printf("V: (%f, %f, %f)   (%f %f %f)\n",n0(0),n0(1),n0(2),n1(0),n1(1),n1(2));
+				printf("V: (%f, %f, %f)   (%f %f %f)\n",n0(0),n0(1),n0(2),n1(0),n1(1),n1(2));
 				
 				
 				//angle = getAngleBetweenNormals(it->normal, circles[i].normal);
-				//printf("ANGLE: %f %f %f\n",angle,it->openingAngle, circles[i].openingAngle);
 				
-				if(it->form==CONVEX || circles[i].form==SPLITTER){
+				if(it->form==CONVEX){
+					//convex circle IT is inside of convex circle i
 					if(circles[i].form == CONVEX){
-						n0 = it->normal;
-						n1 = circles[i].normal;
-						angle = getAngleBetweenNormals(n0,n1);
-						printf("ANGLE: %f %f %f\n",angle,it->openingAngle, circles[i].openingAngle);
 						
-						//the circle is inside of convex circle i
 						if(it->openingAngle + angle < circles[i].openingAngle){
 							printf("CASE 0\n");
 							it = circles.erase(it);
@@ -367,14 +378,8 @@ int Tessellation::filterCircularRegions(double radius, vector<CircularRegion> &c
 							printf("CASE -0\n");
 						
 					}
+					//convex circle is outside of concave circle i
 					else{
-						
-						n0 = it->normal;
-						n1 = -circles[i].normal;
-						angle = getAngleBetweenNormals(n0,n1);
-						printf("ANGLE: %f %f %f\n",angle,it->openingAngle, circles[i].openingAngle);
-						
-						//the circle is outside of concave circle i
 						if(angle-it->openingAngle >  circles[i].openingAngle){
 							printf("CASE 1\n");
 							it = circles.erase(it);
@@ -386,42 +391,33 @@ int Tessellation::filterCircularRegions(double radius, vector<CircularRegion> &c
 					}
 					
 				}
-				else if(it->form==CONCAVE){
+				else{
+					//concave circle IT has a free area. This area is covered by convex circle i
 					if(circles[i].form == CONVEX){
-						n0 = -it->normal;
-						n1 = circles[i].normal;
-						angle = getAngleBetweenNormals(n0,n1);
-						printf("ANGLE: %f %f %f\n",angle,it->openingAngle, circles[i].openingAngle);
-						
-						//the sasa part of a concave circle is being covered by a convex circle
 						if(it->openingAngle + angle < circles[i].openingAngle){
 							printf("CASE 2\n");
-							//in this special case, the atom is completely buried and the sasa is 0
+							depleteCircularRegions(tessellationOrigin, radius, circles);
 							return -1;
 						}
-							printf("CASE -2\n");
+						printf("CASE -2\n");
 						
 					}
 					else{
-						n0 = -it->normal;
-						n1 = -circles[i].normal;
-						angle = getAngleBetweenNormals(n0,n1);
-						printf("ANGLE: %f %f %f\n",angle,it->openingAngle, circles[i].openingAngle);
-						
-						//the concave circle is completely surrounding another concave circle
+						//concave circle IT is completely inside the occlusion of concave circle i
 						if(it->openingAngle > circles[i].openingAngle + angle){
 							printf("CASE 3\n");
 							it = circles.erase(it);
 							erased=true;
 							break;
 						}
+						//concave circle IT has a free area. This area is covered by concave circle i
 						else if(angle > it->openingAngle + circles[i].openingAngle){
-							//in this special case, the atom is completely buried and the sasa is 0
-							printf("CASE 3 SPEC\n");
+							printf("CASE 4\n");
+							depleteCircularRegions(tessellationOrigin, radius, circles);
 							return -1;
 							
 						}
-							printf("CASE -3\n");
+						printf("CASE -3\n");
 						
 					}
 
@@ -433,6 +429,11 @@ int Tessellation::filterCircularRegions(double radius, vector<CircularRegion> &c
 		}
 		if(!erased) ++it;
 	}
+	
+	
+	//if just the splitter is left, the hemisphere is completely uncovered.
+	if(circles.size()==1 && circles[0].form==SPLITTER)
+		circles.clear();
 	
 	return 0;
 
@@ -474,13 +475,27 @@ void Tessellation::insertFakeIntersectionPoints(CircularRegion &I, IntersectionG
 	
 	
 	//this will create two points on the border of the circular region on opposite sides.
-	v = randu<vec>(3);
-	v2 = I.normal * I.g;
-	o = cross(v2,v);
-	o = I.a*o / norm(o,2);
-	x0 = v2+o;
 	
-	x1 = v2 + (o * -1);
+	
+
+	if(I.g==0){
+		v = randu<vec>(3);
+		v2 = I.normal;
+		o = cross(v2,v);
+		o = I.a*o / norm(o,2);
+		x0 = o;
+		
+		x1 = (o * -1);
+	}
+	else{
+		v = randu<vec>(3);
+		v2 = I.normal * I.g;
+		o = cross(v2,v);
+		o = I.a*o / norm(o,2);
+		x0 = v2+o;
+		
+		x1 = v2 + (o * -1);
+	}
 	
 	f = angularInterfaces(x0,x1, tessellationOrigin, I);
 	
@@ -920,7 +935,7 @@ void Tessellation::printIntersectionGraph(IntersectionGraph &g){
 }
 
 
-void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOrigin, CircularRegionsPerAtom &circles, SASAs &sasas, string filename){
+void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOrigin, CircularRegionsPerAtom &circles, SASAs &sasas, Hemisphere hemisphere, string filename){
 	map<int, bool> processed;
 	map<int, bool>::iterator it_p;
 	IntersectionGraph intersectionGraph;
@@ -1214,6 +1229,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 			if(valid){
 				printf("ADDING SASA\n");
 				potentialSasa.tessellationOrigin = tessellationOrigin;
+				potentialSasa.hemisphere = hemisphere;
 				sasas.push_back(potentialSasa);
 			}
 		}

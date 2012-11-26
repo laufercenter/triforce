@@ -65,18 +65,29 @@ double IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 
 double IntegratorTriforce::integrateAtomicSASA(SASAsForAtom sasasForAtom){
 	double radius;
-	double area;
+	double area0, area1, a, area;
 	
 	radius = sasasForAtom.radius;
-	area = 0;
+	area0 = 0;
+	area1 = 0;
 	for(int i=0;i<sasasForAtom.sasas.size();++i){
 		//int i=1;
-		area += integrateSASA(sasasForAtom.sasas[i]);
+		
+		a = integrateSASA(sasasForAtom.sasas[i]);
+		
+		if(sasasForAtom.sasas[i].hemisphere == FRONTHEMISPHERE)
+			area0 += a;
+		else area1+=a;
 		
 	}
 	
-	if(area<0) area = -area;
-	else area=4*M_PI - area;
+	if(area0<0) area0 = -area0;
+	else area0=2*M_PI - area0;
+
+	if(area1<0) area1 = -area1;
+	else area1=2*M_PI - area1;
+	
+	area = area0 + area1;
 	
 	return area;
 	
