@@ -8,6 +8,7 @@ using namespace std;
 using namespace arma;
 
 
+
 Interpolation::Interpolation(Data3D *data){
 	this->data=data;
 }
@@ -33,7 +34,8 @@ double Interpolation::taylorExtension(int i_PHI, int i_psi, int i_lambda, Vector
 	
 	d =(x-p);
 	htmp = h * d;
-	v = f + dot(g,d) + 0.5*dot(d,htmp);
+	//v = f + dot(g,d) + 0.5*dot(d,htmp);
+	v = f + dot(g,d);
 	
 	//printf("taylor extension (%d %d %d): %f\n",i_PHI,i_psi,i_lambda, v);
 	
@@ -95,9 +97,6 @@ double Interpolation::multiPointTaylor(Vector &x){
 	double v=0;
 	Vector lengths(3);
 	
-	x(0)=abs(x(0));
-	x(1)=abs(x(1));
-	x(2)=abs(x(2));
 	
 	data->surroundingPointsAndCellLengths(x,sp,lengths);
 	

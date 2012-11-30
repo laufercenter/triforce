@@ -30,6 +30,7 @@
 #include <stdio.h>
 
 #include "molecule.h"
+#include "interpolation.h"
 
 
 
@@ -186,6 +187,7 @@ typedef struct
 	Vector normal;
 	double openingAngle;
 	double g;
+	double g_normalised;
 	double a;
 	double sphereRadius;
 //	double radius;
@@ -276,6 +278,8 @@ class Tessellation{
 	
 public:
 	Tessellation(Molecule &m);
+	Tessellation(Molecule &m, Interpolation *dataPHI);
+	
 	void build(bool split);
 	SASAsForMolecule &sasas();
 	
@@ -288,7 +292,8 @@ private:
 	//#atoms #circularregions
 	//#atoms #sasas #circularregions
 	SASAsForMolecule sasasForMolecule;
-
+	bool PHIInterpolation;
+	Interpolation *dataPHI;
 
 	CircularRegionsPerAtom coverHemisphere(Vector tessellationOrigin, double radius, CircularRegionsPerAtom circles, CircularInterfaceForm form);
 	void buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<double> &radii, SASAsForMolecule &sasas, bool split);
@@ -328,6 +333,7 @@ private:
 	void outputGaussBonnetData(string filename, double radius, CircularRegionsPerAtom &circles, SASAs &sasas, IntersectionGraph &intersectionGraph);
 	void deleteIntersectionPoint(IntersectionBranches::iterator &it,IntersectionGraph &intersectionGraph);
 	void depleteCircularRegions(Vector tessellationOrigin, double radius, vector<CircularRegion> &circles);
+	double rotationalAngle(CircularRegion &I, CircularRegion &J);
 
 	
 	

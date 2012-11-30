@@ -12,26 +12,27 @@ using namespace boost;
 
 #define THRESHOLD_NUMERICAL 0.00001
 
+Data3D::Data3D(){
+}
 
-
-Data3D::Data3D(int PHIDim, int psiDim, int lambdaDim){
+Data3D::Data3D(int parameter0Dim, int parameter1Dim, int parameter2Dim){
 	int maxdim=0;
-	this->PHIDim = PHIDim;
-	this->psiDim = psiDim;
-	this->lambdaDim = lambdaDim;
+	this->parameter0Dim = parameter0Dim;
+	this->parameter1Dim = parameter1Dim;
+	this->parameter2Dim = parameter2Dim;
 	
 	
 		
 		
-	headerPHI = new Table1dDouble(boost::extents[PHIDim]);
-	headerPsi = new Table1dDouble(boost::extents[psiDim]);
-	headerLambda = new Table1dDouble(boost::extents[lambdaDim]);
-	data = new Table3dDouble(boost::extents[PHIDim][psiDim][lambdaDim]);
-	gradient = new Table3dVector(boost::extents[PHIDim][psiDim][lambdaDim]);
-	hessian = new Table3dMatrix(boost::extents[PHIDim][psiDim][lambdaDim]);
-	for(int x=0; x<PHIDim; x++)
-		for(int y=0; y<psiDim; y++)
-			for(int z=0; z<lambdaDim; z++){
+	headerParameter0 = new Table1dDouble(boost::extents[parameter0Dim]);
+	headerParameter1 = new Table1dDouble(boost::extents[parameter1Dim]);
+	headerParameter2 = new Table1dDouble(boost::extents[parameter2Dim]);
+	data = new Table3dDouble(boost::extents[parameter0Dim][parameter1Dim][parameter2Dim]);
+	gradient = new Table3dVector(boost::extents[parameter0Dim][parameter1Dim][parameter2Dim]);
+	hessian = new Table3dMatrix(boost::extents[parameter0Dim][parameter1Dim][parameter2Dim]);
+	for(int x=0; x<parameter0Dim; x++)
+		for(int y=0; y<parameter1Dim; y++)
+			for(int z=0; z<parameter2Dim; z++){
 				boost::array<Table3dVector::index,3> idx = {{x,y,z}};
 				(*gradient)(idx) = Vector(3);
 				(*hessian)(idx) = Matrix(3,3);
@@ -39,16 +40,27 @@ Data3D::Data3D(int PHIDim, int psiDim, int lambdaDim){
 }
 
 
-void Data3D::setHeaderPHICell(int x, double value){
-	(*headerPHI)[x] = value;
+void Data3D::init(){
+	cellLengthParameter0 = abs((*headerParameter0)[1]-(*headerParameter0)[0]);
+	cellLengthParameter1 = abs((*headerParameter1)[1]-(*headerParameter1)[0]);
+	cellLengthParameter2 = abs((*headerParameter2)[1]-(*headerParameter2)[0]);
+	
+	minParameter0 = (*headerParameter0)[0];
+	minParameter1 = (*headerParameter1)[0];
+	minParameter2 = (*headerParameter2)[0];
 }
 
-void Data3D::setHeaderPsiCell(int x, double value){
-	(*headerPsi)[x] = value;
+
+void Data3D::setHeaderParameter0Cell(int x, double value){
+	(*headerParameter0)[x] = value;
 }
 
-void Data3D::setHeaderLambdaCell(int x, double value){
-	(*headerLambda)[x] = value;
+void Data3D::setHeaderParameter1Cell(int x, double value){
+	(*headerParameter1)[x] = value;
+}
+
+void Data3D::setHeaderParameter2Cell(int x, double value){
+	(*headerParameter2)[x] = value;
 }
 
 
@@ -63,37 +75,28 @@ void Data3D::setHessianCell(int x, int y, int z, int i, int j, double value){
 	(*hessian)[x][y][z](i,j) = value;
 }
 
-Vector Data3D::getHeaderVector(int PHI, int psi, int lambda){
-	//printf("HEADER VECTOR: %d %d %d\n",PHI,psi,lambda);
+Vector Data3D::getHeaderVector(int parameter0, int parameter1, int parameter2){
+	//printf("HEADER VECTOR: %d %d %d\n",parameter0,parameter1,parameter2);
 	Vector v=Vector(3);
-	v(0) = (*headerPHI)[PHI];
-	v(1) = (*headerPsi)[psi];
-	v(2) = (*headerLambda)[lambda];
-	
-	return v;
-}
-
-Vector Data3D::cellLength(){
-	Vector v(3);
-	
-	v(0) = abs((*headerPHI)[1]-(*headerPHI)[0]);
-	v(1) = abs((*headerPsi)[1]-(*headerPsi)[0]);
-	v(2) = abs((*headerLambda)[1]-(*headerLambda)[0]);
+	v(0) = (*headerParameter0)[parameter0];
+	v(1) = (*headerParameter1)[parameter1];
+	v(2) = (*headerParameter2)[parameter2];
 	
 	return v;
 }
 
 
-double Data3D::lambdaGridLength(){
-	return abs((*headerLambda)[lambdaDim-1]-(*headerLambda)[0]);
+
+double Data3D::parameter2GridLength(){
+	return abs((*headerParameter2)[parameter2Dim-1]-(*headerParameter2)[0]);
 }
 
-double Data3D::psiGridLength(int lambda){
-	return abs((*headerPsi)[psiDim-1]-(*headerPsi)[0]);
+double Data3D::parameter1GridLength(int parameter2){
+	return abs((*headerParameter1)[parameter1Dim-1]-(*headerParameter1)[0]);
 }
 
-double Data3D::PHIGridLength(int psi, int lambda){
-	return abs((*headerPHI)[PHIDim-1]-(*headerPHI)[0]);
+double Data3D::parameter0GridLength(int parameter1, int parameter2){
+	return abs((*headerParameter0)[parameter0Dim-1]-(*headerParameter0)[0]);
 }
 
 
@@ -117,67 +120,33 @@ bool Data3D::isWithinNumericalLimits(double x, double t){
 
 
 
-/*
-Vector Data3D::bisectFloor(Vector &x){
-	int l,r,m;
-	int s;
-	double vl,vr;
-	Vector v=Vector(3);
-	for(int i=0;i<3;i++){
-		l=0;
-		vl=0;
-		r=dimensions[i]-1;
-		vr=numeric_limits<double>::max();
-		//printf("start bisection(%d): %d %d (%f)\n",i,l,r,x(i));
-		s=0;
-		while(r-l > 1){
-			m = l+((r-l)/2);
-			if((*header)[i][m]<=x(i)){
-				l=m;
-				vl=(*header)[i][m];
-			}
-			if((*header)[i][m]>x(i)){
-				r=m;
-				vr=(*header)[i][m];
-			}
-			//printf("step: l%d m%d(%f) r%d \n",l,m,(*header)[i][m],r);
-			++s;
-			if(s>20) exit(-1);
-		}
-		v(i)=l;		
-	}
-	return v;
-}
-*/
-
-
-
 
 
 void Data3D::closestGridPoint(Vector &x, VectorInt &p, Vector &l){
-	double lengthPHI;
-	int i_PHI;
-	double lengthPsi;
-	int i_psi;
-	double lengthLambda;
-	int i_lambda;
+	double lengthparameter0;
+	int i_parameter0;
+	double lengthparameter1;
+	int i_parameter1;
+	double lengthparameter2;
+	int i_parameter2;
 	
-	l = cellLength();
+	l(0) = cellLengthParameter0;
+	l(1) = cellLengthParameter1;
+	l(2) = cellLengthParameter2;
 	
 	//printf("CELL LENGTHS: %f %f %f\n",l(0),l(1),l(2));
 	
-	lengthPHI = l(0);
-	i_PHI = static_cast<int>(x(0)/lengthPHI);
+	i_parameter0 = static_cast<int>(floor((x(0)-minParameter0)/cellLengthParameter0));
 	
-	lengthPsi = l(1);
-	i_psi = static_cast<int>(x(1)/lengthPsi);
+	i_parameter1 = static_cast<int>(floor((x(1)-minParameter1)/cellLengthParameter1));
 	
-	lengthLambda = l(2);
-	i_lambda = static_cast<int>(x(2)/lengthLambda);
+	i_parameter2 = static_cast<int>(floor((x(2)-minParameter2)/cellLengthParameter2));
 	
-	p(0) = i_PHI;
-	p(1) = i_psi;
-	p(2) = i_lambda;
+	printf("CLOSESTGRRRID: %f %f %f\n",x(2),x(2)-minParameter2,(x(2)-minParameter2)/cellLengthParameter2);
+	
+	p(0) = i_parameter0;
+	p(1) = i_parameter1;
+	p(2) = i_parameter2;
 }
 
 
@@ -191,11 +160,9 @@ void Data3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Ve
 	
 	closestGridPoint(x, v, lengths);
 	
-	if((*headerPsi)[v(1)]+(*headerLambda)[v(2)] < M_PI && !isWithinNumericalLimits((*headerPsi)[v(1)]+(*headerLambda)[v(2)],M_PI)) neg=true;
-	else neg=false;
 	
-	
-	//printf("CLOSEST GRIDPOINT: %d %d %d\n",v(0),v(1),v(2));
+	//printf("CLOSEST GRIDPOINT: %d %d %d (%f, %f, %f)\n",v(0),v(1),v(2),(*headerParameter0)[v(0)],(*headerParameter1)[v(1)],(*headerParameter2)[v(2)]);
+	printf("CLOSEST GRIDPOINT: %d %d %d\n",v(0),v(1),v(2));
 	
 	
 	r.clear();
@@ -205,69 +172,19 @@ void Data3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Ve
 				v2(0)=v(0)+i;
 				v2(1)=v(1)+j;
 				v2(2)=v(2)+k;
-				if(v2(0)<PHIDim && v2(1)<psiDim && v2(2)<lambdaDim){
+				if(v2(0)<parameter0Dim && v2(1)<parameter1Dim && v2(2)<parameter2Dim){
 					if(!isnan((*data)[v2(0)][v2(1)][v2(2)])){
-						if(!neg || ((*headerPsi)[v2(1)]+(*headerLambda)[v2(2)]<M_PI && !isWithinNumericalLimits((*headerPsi)[v2(1)]+(*headerLambda)[v2(2)],M_PI))){
 							r.push_back(v2);
-							printf("ACCEPTED %d %d %d (%f %f [%d/%d])\n",v2(0),v2(1),v2(2),(*headerPsi)[v2(1)],(*headerLambda)[v2(2)],neg,isWithinNumericalLimits((*headerPsi)[v2(1)]+(*headerLambda)[v2(2)],M_PI));
-						}
-						else	printf("REJECTED 0 %d %d %d (%f %f [%d/%d])\n",v2(0),v2(1),v2(2),(*headerPsi)[v2(1)],(*headerLambda)[v2(2)],neg,isWithinNumericalLimits((*headerPsi)[v2(1)]+(*headerLambda)[v2(2)],M_PI));
-
+							printf("ACCEPTED\n");
+						
 					}
-					else	printf("REJECTED 1 %d %d %d\n",v2(0),v2(1),v2(2));
-
+					else printf("REJECTED NAN\n");
 				}
-				else	printf("PRE-REJECTED 2 %d %d %d\n",v2(0),v2(1),v2(2));
+				else printf("REJECTED OUT OF LIMIT\n");
 			}
-			
-	if(r.size()==0){
-		for(i=0;i<2;++i)
-			for(j=0;j<2;++j)
-				for(k=0;k<2;++k){
-					v2(0)=v(0)+i;
-					v2(1)=v(1)+j;
-					v2(2)=v(2)+k;
-					if(v2(0)<PHIDim && v2(1)<psiDim && v2(2)<lambdaDim){
-						if(!isnan((*data)[v2(0)][v2(1)][v2(2)])){
-							printf("RE-ACCEPTED %d %d %d (%f %f [%d/%d])\n",v2(0),v2(1),v2(2),(*headerPsi)[v2(1)],(*headerLambda)[v2(2)],neg,isWithinNumericalLimits((*headerPsi)[v2(1)]+(*headerLambda)[v2(2)],M_PI));
-								r.push_back(v2);
-						}
-
-					}
-				}
-		
-	}
-
 			
 }
 
-void Data3D::print(){
-	/*
-	printf("DATA...\n");
-	for(int z=0; z<dimensions[2]; z++){
-		for(int y=0; y<dimensions[1]; y++){
-			for(int x=0; x<dimensions[0]; x++){
-				double v=(*data)[x][y][z];
-				printf("%f ",v);
-			}
-			printf("\n");
-		}
-		printf("\n\n");
-	}
-	
-	printf("GRADIENTS...\n");
-	for(int z=0; z<dimensions[2]; z++){
-		for(int y=0; y<dimensions[1]; y++){
-			for(int x=0; x<dimensions[0]; x++){
-				Vector v=(*gradient)[x][y][z];
-				printf("[%f %f %f] ",v(0),v(1),v(2));
-			}
-			printf("\n");
-		}
-		printf("\n\n");
-	}
-	*/
-}
 
 void Data3D::printDataCell(int i, int j, int k){
 	printf("Cell[%d,%d,%d]: %f\n",i,j,k,(*data)[i][j][k]);

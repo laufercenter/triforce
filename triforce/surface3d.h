@@ -15,42 +15,22 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#ifndef INTERPOLATION_H_
-#define INTERPOLATION_H_
+#ifndef SURFACE3D_H_
+#define SURFACE3D_H_
 
-#include <string>
-#include <vector>
-#include <map>
-#include "surface3d.h"
-
-#include <armadillo>
+#include "data3d.h"
 
 
-using namespace std;
-using namespace arma;
-
-
-
-
-
-
-class Interpolation{
+class Surface3D: public Data3D{
 	
 public:
-	Interpolation(Data3D *data);
-	double interpolate(Vector &x);
-	double interpolate(double PHI, double psi, double lambda);
-
+	Surface3D(Data3D* d);
+	void surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Vector &lengths);
+	void assimilate(Data3D* d);
+	
 	
 private:
-	Data3D *data;
-
-	double taylorExtension(VectorInt &r, Vector &x);
-	double taylorExtension(int i_PHI, int i_psi, int i_lambda, Vector &x);
-	vector<double> weights(vector<VectorInt> &sp, Vector &x, Vector &length);
-	double multiPointTaylor(Vector &x);
-	
 	
 };
 
-#endif //INTERPOLATION_H_
+#endif //SURFACE3D_H_

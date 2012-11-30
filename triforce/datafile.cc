@@ -36,9 +36,9 @@ Data3D* DataFile::digest3DBinaryTable(){
 	int totalCells;
 	int maxdim;
 	int d;
-	int PHIDim;
-	int psiDim;
-	int lambdaDim;
+	int parameter0Dim;
+	int parameter1Dim;
+	int parameter2Dim;
 	
 	//printf("digesting...\n");
 	
@@ -57,53 +57,53 @@ Data3D* DataFile::digest3DBinaryTable(){
 	f.read(buffer2,6);
 	//zeroth byte is how many dimensions the PHI header has. should be 1
 	//first byte is number of PHI entries
-	PHIDim = static_cast<int>(buffer2[1]);
+	parameter0Dim = static_cast<int>(buffer2[1]);
 	//2nd byte is number of psi dimensions (should be 1)
 	//3rd byte is number of psi entries
 	//4th byte is number of lambda dimensions (should be 1)
 	//5th byte is number of lambda entries
-	psiDim = static_cast<int>(buffer2[3]);
-	lambdaDim = static_cast<int>(buffer2[5]);
+	parameter1Dim = static_cast<int>(buffer2[3]);
+	parameter2Dim = static_cast<int>(buffer2[5]);
 	
 
 	
 	//printf("dimensions: %d, rows in header: %d, maxdim: %d\n",numberDimensions,nrowsHeader,maxdim); 
 	
-	tbl = new Data3D(PHIDim, psiDim, lambdaDim);
+	tbl = new Data3D(parameter0Dim, parameter1Dim, parameter2Dim);
 	
 	//read PHI header
-	buffer=new char[PHIDim*BINARY_DATA_BLOCK_SIZE];
-	f.read(buffer,PHIDim*BINARY_DATA_BLOCK_SIZE);
-	for(int i=0; i<PHIDim; i++){
+	buffer=new char[parameter0Dim*BINARY_DATA_BLOCK_SIZE];
+	f.read(buffer,parameter0Dim*BINARY_DATA_BLOCK_SIZE);
+	for(int i=0; i<parameter0Dim; i++){
 		double v = charArray2Double(buffer+i*BINARY_DATA_BLOCK_SIZE);
-		tbl->setHeaderPHICell(i,v);
+		tbl->setHeaderParameter0Cell(i,v);
 	}
 	delete buffer;
 	//read psi header
-	buffer=new char[psiDim*BINARY_DATA_BLOCK_SIZE];
-	f.read(buffer,psiDim*BINARY_DATA_BLOCK_SIZE);
-	for(int i=0; i<psiDim; i++){
+	buffer=new char[parameter1Dim*BINARY_DATA_BLOCK_SIZE];
+	f.read(buffer,parameter1Dim*BINARY_DATA_BLOCK_SIZE);
+	for(int i=0; i<parameter1Dim; i++){
 		double v = charArray2Double(buffer+i*BINARY_DATA_BLOCK_SIZE);
-		tbl->setHeaderPsiCell(i,v);
+		tbl->setHeaderParameter1Cell(i,v);
 	}
 	delete buffer;
 	//read lambda header
-	buffer=new char[lambdaDim*BINARY_DATA_BLOCK_SIZE];
-	f.read(buffer,lambdaDim*BINARY_DATA_BLOCK_SIZE);
-	for(int i=0; i<lambdaDim; i++){
+	buffer=new char[parameter2Dim*BINARY_DATA_BLOCK_SIZE];
+	f.read(buffer,parameter2Dim*BINARY_DATA_BLOCK_SIZE);
+	for(int i=0; i<parameter2Dim; i++){
 		double v = charArray2Double(buffer+i*BINARY_DATA_BLOCK_SIZE);
-		tbl->setHeaderLambdaCell(i,v);
+		tbl->setHeaderParameter2Cell(i,v);
 	}
 	delete buffer;
 	
 	//read data
-	totalCells = PHIDim*psiDim*lambdaDim;
+	totalCells = parameter0Dim*parameter1Dim*parameter2Dim;
 	buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
 	f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
-	for(int z=0; z<lambdaDim; z++)
-		for(int y=0; y<psiDim; y++)
-			for(int x=0; x<PHIDim; x++){
-				double v = charArray2Double(buffer+((z*psiDim+y)*PHIDim+x)*BINARY_DATA_BLOCK_SIZE);
+	for(int z=0; z<parameter2Dim; z++)
+		for(int y=0; y<parameter1Dim; y++)
+			for(int x=0; x<parameter0Dim; x++){
+				double v = charArray2Double(buffer+((z*parameter1Dim+y)*parameter0Dim+x)*BINARY_DATA_BLOCK_SIZE);
 				tbl->setDataCell(x,y,z,v);
 			}
 	
@@ -112,14 +112,14 @@ Data3D* DataFile::digest3DBinaryTable(){
 	
 	
 	//read gradients
-	totalCells = PHIDim*psiDim*lambdaDim*3;
+	totalCells = parameter0Dim*parameter1Dim*parameter2Dim*3;
 	buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
 	f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
-	for(int z=0; z<lambdaDim; z++)
-		for(int y=0; y<psiDim; y++)
-			for(int x=0; x<PHIDim; x++)
+	for(int z=0; z<parameter2Dim; z++)
+		for(int y=0; y<parameter1Dim; y++)
+			for(int x=0; x<parameter0Dim; x++)
 				for(int i=0; i<3; i++){
-					double v = charArray2Double(buffer+(((z*psiDim+y)*PHIDim+x)*3+i)*BINARY_DATA_BLOCK_SIZE);
+					double v = charArray2Double(buffer+(((z*parameter1Dim+y)*parameter0Dim+x)*3+i)*BINARY_DATA_BLOCK_SIZE);
 					tbl->setGradientCell(x,y,z,i,v);
 				}
 	
@@ -127,96 +127,27 @@ Data3D* DataFile::digest3DBinaryTable(){
 	
 
 	//read hessians
-	totalCells = PHIDim*psiDim*lambdaDim*3*3;
+	totalCells = parameter0Dim*parameter1Dim*parameter2Dim*3*3;
 	buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
 	f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
-	for(int z=0; z<lambdaDim; z++)
-		for(int y=0; y<psiDim; y++)
-			for(int x=0; x<PHIDim; x++)
+	for(int z=0; z<parameter2Dim; z++)
+		for(int y=0; y<parameter1Dim; y++)
+			for(int x=0; x<parameter0Dim; x++)
 				for(int j=0; j<3; j++)
 					for(int i=0; i<3; i++){
-						double v = charArray2Double(buffer+((((z*psiDim+y)*PHIDim+x)*3+j)*3+i)*BINARY_DATA_BLOCK_SIZE);
+						double v = charArray2Double(buffer+((((z*parameter1Dim+y)*parameter0Dim+x)*3+j)*3+i)*BINARY_DATA_BLOCK_SIZE);
 						tbl->setHessianCell(x,y,z,j,i,v);
 					}
 	
 	delete buffer;
 	
-
-	return tbl;
-}	
-
-
-
-Data2D* DataFile::digest2DBinaryTable(){
-	char shortbuffer[2];
-	char *buffer;
-	int numberDimensions;
-	int nrowsHeader;
-	vector<double> tmp;
-	Data2D *tbl;
-	vector<int> dimensions;
-	int totalCells;
-	int maxdim;
-	int d;
-	
-	//printf("digesting...\n");
-	
-	fstream f(name.c_str(),ios::binary|ios::in);
-	
-	//read first row
-	f.read(shortbuffer,2);
-	numberDimensions = static_cast<int>(shortbuffer[0]);
-	
-	if(numberDimensions != 2) throw exception();
-	
-	nrowsHeader = static_cast<int>(shortbuffer[1]);
-	
-	
-	
-	
-	//read second row
-	maxdim=0;
-	buffer=new char[numberDimensions];
-	f.read(buffer,numberDimensions);
-	for(int i=0; i<numberDimensions; i++){
-		d = static_cast<int>(buffer[i]);
-		if(d>maxdim) maxdim=d;
-		dimensions.push_back(d);
-	}
-	delete buffer;
-
-	
-	//printf("dimensions: %d, rows in header: %d, maxdim: %d\n",numberDimensions,nrowsHeader,maxdim); 
-	
-	tbl = new Data2D(dimensions);
-	
-	//read header
-	buffer=new char[nrowsHeader*maxdim*BINARY_DATA_BLOCK_SIZE];
-	f.read(buffer,nrowsHeader*maxdim*BINARY_DATA_BLOCK_SIZE);
-	for(int i=0; i<maxdim; i++){
-		for(int j=0; j<nrowsHeader; j++){
-			double v = charArray2Double((buffer+(i*nrowsHeader+j)*BINARY_DATA_BLOCK_SIZE));
-			tbl->setHeaderCell(j,i,v);
-		}
-	}
-	delete buffer;
-	
-	//read data
-	totalCells = dimensions[0]*dimensions[1];
-	buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
-	f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
-	for(int y=0; y<dimensions[1]; y++)
-		for(int x=0; x<dimensions[0]; x++){
-			double v = charArray2Double(buffer+(y*dimensions[0]+x)*BINARY_DATA_BLOCK_SIZE);
-			tbl->setDataCell(x,y,v);
-		}
-	
-	delete buffer;
-	
+	tbl->init();
 	
 
 	return tbl;
 }	
+
+
 
 
 
