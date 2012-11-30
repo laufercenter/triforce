@@ -52,10 +52,11 @@ typedef boost::multi_array<Matrix,3> Table3dMatrix;
 class Data3D{
 	
 public:
-	Data3D(int PHIDim, int psiDim, int lambdaDim);
-	void setHeaderPHICell(int x, double value);
-	void setHeaderPsiCell(int x, double value);
-	void setHeaderLambdaCell(int x, double value);
+	Data3D();
+	Data3D(int parameter0Dim, int parameter1Dim, int parameter2Dim);
+	void setHeaderParameter0Cell(int x, double value);
+	void setHeaderParameter1Cell(int x, double value);
+	void setHeaderParameter2Cell(int x, double value);
 	void setDataCell(int x, int y, int z, double value);
 	void setGradientCell(int x, int y, int z, int i, double value);
 	void setHessianCell(int x, int y, int z, int i, int j, double value);
@@ -64,12 +65,11 @@ public:
 	Vector &getGradient(int x, int y, int z);
 	Matrix &getHessian(int x, int y, int z);
 	
-	Vector getHeaderVector(int PHI, int psi, int lambda);
+	Vector getHeaderVector(int parameter0, int parameter1, int parameter2);
 	//Vector bisectFloor(Vector &x);
-	Vector cellLength();
-	double lambdaGridLength();
-	double psiGridLength(int lambda);
-	double PHIGridLength(int psi, int lambda);
+	double parameter2GridLength();
+	double parameter1GridLength(int parameter2);
+	double parameter0GridLength(int parameter1, int parameter2);
 	
 	void printDataCell(int i, int j, int k);
 	void printGradientCell(int i, int j, int k);
@@ -78,17 +78,22 @@ public:
 	void closestGridPoint(Vector &x, VectorInt &p, Vector &l);
 	void surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Vector &lengths);
 	bool isWithinNumericalLimits(double x, double t);
+	void init();
 	
 
 	
-private:
-	
-	int PHIDim;
-	int psiDim;
-	int lambdaDim;
-	Table1dDouble *headerPHI;
-	Table1dDouble *headerPsi;
-	Table1dDouble *headerLambda;
+	int parameter0Dim;
+	int parameter1Dim;
+	int parameter2Dim;
+	double minParameter0;
+	double minParameter1;
+	double minParameter2;
+	double cellLengthParameter0;
+	double cellLengthParameter1;
+	double cellLengthParameter2;
+	Table1dDouble *headerParameter0;
+	Table1dDouble *headerParameter1;
+	Table1dDouble *headerParameter2;
 	Table3dDouble *data;
 	Table3dVector *gradient;
 	Table3dMatrix *hessian;

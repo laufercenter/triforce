@@ -1,8 +1,14 @@
 #include "tessellation.h"
 
+Tessellation::Tessellation(Molecule &m, Interpolation *dataPHI){
+	molecule = m;
+	PHIInterpolation = true;
+	this->dataPHI = dataPHI;
+}
 
 Tessellation::Tessellation(Molecule &m){
 	molecule = m;
+	PHIInterpolation = false;
 }
 
 
@@ -55,6 +61,7 @@ CircularRegionsPerAtom Tessellation::coverHemisphere(Vector tessellationOrigin, 
 	C.openingAngle = M_PI * 0.5;
 	C.a = radius;
 	C.g=0;
+	C.g_normalised=0;
 	C.vector = v;
 	C.normal = v;
 	C.form = form;
@@ -213,6 +220,7 @@ void Tessellation::determineProjection(Vector &origin, double radius, CircularRe
 
 	circle.openingAngle = acos(g / r_i);
 	circle.g = g;
+	circle.g_normalised = g/radius;
 	circle.a = a;
 
 	printf("DET: [%f %f %f] %f %f %f %f\n",circle.normal(0),circle.normal(1),circle.normal(2), r_i, r_k, g, circle.openingAngle);
@@ -707,23 +715,116 @@ Interfaces Tessellation::retrieveInterfaces(Vector tessellationOrigin, CircularR
 	double entryPoint, exitPoint;
 	IntersectionPair ip;
 	Vector x0(3), x1(3);
+	Interfaces intf;
+	Interfaces intf1;
+	double baseAngleIJ;
+	double rotationalPartIJ;
+	double baseAngleJI;
+	double rotationalPartJI;
+	
+	
+	if(PHIInterpolation){
+		baseAngleIJ = dataPHI->interpolate(I.g_normalised,J.g_normalised,norm_dot(I.normal,J.normal));
+		rotationalPartIJ = rotationalAngle(I,J);
+		intf.out = baseAngleIJ + rotationalPartIJ;
+		if(intf.out>=M_PI) intf.out = (baseAngleIJ + rotationalPartIJ) - 2*M_PI;
+
+		intf.vectorOut = Vector(3);
+		intf.vectorOut(0)=0;
+		intf.vectorOut(1)=0;
+		intf.vectorOut(2)=0;
+		
+		//baseAngleJI = dataPHI->interpolate(J.g_normalised,I.g_normalised,norm_dot(J.normal,I.normal));
+		//rotationalPartJI = rotationalAngle(J,I);
+		intf.in = (-M_PI-baseAngleIJ) + rotationalPartIJ;
+		if(intf.in<=-M_PI) intf.in = (M_PI-baseAngleIJ) + rotationalPartIJ;
+		intf.vectorIn = Vector(3);
+		intf.vectorIn(0)=0;
+		intf.vectorIn(1)=0;
+		intf.vectorIn(2)=0;
+		
+		printf("gi %f gj %f cosrho %f\n",I.g_normalised,J.g_normalised,norm_dot(I.normal,J.normal));
+		printf("BASE ANGLE: %f %f ROTATIONAL PART: %f %f\n",baseAngleIJ,baseAngleJI,rotationalPartIJ,rotationalPartJI);
+		
+		//return intf;
+		
+	}
+	
+	
+	{
+		ip = determineIntersectionPoints(radius, I, J);
+		x0 = ip.k_j;
+		x1 = ip.j_k;
+		
+		
+		intf1 = angularInterfaces(x0,x1, tessellationOrigin, I);
+	}
+
+
+	
+	if(PHIInterpolation){
+		printf("TESTING: error:(%f %f) out: (%f %f) in: (%f %f) \n",abs(intf.out-intf1.out),abs(intf.in-intf1.in),intf.out,intf1.out,intf.in,intf1.in);
+		double threshold=0.1;
+		if(abs(intf.out-intf1.out) >= threshold || abs(intf.in-intf1.in) >= threshold){
+			printf("ABORTING\n");
+			//exit(-2);
+		}
+	}
 	
 	
 	
-	
-	ip = determineIntersectionPoints(radius, I, J);
-	x0 = ip.k_j;
-	x1 = ip.j_k;
-	
-	
-	return angularInterfaces(x0,x1, tessellationOrigin, I);
-	
+	if(!PHIInterpolation) return intf1;
+	else return intf;
 	
 	
 	
 }
 
 
+
+double Tessellation::rotationalAngle(CircularRegion &I, CircularRegion &J){
+	Vector ex(3);
+	Vector ez(3);
+	Vector n0(3);
+	Vector n1(3);
+	Vector n2(3);
+	double sn;
+	double a;
+	double rho;
+	
+	ez(0)=0;
+	ez(1)=0;
+	ez(2)=1;
+
+	ex(0)=1;
+	ex(1)=0;
+	ex(2)=0;
+	
+	
+	if(isInPositiveEpsilonRange(abs(dot(ex,I.normal)),1.0) ){
+		n0 = Vector(3);
+		n0(0) = 0;
+		n0(1) = 0;
+		n0(2) = 1;
+	}
+	else n0 = cross(ex,I.normal);
+	
+	n2 = cross(I.normal,n0);
+	
+	n1 = cross(I.normal, J.normal);
+	
+	sn = sgn(norm_dot(n1,n2));
+	a = asin(norm_dot(n0,n1));
+	
+	if(sn<0 && a>0) a = M_PI-a;
+	if(sn<0 && a<0) a = -M_PI-a;
+
+
+	
+	
+	return a;
+	
+}
 
 
 
@@ -1213,12 +1314,22 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 				sasaNode.normalForCircularRegion = circles[cid0].normal;
 				sasaNode.form = circles[cid0].form;
 				
+				int cid1=abs(x.id1)-1;
+				double ank = getAngle(circles[cid0].normal, circles[cid1].normal);
+				printf("VERIFICATION.. g0: %f g1: %f cosrho: %f PHI0: %f PHI1: %f rotational part: %f n0(%f, %f, %f) n1(%f, %f, %f)\n",circles[cid0].g/radius,circles[cid1].g/radius, cos(ank), sasaNode.angle0,  sasaNode.angle1, rotationalAngle(circles[cid0],circles[cid1]),circles[cid0].normal(0),circles[cid0].normal(1),circles[cid0].normal(2),circles[cid1].normal(0),circles[cid1].normal(1),circles[cid1].normal(2)); 
+				
+				
+				
+				
 				potentialSasa.sasa.push_back(sasaNode);
 				
 				t.id0 = intersectionGraph[x].pointsTo0;
 				t.id1 = intersectionGraph[x].pointsTo1;
 				
 				x = t;
+				
+				
+				
 					
 				printf("NEXT: %d - %d\n",x.id0,x.id1);
 				

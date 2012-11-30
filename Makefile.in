@@ -83,7 +83,7 @@ libtriforce_@TRIFORCE_API_VERSION@_la_LIBADD =
 am__dirstamp = $(am__leading_dot)dirstamp
 am_libtriforce_@TRIFORCE_API_VERSION@_la_OBJECTS =  \
 	triforce/tessellation.lo triforce/molecule.lo \
-	triforce/data2d.lo triforce/data3d.lo triforce/datafile.lo \
+	triforce/data3d.lo triforce/surface3d.lo triforce/datafile.lo \
 	triforce/topology.lo triforce/interpolation.lo \
 	triforce/integrator.lo triforce/integratorStatistical.lo \
 	triforce/integratorGaussBonnet.lo \
@@ -252,8 +252,8 @@ ACLOCAL_AMFLAGS = ${ACLOCAL_FLAGS}
 lib_LTLIBRARIES = libtriforce-@TRIFORCE_API_VERSION@.la
 libtriforce_@TRIFORCE_API_VERSION@_la_SOURCES = triforce/tessellation.cc \
 						triforce/molecule.cc \
-						triforce/data2d.cc \
 						triforce/data3d.cc \
+						triforce/surface3d.cc \
 						triforce/datafile.cc \
 						triforce/topology.cc \
 						triforce/interpolation.cc \
@@ -267,8 +267,8 @@ triforce_includedir = $(includedir)/triforce-$(TRIFORCE_API_VERSION)
 nobase_triforce_include_HEADERS = triforce.h \
 					triforce/tessellation.h \
 					triforce/molecule.h \
-					triforce/data2d.h \
 					triforce/data3d.h \
+					triforce/surface3d.h \
 					triforce/datafile.h \
 					triforce/topology.h \
 					triforce/interpolation.h \
@@ -391,9 +391,9 @@ triforce/tessellation.lo: triforce/$(am__dirstamp) \
 	triforce/$(DEPDIR)/$(am__dirstamp)
 triforce/molecule.lo: triforce/$(am__dirstamp) \
 	triforce/$(DEPDIR)/$(am__dirstamp)
-triforce/data2d.lo: triforce/$(am__dirstamp) \
-	triforce/$(DEPDIR)/$(am__dirstamp)
 triforce/data3d.lo: triforce/$(am__dirstamp) \
+	triforce/$(DEPDIR)/$(am__dirstamp)
+triforce/surface3d.lo: triforce/$(am__dirstamp) \
 	triforce/$(DEPDIR)/$(am__dirstamp)
 triforce/datafile.lo: triforce/$(am__dirstamp) \
 	triforce/$(DEPDIR)/$(am__dirstamp)
@@ -414,8 +414,6 @@ libtriforce-@TRIFORCE_API_VERSION@.la: $(libtriforce_@TRIFORCE_API_VERSION@_la_O
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
-	-rm -f triforce/data2d.$(OBJEXT)
-	-rm -f triforce/data2d.lo
 	-rm -f triforce/data3d.$(OBJEXT)
 	-rm -f triforce/data3d.lo
 	-rm -f triforce/datafile.$(OBJEXT)
@@ -432,6 +430,8 @@ mostlyclean-compile:
 	-rm -f triforce/interpolation.lo
 	-rm -f triforce/molecule.$(OBJEXT)
 	-rm -f triforce/molecule.lo
+	-rm -f triforce/surface3d.$(OBJEXT)
+	-rm -f triforce/surface3d.lo
 	-rm -f triforce/tessellation.$(OBJEXT)
 	-rm -f triforce/tessellation.lo
 	-rm -f triforce/topology.$(OBJEXT)
@@ -440,7 +440,6 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/data2d.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/data3d.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/datafile.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/integrator.Plo@am__quote@
@@ -449,6 +448,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/integratorStatistical.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/interpolation.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/molecule.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/surface3d.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/tessellation.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/topology.Plo@am__quote@
 
