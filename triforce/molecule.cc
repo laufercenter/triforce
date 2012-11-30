@@ -66,7 +66,7 @@ void Molecule::addAtom(double* x, double* y, double* z, string type, int i){
 	coordinatesPointers[i]=c;
 	sigmas[i]=p.sigma;
 	epsilons[i]=p.epsilon;
-	radii[i]=p.sigma+1.4;
+	radii[i]=0.5*p.sigma+1.4;
 		
 		
 }
