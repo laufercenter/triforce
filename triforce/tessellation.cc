@@ -1,14 +1,8 @@
 #include "tessellation.h"
 
-Tessellation::Tessellation(Molecule &m, Interpolation *dataPHI){
-	molecule = m;
-	PHIInterpolation = true;
-	this->dataPHI = dataPHI;
-}
 
 Tessellation::Tessellation(Molecule &m){
 	molecule = m;
-	PHIInterpolation = false;
 }
 
 
@@ -195,6 +189,12 @@ bool Tessellation::isInPositiveEpsilonRange(double v, double eps){
 	if(eps-(v+THRESHOLD_NUMERICAL) <= 0) return true;
 	else return false;
 }
+
+bool Tessellation::isWithinNumericalLimits(double x, double l){
+	if(abs(x-l)<=THRESHOLD_NUMERICAL) return true;
+	else return false;
+}
+
 
 
 
@@ -708,81 +708,10 @@ Interfaces Tessellation::angularInterfaces(Vector &x0, Vector &x1, Vector &tesse
 	
 }
 
-Interfaces Tessellation::retrieveInterfaces(Vector tessellationOrigin, CircularRegion &I, CircularRegion J, double dij, double radius){
-	double gij;
-	double eta;
-	double mu;
-	double entryPoint, exitPoint;
-	IntersectionPair ip;
-	Vector x0(3), x1(3);
-	Interfaces intf;
-	Interfaces intf1;
-	double baseAngleIJ;
-	double rotationalPartIJ;
-	double baseAngleJI;
-	double rotationalPartJI;
-	
-	
-	if(PHIInterpolation){
-		baseAngleIJ = dataPHI->interpolate(I.g_normalised,J.g_normalised,norm_dot(I.normal,J.normal));
-		rotationalPartIJ = rotationalAngle(I,J);
-		intf.out = baseAngleIJ + rotationalPartIJ;
-		if(intf.out>=M_PI) intf.out = (baseAngleIJ + rotationalPartIJ) - 2*M_PI;
-
-		intf.vectorOut = Vector(3);
-		intf.vectorOut(0)=0;
-		intf.vectorOut(1)=0;
-		intf.vectorOut(2)=0;
-		
-		//baseAngleJI = dataPHI->interpolate(J.g_normalised,I.g_normalised,norm_dot(J.normal,I.normal));
-		//rotationalPartJI = rotationalAngle(J,I);
-		intf.in = (-M_PI-baseAngleIJ) + rotationalPartIJ;
-		if(intf.in<=-M_PI) intf.in = (M_PI-baseAngleIJ) + rotationalPartIJ;
-		intf.vectorIn = Vector(3);
-		intf.vectorIn(0)=0;
-		intf.vectorIn(1)=0;
-		intf.vectorIn(2)=0;
-		
-		printf("gi %f gj %f cosrho %f\n",I.g_normalised,J.g_normalised,norm_dot(I.normal,J.normal));
-		printf("BASE ANGLE: %f %f ROTATIONAL PART: %f %f\n",baseAngleIJ,baseAngleJI,rotationalPartIJ,rotationalPartJI);
-		
-		//return intf;
-		
-	}
-	
-	
-	{
-		ip = determineIntersectionPoints(radius, I, J);
-		x0 = ip.k_j;
-		x1 = ip.j_k;
-		
-		
-		intf1 = angularInterfaces(x0,x1, tessellationOrigin, I);
-	}
-
-
-	
-	if(PHIInterpolation){
-		printf("TESTING: error:(%f %f) out: (%f %f) in: (%f %f) \n",abs(intf.out-intf1.out),abs(intf.in-intf1.in),intf.out,intf1.out,intf.in,intf1.in);
-		double threshold=0.1;
-		if(abs(intf.out-intf1.out) >= threshold || abs(intf.in-intf1.in) >= threshold){
-			printf("ABORTING\n");
-			//exit(-2);
-		}
-	}
-	
-	
-	
-	if(!PHIInterpolation) return intf1;
-	else return intf;
-	
-	
-	
-}
 
 
 
-double Tessellation::rotationalAngle(CircularRegion &I, CircularRegion &J){
+double Tessellation::rotationalAngle(Vector &tessellationOrigin, CircularRegion &I, CircularRegion &J){
 	Vector ex(3);
 	Vector ez(3);
 	Vector n0(3);
@@ -795,29 +724,39 @@ double Tessellation::rotationalAngle(CircularRegion &I, CircularRegion &J){
 	ez(0)=0;
 	ez(1)=0;
 	ez(2)=1;
+	double d;
 
-	ex(0)=1;
-	ex(1)=0;
-	ex(2)=0;
 	
+	d = dot(tessellationOrigin,I.normal);
 	
-	if(isInPositiveEpsilonRange(abs(dot(ex,I.normal)),1.0) ){
+	if(isWithinNumericalLimits(d,1.0)){
 		n0 = Vector(3);
 		n0(0) = 0;
 		n0(1) = 0;
 		n0(2) = 1;
+		printf("POSITIVE RANGE +1 %f\n",d);
 	}
-	else n0 = cross(ex,I.normal);
+	else if(isWithinNumericalLimits(d,-1.0)){
+		n0 = Vector(3);
+		n0(0) = 0;
+		n0(1) = 0;
+		n0(2) = -1;
+		printf("POSITIVE RANGE -1 %f\n",d);
+	}
+	else n0 = cross(tessellationOrigin,I.normal);
 	
 	n2 = cross(I.normal,n0);
 	
 	n1 = cross(I.normal, J.normal);
 	
-	sn = sgn(norm_dot(n1,n2));
+	s0 = sgn(norm_dot(n1,n2));
 	a = asin(norm_dot(n0,n1));
+	s1 = sgn(a);
 	
-	if(sn<0 && a>0) a = M_PI-a;
-	if(sn<0 && a<0) a = -M_PI-a;
+	//if(sn<0 && a>=0) a = M_PI-a;
+	//else if(sn<0 && a<0) a = -M_PI-a;
+	
+	a = -s0*(s1*(1-s0)*pi/2 - a);
 
 
 	
@@ -825,6 +764,118 @@ double Tessellation::rotationalAngle(CircularRegion &I, CircularRegion &J){
 	return a;
 	
 }
+
+
+
+Interfaces Tessellation::retrieveInterfaces(Vector &tessellationOrigin, CircularRegion &I, CircularRegion J, double dij, double radius){
+	double gij;
+	double eta;
+	double mu;
+	double entryPoint, exitPoint;
+	IntersectionPair ip;
+	Vector x0(3), x1(3);
+	Interfaces intf;
+	Interfaces intf1;
+	double rotationalPartIJ;
+	double rotationalPartJI;
+	double lambda_j, lambda_k, rho;
+	
+/*	
+	if(PHIInterpolation){
+		baseAngleIJ = dataPHI->interpolate(I.g_normalised,J.g_normalised,norm_dot(I.normal,J.normal));
+		intf.out = baseAngleIJ + rotationalPartIJ;
+		if(intf.out>=M_PI) intf.out = (baseAngleIJ + rotationalPartIJ) - 2*M_PI;
+
+		
+		printf("gi %f gj %f cosrho %f\n",I.g_normalised,J.g_normalised,norm_dot(I.normal,J.normal));
+		printf("BASE ANGLE: %f %f ROTATIONAL PART: %f %f\n",baseAngleIJ,baseAngleJI,rotationalPartIJ,rotationalPartJI);
+		
+		//return intf;
+		
+		
+		
+		intf.out = baseAngleIJ + rotationalPartIJ;
+		if(intf.out>=M_PI) intf.out = (baseAngleIJ + rotationalPartIJ) - 2*M_PI;
+
+		intf.vectorOut = Vector(3);
+		intf.vectorOut(0)=0;
+		intf.vectorOut(1)=0;
+		intf.vectorOut(2)=0;
+		
+		//baseAngleJI = dataPHI->interpolate(J.g_normalised,I.g_normalised,norm_dot(J.normal,I.normal));
+		//rotationalPartJI = rotationalAngle(J,I);
+		intf.in = (-M_PI-baseAngleIJ) + rotationalPartIJ;
+		if(intf.in<=-M_PI) intf.in = (M_PI-baseAngleIJ) + rotationalPartIJ;
+		
+		
+	}
+*/	
+	
+	lambda_j = acos(I.g_normalised);
+	lambda_k = acos(J.g_normalised);
+	rho = acos(norm_dot(I.normal,J.normal));
+	
+	eta = M_PI/2 - acos(-(1/tan(lambda_j))*(1/tan(rho))+cos(lambda_k)*(1/sin(lambda_j))*(1/sin(rho)));
+	
+	printf("VECTORS (%f, %f, %f) (%f, %f, %f) (%f, %f, %f)\n",I.normal(0),I.normal(1),I.normal(2),J.normal(0),J.normal(1),J.normal(2), tessellationOrigin(0), tessellationOrigin(1), tessellationOrigin(2));
+	
+	rotationalPartIJ = rotationalAngle(tessellationOrigin,I,J);
+	
+	if(I.form != CONVEX){
+		if(rotationalPartIJ>=0)
+			rotationalPartIJ = -M_PI + rotationalPartIJ;
+	}
+
+	
+	intf.vectorOut = Vector(3);
+	intf.vectorOut(0)=0;
+	intf.vectorOut(1)=0;
+	intf.vectorOut(2)=0;
+	intf.out = eta + rotationalPartIJ;
+	if(intf.out>=M_PI) intf.out = (eta + rotationalPartIJ) - 2*M_PI;
+	
+	//baseAngleJI = dataPHI->interpolate(J.g_normalised,I.g_normalised,norm_dot(J.normal,I.normal));
+	//rotationalPartJI = rotationalAngle(J,I);
+	
+	intf.in = (-M_PI-eta) + rotationalPartIJ;
+	if(intf.in<=-M_PI) intf.in = (M_PI-eta) + rotationalPartIJ;
+	intf.vectorIn = Vector(3);
+	intf.vectorIn(0)=0;
+	intf.vectorIn(1)=0;
+	intf.vectorIn(2)=0;
+	
+	printf("gi %f gj %f cosrho %f\n",I.g_normalised,J.g_normalised,norm_dot(I.normal,J.normal));
+	printf("BASE ANGLE: %f ROTATIONAL PART: %f\n",eta,rotationalPartIJ);
+	
+	
+	
+	
+	
+	
+	ip = determineIntersectionPoints(radius, I, J);
+	x0 = ip.k_j;
+	x1 = ip.j_k;
+	
+	
+	intf1 = angularInterfaces(x0,x1, tessellationOrigin, I);
+
+
+	
+	printf("TESTING: error:(%f %f) out: (%f %f) in: (%f %f) \n",abs(intf.out-intf1.out),abs(intf.in-intf1.in),intf.out,intf1.out,intf.in,intf1.in);
+	double threshold=0.1;
+	if(min(abs(intf.out-intf1.out),2*M_PI - abs(intf.out-intf1.out)) >= threshold || abs(intf.in-intf1.in) >= threshold){
+		printf("ABORTING\n");
+		exit(-2);
+	}
+	
+	
+	
+	return intf;
+	
+	
+	
+}
+
 
 
 
@@ -1316,7 +1367,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 				
 				int cid1=abs(x.id1)-1;
 				double ank = getAngle(circles[cid0].normal, circles[cid1].normal);
-				printf("VERIFICATION.. g0: %f g1: %f cosrho: %f PHI0: %f PHI1: %f rotational part: %f n0(%f, %f, %f) n1(%f, %f, %f)\n",circles[cid0].g/radius,circles[cid1].g/radius, cos(ank), sasaNode.angle0,  sasaNode.angle1, rotationalAngle(circles[cid0],circles[cid1]),circles[cid0].normal(0),circles[cid0].normal(1),circles[cid0].normal(2),circles[cid1].normal(0),circles[cid1].normal(1),circles[cid1].normal(2)); 
+				printf("VERIFICATION.. g0: %f g1: %f cosrho: %f PHI0: %f PHI1: %f rotational part: %f n0(%f, %f, %f) n1(%f, %f, %f)\n",circles[cid0].g/radius,circles[cid1].g/radius, cos(ank), sasaNode.angle0,  sasaNode.angle1, rotationalAngle(tessellationOrigin, circles[cid0],circles[cid1]),circles[cid0].normal(0),circles[cid0].normal(1),circles[cid0].normal(2),circles[cid1].normal(0),circles[cid1].normal(1),circles[cid1].normal(2)); 
 				
 				
 				
