@@ -292,8 +292,6 @@ private:
 	//#atoms #circularregions
 	//#atoms #sasas #circularregions
 	SASAsForMolecule sasasForMolecule;
-	bool PHIInterpolation;
-	Interpolation *dataPHI;
 
 	CircularRegionsPerAtom coverHemisphere(Vector tessellationOrigin, double radius, CircularRegionsPerAtom circles, CircularInterfaceForm form);
 	void buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<double> &radii, SASAsForMolecule &sasas, bool split);
@@ -317,7 +315,7 @@ private:
 	double angularInterface(Vector &x0, Vector &v, Vector &p0, Vector &p1);
 	void measurementPoints(Vector &p0, Vector &p1, Vector &tessellationOrigin, CircularRegion &I);
 	Interfaces angularInterfaces(Vector &x0, Vector &x1, Vector &tessellationOrigin, CircularRegion &I);
-	Interfaces retrieveInterfaces(Vector tessellationOrigin, CircularRegion &I, CircularRegion J, double dij, double radius);
+	Interfaces retrieveInterfaces(Vector &tessellationOrigin, CircularRegion &I, CircularRegion J, double dij, double radius);
 	IntersectionBranches::iterator increaseBranchInterator(IntersectionBranches::iterator it);
 	IntersectionBranches::iterator decreaseBranchInterator(IntersectionBranches::iterator it);
 	IntersectionBranches::iterator increaseBranchInterator(multimap<double, IntersectionBranch>::iterator it, int ignore);
@@ -333,7 +331,8 @@ private:
 	void outputGaussBonnetData(string filename, double radius, CircularRegionsPerAtom &circles, SASAs &sasas, IntersectionGraph &intersectionGraph);
 	void deleteIntersectionPoint(IntersectionBranches::iterator &it,IntersectionGraph &intersectionGraph);
 	void depleteCircularRegions(Vector tessellationOrigin, double radius, vector<CircularRegion> &circles);
-	double rotationalAngle(CircularRegion &I, CircularRegion &J);
+	double rotationalAngle(Vector &tessellationOrigin, CircularRegion &I, CircularRegion &J);
+	bool isWithinNumericalLimits(double x, double l);
 
 	
 	
