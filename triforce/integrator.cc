@@ -16,9 +16,19 @@ IntegratorTriforce::IntegratorTriforce(){
 
 
 
-IntegratorTriforce::IntegratorTriforce(Interpolation *dataConvex, Interpolation *dataConcave){
+IntegratorTriforce::IntegratorTriforce(	Interpolation *dataConvex, Interpolation *forcesConvex0, Interpolation *forcesConvex1, Interpolation *forcesConvex2,
+					Interpolation *dataConcave, Interpolation *forcesConcave1, Interpolation *forcesConcave2, Interpolation *forcesConcave3)
+{
 	this->dataConvex = dataConvex;
 	this->dataConcave = dataConcave;
+	
+	forcesConvex.push_back(forcesConvex0);
+	forcesConvex.push_back(forcesConvex1);
+	forcesConvex.push_back(forcesConvex2);
+
+	forcesConcave.push_back(forcesConcave0);
+	forcesConcave.push_back(forcesConcave1);
+	forcesConcave.push_back(forcesConcave2);
 	
 }
 
@@ -38,6 +48,8 @@ double IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 	
 	
 	radii = molecule->fetchRadii();
+	forces = molecule->fetchForcePointers();
+	areas = molecule->fetchAreaPointers();
 	
 	for(int i=0; i<radii->size();i++){
 		radius = radii->at(i);
@@ -52,6 +64,7 @@ double IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 	for(int i=0;i<sasas.size();++i){
 		radius = sasas[i].radius;
 		a = radius*radius * integrateAtomicSASA(sasas[i]);
+		areas[i] = a;
 		area += a;
 		
 		

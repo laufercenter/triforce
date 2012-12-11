@@ -6,14 +6,25 @@ Tessellation::Tessellation(Molecule &m){
 }
 
 
+vector<double*> &Tessellation::fetchForcePointers(){
+	return forces;
+}
+
+vector<vector<double*> > &Tessellation::fetchAreaPointers(){
+	return areas;
+}
+
+
 
 void Tessellation::build(bool split){
 	CircularRegionsPerAtom circlesPerAtom;
 	sasasForMolecule.clear();
 	
 	//molecule.update();
-	atoms = molecule.coordinates();
+	atoms = molecule.fetchCoordinates();
 	radii = molecule.fetchRadii();
+	forces = molecule.fetchForcePointers();
+	areas = molecule.fetchAreaPointers();
 	
 	for(int i=0; i<radii->size();i++){
 		double radius = radii->at(i);
@@ -26,7 +37,7 @@ void Tessellation::build(bool split){
 	//iterate over all atoms and build the tessellation for each of them
 	//for(int i=0; i<atoms.size(); ++i){
 		int i=0;
-		buildGaussBonnetPath(i, atoms, *radii, sasasForMolecule, split);
+		buildGaussBonnetPath(i, atoms, radii, sasasForMolecule, split);
 		
 		
 		

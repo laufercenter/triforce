@@ -283,12 +283,18 @@ public:
 	void build(bool split);
 	SASAsForMolecule &sasas();
 	
+	vector<vector<double*> > &fetchForcePointers();
+	vector<double*> &fetchAreaPointers();
+
+	
 	
 private:
 	
 	Molecule molecule;
 	vector<Vector> atoms;
-	vector<double> *radii;
+	vector<double> radii;
+	vector<double*> areas;
+	vector<vector<double*> > forces;
 	//#atoms #circularregions
 	//#atoms #sasas #circularregions
 	SASAsForMolecule sasasForMolecule;
