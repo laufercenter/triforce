@@ -38,7 +38,7 @@ typedef struct
 	double* y;
 	double* z;
 }
-CoordinatesPointers; 
+AtomicPointers; 
 
 
 enum ForceField {
@@ -54,12 +54,17 @@ class Molecule{
 public:
 	Molecule();
 	Molecule(Topology topology);
-	void addAtom(double* x, double* y, double* z, string type, int i=-1);
+	void addAtom(double* x, double* y, double* z, double* area, double* forceX, double* forceY, double* forceZ, string type, int i=-1);
+	void addAtom(double* x, double* y, double* z, double* area, double* forceX, double* forceY, double* forceZ, double sigma, double epsilon, int i=-1);
 	void update();
-	vector<Vector> coordinates();
 	void addRealAtom(double x, double y, double z, string type, int i=-1);
+	void addRealAtom(double x, double y, double z, double sigma, double epsilon, int i=-1);
+	
 	void print();
-	vector<double> *fetchRadii();
+	vector<Vector> &fetchCoordinates();
+	vector<double> &fetchRadii();
+	vector<double*> &fetchForcePointers();
+	vector<vector<double*> >&fetchAreaPointers();
 	
 private:
 	
@@ -69,12 +74,25 @@ private:
 
 	
 	Topology topology;
-	vector<CoordinatesPointers> coordinatesPointers;
+	vector<AtomicPointers> atomicPointers;
 	vector<Vector> atoms;
 	vector<double> sigmas;
 	vector<double> radii;
 	vector<double> epsilons;
+	vector<double*> areas;
+	vector<vector<double*> >forces;
+	
+	
 	ForceField forcefield;
+	
+	
+	//this will only be needed for usage with the tool. Amber and Adun will provide their own structures
+	vector<double> realArea;
+	vector<double> realForceX;
+	vector<double> realForceY;
+	vector<double> realForceZ;
+	
+
 	
 };
 

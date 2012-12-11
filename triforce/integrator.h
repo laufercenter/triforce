@@ -52,13 +52,19 @@ public:
 	double integrate(Molecule *molecule, Tessellation *tessellation);
 	void outputIntegrationData(string filename, Vector &integrationOrigin, list<IntersectionNode*> &frontHemisphere, list<IntersectionNode*> &backHemisphere);
 	
-	
+
 	
 private:
 	Interpolation *dataConvex;
+	vector<Interpolation*> forcesConvex;
 	Interpolation *dataConcave;
+	vector<Interpolation*> forcesConcave;
+	
+	
 	Tessellation* tessellation;
 	Molecule* molecule;
+	vector<double*> areas;
+	vector<vector<double*> > forces;
 	
 	//void splitSASA(list<IntersectionNode*> &sasa, vector<CircularRegion> &circles, int c, Vector &integrationOrigin, double radius, list<IntersectionNode*>** frontHemisphere, list<IntersectionNode*>** backHemisphere,  IntersectionGraph &intersectionGraph);
 	//Vector halfSphereIntersectionPoint(Vector &integrationOrigin, CircularRegion &c, double radius, int sign);
