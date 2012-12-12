@@ -55,10 +55,8 @@ public:
 
 	
 private:
-	Interpolation *dataConvex;
-	vector<Interpolation*> forcesConvex;
-	Interpolation *dataConcave;
-	vector<Interpolation*> forcesConcave;
+	vector<Interpolation*> convex;
+	vector<Interpolation*> concave;
 	
 	
 	Tessellation* tessellation;
