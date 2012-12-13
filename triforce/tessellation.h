@@ -185,11 +185,12 @@ typedef struct
 	int index;
 	Vector vector;
 	Vector normal;
-	double openingAngle;
+	double lambda;
 	double g;
 	double g_normalised;
-	double a;
 	double sphereRadius;
+	double d;
+	Vector dlambda_dx;
 //	double radius;
 	map<int,CircularIntersection> circularIntersections;
 	IntersectionBranches intersectionBranches;
@@ -200,9 +201,9 @@ typedef struct
 		
 	
 }
-CircularRegion;
+CircularInterface;
 
-typedef vector<CircularRegion> CircularRegionsPerAtom;
+typedef vector<CircularInterface> CircularInterfacesPerAtom;
 
 
 typedef struct
@@ -212,7 +213,7 @@ typedef struct
 	Vector vector;
 	double angle0;
 	double angle1;
-	Vector normalForCircularRegion;
+	Vector normalForCircularInterface;
 	double lambda;
 	CircularInterfaceForm form;
 }
@@ -299,7 +300,8 @@ private:
 	//#atoms #sasas #circularregions
 	SASAsForMolecule sasasForMolecule;
 
-	CircularRegionsPerAtom coverHemisphere(Vector tessellationOrigin, double radius, CircularRegionsPerAtom circles, CircularInterfaceForm form);
+	
+	CircularInterfacesPerAtom coverHemisphere(Vector tessellationOrigin, double radius, CircularInterfacesPerAtom circles, CircularInterfaceForm form);
 	void buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<double> &radii, SASAsForMolecule &sasas, bool split);
 	double vsign(double v);
 	double cot(double a);
@@ -308,36 +310,31 @@ private:
 	double getAngle(Vector &a, Vector &b);
 	bool isZero(double v);
 	bool isInPositiveEpsilonRange(double v, double eps);
-	void determineProjection(Vector &origin, double radius, CircularRegion &circle);
-	IntersectionPair determineIntersectionPoints(double radius, CircularRegion &K, CircularRegion &J);
-	void makeCircularRegions(int i,Vector &origin, double radius, vector<vec> &atoms, vector<double> &radii, vector<CircularRegion> &circles);
-	int filterCircularRegions(Vector tessellationOrigin, double radius, vector<CircularRegion> &circles);
+	void determineProjection(Vector &origin, double radius, CircularInterface &circle);
+	IntersectionPair determineIntersectionPoints(double radius, CircularInterface &K, CircularInterface &J);
+	void makeCircularInterfaces(int i,Vector &origin, double radius, vector<vec> &atoms, vector<double> &radii, vector<CircularInterface> &circles);
+	int filterCircularInterfaces(Vector tessellationOrigin, double radius, vector<CircularInterface> &circles);
 	void outputGaussBonnetPath(SASA &points);
-	void reindexCircularRegions(CircularRegionsPerAtom &circles);
-	void insertFakeIntersectionPoints(CircularRegion &I, IntersectionGraph &intersectionGraph, Vector &tessellationOrigin);
+	void reindexCircularInterfaces(CircularInterfacesPerAtom &circles);
+	void insertArtificialIntersectionPoints(CircularInterface &I, IntersectionGraph &intersectionGraph, Vector &tessellationOrigin);
 	int sgn(double d);
-	void determineCircularIntersections(CircularRegionsPerAtom &circles);
-	double complLongAngle(Vector &vi, Vector &vj, Vector &vk);
-	double angularInterface(Vector &x0, Vector &v, Vector &p0, Vector &p1);
-	void measurementPoints(Vector &p0, Vector &p1, Vector &tessellationOrigin, CircularRegion &I);
-	Interfaces angularInterfaces(Vector &x0, Vector &x1, Vector &tessellationOrigin, CircularRegion &I);
-	Interfaces retrieveInterfaces(Vector &tessellationOrigin, CircularRegion &I, CircularRegion J, double dij, double radius);
+	void determineCircularIntersections(CircularInterfacesPerAtom &circles);
+	Interfaces retrieveInterfaces(Vector &tessellationOrigin, CircularInterface &I, CircularInterface J, double dij, double radius);
 	IntersectionBranches::iterator increaseBranchInterator(IntersectionBranches::iterator it);
 	IntersectionBranches::iterator decreaseBranchInterator(IntersectionBranches::iterator it);
 	IntersectionBranches::iterator increaseBranchInterator(multimap<double, IntersectionBranch>::iterator it, int ignore);
 	IntersectionBranches::iterator decreaseBranchInterator(IntersectionBranches::iterator it, int ignore);
-	void disconnectIntersectionPoint(IntersectionNode &a);
 	void connectIntersectionPoints(IntersectionNode &a, IntersectionNode &b, IntersectionGraph &intersectionGraph);
 	void createIntersectionNode(IntersectionAddress &address, IntersectionGraph &intersectionGraph);
 	void createIntersectionNode(int id0, int id1, IntersectionGraph &intersectionGraph);
-	void createIntersectionBranch(IntersectionAddress &address, Interfaces interfacesI, Interfaces interfacesJ, CircularRegion &I, CircularRegion &J, IntersectionGraph &intersectionGraph);
+	void createIntersectionBranch(IntersectionAddress &address, Interfaces interfacesI, Interfaces interfacesJ, CircularInterface &I, CircularInterface &J, IntersectionGraph &intersectionGraph);
 	void printBranch(const char* s, multimap<double, IntersectionBranch>::iterator &it);
 	void printIntersectionGraph(IntersectionGraph &g);
-	void buildIntersectionGraph(double radius, Vector &tessellationOrigin, CircularRegionsPerAtom &circles, SASAs &sasas, Hemisphere hemisphere, string filename);
-	void outputGaussBonnetData(string filename, double radius, CircularRegionsPerAtom &circles, SASAs &sasas, IntersectionGraph &intersectionGraph);
+	void buildIntersectionGraph(double radius, Vector &tessellationOrigin, CircularInterfacesPerAtom &circles, SASAs &sasas, Hemisphere hemisphere, string filename);
+	void outputGaussBonnetData(string filename, double radius, CircularInterfacesPerAtom &circles, SASAs &sasas, IntersectionGraph &intersectionGraph);
 	void deleteIntersectionPoint(IntersectionBranches::iterator &it,IntersectionGraph &intersectionGraph);
-	void depleteCircularRegions(Vector tessellationOrigin, double radius, vector<CircularRegion> &circles);
-	double rotationalAngle(Vector &tessellationOrigin, CircularRegion &I, CircularRegion &J);
+	void depleteCircularInterfaces(Vector tessellationOrigin, double radius, vector<CircularInterface> &circles);
+	double rotationalAngle(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J);
 	bool isWithinNumericalLimits(double x, double l);
 
 	
