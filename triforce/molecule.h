@@ -63,8 +63,8 @@ public:
 	void print();
 	vector<Vector> &fetchCoordinates();
 	vector<double> &fetchRadii();
-	vector<double*> &fetchForcePointers();
-	vector<vector<double*> >&fetchAreaPointers();
+	vector<double*> &fetchAreaPointers();
+	vector<vector<double*> > &fetchForcePointers();
 	
 private:
 	
