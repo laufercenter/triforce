@@ -289,6 +289,7 @@ Vector IntegratorTriforce::integrateTriangle(SASANode &x0, SASANode &x1, Vector 
 	double phi0, phi1, phi0a, phi1a, phi0b, phi1b;
 	Vector a(4);
 	Vector result(4);
+	Vector force(3);
 	
 	
 	area = 0;
@@ -297,16 +298,17 @@ Vector IntegratorTriforce::integrateTriangle(SASANode &x0, SASANode &x1, Vector 
 	n = x1.normalForCircularRegion;
 	if(x1.form!=CONVEX)
 		n = -n;
-	psi = angle(n, integrationOrigin);
+	//psi = angle(n, integrationOrigin);
+	psi = x1.psi.rotation;
 	
 	//calculate lambda
-	lambda = x1.lambda;
+	lambda = x1.lambda.rotation;
 	
 	
 	//printf("SEGMENT (%d,%d) - (%d,%d)\n",x0.id0,x0.id1,x1.id0,x1.id1);
 	
-	PHI0 = x0.angle1;
-	PHI1 = x1.angle0;
+	PHI0 = x0.rotation1.rotation;
+	PHI1 = x1.rotation0.rotation;
 	
 	aPHI0 = abs(PHI0);
 	aPHI1 = abs(PHI1);
@@ -558,8 +560,13 @@ Vector IntegratorTriforce::integrateTriangle(SASANode &x0, SASANode &x1, Vector 
 	
 	
 	
-	if(x1.form!=CONVEX) result=-result;
-	//printf("SUBTOTAL AREA %f\n",area);
+	if(x1.form!=CONVEX) s = -1;
+	else s=1;
+	
+	
+	result= s*result;
+	
+	force(0)
 	
 	
 	

@@ -88,14 +88,23 @@ typedef struct
 }
 CircularIntersection;
 
+
 typedef struct
 {
-	double out;
-	Vector vectorOut;
-	double in;
-	Vector vectorIn;
+	double rotation;
+	Vector drotation_dxi;
+	Vector drotation_dxj;
+	Vector drotation_dxdelta;
 }
-Interfaces;
+Rotation;
+
+
+typedef struct
+{
+	Rotation out;
+	Rotation in;
+}
+PHIContainer;
 
 typedef struct
 {
@@ -109,8 +118,8 @@ typedef struct
 	int prev1;
 	
 	Vector vector;
-	double angle0;
-	double angle1;
+	Rotation rotation0;
+	Rotation rotation1;
 	
 	bool visited;
 }
@@ -190,7 +199,11 @@ typedef struct
 	double g_normalised;
 	double sphereRadius;
 	double d;
-	Vector dlambda_dx;
+	Rotation lambda;
+	Rotation psi;
+	Matrix dmu_dx;
+	
+	
 //	double radius;
 	map<int,CircularIntersection> circularIntersections;
 	IntersectionBranches intersectionBranches;
@@ -211,8 +224,8 @@ typedef struct
 	int id0;
 	int id1;
 	Vector vector;
-	double angle0;
-	double angle1;
+	Rotation rotation0;
+	Rotation rotation1;
 	Vector normalForCircularInterface;
 	double lambda;
 	CircularInterfaceForm form;
@@ -319,7 +332,7 @@ private:
 	void insertArtificialIntersectionPoints(CircularInterface &I, IntersectionGraph &intersectionGraph, Vector &tessellationOrigin);
 	int sgn(double d);
 	void determineCircularIntersections(CircularInterfacesPerAtom &circles);
-	Interfaces retrieveInterfaces(Vector &tessellationOrigin, CircularInterface &I, CircularInterface J, double dij, double radius);
+	PHIContainer calculatePHI(Vector &tessellationOrigin, CircularInterface &I, CircularInterface J, double dij, double radius);
 	IntersectionBranches::iterator increaseBranchInterator(IntersectionBranches::iterator it);
 	IntersectionBranches::iterator decreaseBranchInterator(IntersectionBranches::iterator it);
 	IntersectionBranches::iterator increaseBranchInterator(multimap<double, IntersectionBranch>::iterator it, int ignore);
