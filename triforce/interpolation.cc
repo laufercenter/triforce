@@ -39,7 +39,7 @@ double Interpolation::taylorExtension(int i_PHI, int i_psi, int i_lambda, Vector
 	
 	//printf("taylor extension (%d %d %d): %f\n",i_PHI,i_psi,i_lambda, v);
 	
-	printf("taylor extension (%d %d %d): d:%f grad:(%f %f %f) v:%f\n",i_PHI,i_psi,i_lambda,f,g(0),g(1),g(2), v);
+	//printf("taylor extension (%d %d %d): d:%f grad:(%f %f %f) v:%f\n",i_PHI,i_psi,i_lambda,f,g(0),g(1),g(2), v);
 	
 	
 	//v = dataConvex[i_PHI, i_psi, i_lambda] + c(t(gradientsConvex[,i_PHI, i_psi, i_lambda]) %*% (x-p)) + 0.5 *(c(t((x-p)) %*% hessiansConvex[,,i_PHI, i_psi, i_lambda] %*% (x-p)))
@@ -113,7 +113,7 @@ double Interpolation::multiPointTaylor(Vector &x){
 		
 		double t = taylorExtension(sp[i],x);
 		
-		printf("taylor %d: %f [%f]\n",i,t,w[i]);
+		//printf("taylor %d: %f [%f]\n",i,t,w[i]);
 		v+=w[i]*t;
 	}
 	
@@ -127,7 +127,7 @@ double Interpolation::multiPointTaylor(Vector &x){
 	}
 	
 	
-	printf("---- %f\n",v);
+	//printf("---- %f\n",v);
 	
 	return v;
 }

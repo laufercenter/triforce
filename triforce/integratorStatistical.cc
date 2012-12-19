@@ -76,12 +76,12 @@ double IntegratorStatistical::integrateAtomicSASA(SASAsForAtom sasasForAtom){
 
 		for(int i=0; !occluded && i<sasasForAtom.sasas.size();++i){
 			for(int j=0; !occluded && j<sasasForAtom.sasas[i].sasa.size(); ++j){
-				n = sasasForAtom.sasas[i].sasa[j].normalForCircularRegion;
-				l = sasasForAtom.sasas[i].sasa[j].lambda;
+				n = sasasForAtom.sasas[i].sasa[j].normalForCircularInterface;
+				l = sasasForAtom.sasas[i].sasa[j].lambda.rotation;
 				form = sasasForAtom.sasas[i].sasa[j].form;
 				
 				
-				//printf("C[%d,%d] (%f,%f,%f) {%f}\n",sasasForAtom.sasas[i].sasa[j].id0,sasasForAtom.sasas[i].sasa[j].id1,sasasForAtom.sasas[i].sasa[j].normalForCircularRegion(0),sasasForAtom.sasas[i].sasa[j].normalForCircularRegion(1),sasasForAtom.sasas[i].sasa[j].normalForCircularRegion(2),sasasForAtom.sasas[i].sasa[j].lambda);
+				//printf("C[%d,%d] (%f,%f,%f) {%f}\n",sasasForAtom.sasas[i].sasa[j].id0,sasasForAtom.sasas[i].sasa[j].id1,sasasForAtom.sasas[i].sasa[j].normalForCircularInterface(0),sasasForAtom.sasas[i].sasa[j].normalForCircularInterface(1),sasasForAtom.sasas[i].sasa[j].normalForCircularInterface(2),sasasForAtom.sasas[i].sasa[j].lambda);
 				
 				if(form != SPLITTER){
 					

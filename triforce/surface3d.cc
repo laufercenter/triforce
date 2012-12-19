@@ -13,7 +13,7 @@ using namespace boost;
 #define THRESHOLD_NUMERICAL 0.00001
 
 
-Surface3D::Surface3D(Data3D* d): Data3D()
+Surface3D::Surface3D(Data3D* d)
 {
 	parameter0Dim=d->parameter0Dim;
 	parameter1Dim=d->parameter1Dim;
@@ -41,8 +41,21 @@ void Surface3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r,
 	int i,j,k;
 	VectorInt v(3);
 	bool neg;
-	
+	int discontinuity;
+	double vpsi,vlambda;
 	closestGridPoint(x, v, lengths);
+	
+	//decide on which side of the discontinuities x lies.
+	
+	if(x(1) < x(2)){
+		discontinuity = 0;
+	}
+	else if(x(1)+x(2) < M_PI){
+		discontinuity = 1;
+	}
+	else{
+		discontinuity = 2;
+	}
 	
 	if((*headerParameter1)[v(1)]+(*headerParameter2)[v(2)] < M_PI && !isWithinNumericalLimits((*headerParameter1)[v(1)]+(*headerParameter2)[v(2)],M_PI)) neg=true;
 	else neg=false;
@@ -60,18 +73,30 @@ void Surface3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r,
 				v2(2)=v(2)+k;
 				if(v2(0)<parameter0Dim && v2(1)<parameter1Dim && v2(2)<parameter2Dim){
 					if(!isnan((*data)[v2(0)][v2(1)][v2(2)])){
-						if(!neg || ((*headerParameter1)[v2(1)]+(*headerParameter2)[v2(2)]<M_PI && !isWithinNumericalLimits((*headerParameter1)[v2(1)]+(*headerParameter2)[v2(2)],M_PI))){
-							r.push_back(v2);
-							printf("ACCEPTED %d %d %d (%f %f [%d/%d])\n",v2(0),v2(1),v2(2),(*headerParameter1)[v2(1)],(*headerParameter2)[v2(2)],neg,isWithinNumericalLimits((*headerParameter1)[v2(1)]+(*headerParameter2)[v2(2)],M_PI));
+						vpsi = (*headerParameter1)[v2(1)];
+						vlambda = (*headerParameter2)[v2(2)];
+						
+						if(discontinuity==0){
+							if(vpsi < vlambda) r.push_back(v2);
 						}
-						else	printf("REJECTED 0 %d %d %d (%f %f [%d/%d])\n",v2(0),v2(1),v2(2),(*headerParameter1)[v2(1)],(*headerParameter2)[v2(2)],neg,isWithinNumericalLimits((*headerParameter1)[v2(1)]+(*headerParameter2)[v2(2)],M_PI));
+						else if(discontinuity==1){
+							if(vpsi >= vlambda && vpsi + vlambda < M_PI) r.push_back(v2);
+						}
+						else{
+							if(vpsi >= vlambda && vpsi + vlambda >= M_PI) r.push_back(v2);
+						}
+							//printf("ACCEPTED %d %d %d (%f %f [%d/%d])\n",v2(0),v2(1),v2(2),(*headerParameter1)[v2(1)],(*headerParameter2)[v2(2)],neg,isWithinNumericalLimits((*headerParameter1)[v2(1)]+(*headerParameter2)[v2(2)],M_PI));
+						
+						//else	printf("REJECTED 0 %d %d %d (%f %f [%d/%d])\n",v2(0),v2(1),v2(2),(*headerParameter1)[v2(1)],(*headerParameter2)[v2(2)],neg,isWithinNumericalLimits((*headerParameter1)[v2(1)]+(*headerParameter2)[v2(2)],M_PI));
 
 					}
-					else	printf("REJECTED 1 %d %d %d\n",v2(0),v2(1),v2(2));
+					//else	printf("REJECTED 1 %d %d %d\n",v2(0),v2(1),v2(2));
 
 				}
-				else	printf("PRE-REJECTED 2 %d %d %d\n",v2(0),v2(1),v2(2));
+				//else	printf("PRE-REJECTED 2 %d %d %d\n",v2(0),v2(1),v2(2));
 			}
+			
+			
 			
 	if(r.size()==0){
 		for(i=0;i<2;++i)
@@ -82,7 +107,7 @@ void Surface3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r,
 					v2(2)=v(2)+k;
 					if(v2(0)<parameter0Dim && v2(1)<parameter1Dim && v2(2)<parameter2Dim){
 						if(!isnan((*data)[v2(0)][v2(1)][v2(2)])){
-							printf("RE-ACCEPTED %d %d %d (%f %f [%d/%d])\n",v2(0),v2(1),v2(2),(*headerParameter1)[v2(1)],(*headerParameter2)[v2(2)],neg,isWithinNumericalLimits((*headerParameter1)[v2(1)]+(*headerParameter2)[v2(2)],M_PI));
+							//printf("RE-ACCEPTED %d %d %d (%f %f [%d/%d])\n",v2(0),v2(1),v2(2),(*headerParameter1)[v2(1)],(*headerParameter2)[v2(2)],neg,isWithinNumericalLimits((*headerParameter1)[v2(1)]+(*headerParameter2)[v2(2)],M_PI));
 								r.push_back(v2);
 						}
 

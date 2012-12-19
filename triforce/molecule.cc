@@ -8,7 +8,7 @@
 
 
 Molecule::Molecule(){
-	this->topology = new Topology();
+	this->topology = *(new Topology());
 	
 }
 
@@ -23,6 +23,7 @@ Molecule::Molecule(Topology topology){
 
 
 void Molecule::addRealAtom(double x, double y, double z, string type, int i){
+	Parameters p;
 	p=topology.getAssociatedCell(string2UpperCase(type));
 	
 	addRealAtom(x,y,z,p.sigma,p.epsilon,i);
@@ -50,7 +51,7 @@ void Molecule::addRealAtom(double x, double y, double z, double sigma, double ep
 
 
 void Molecule::constructAtoms(int end){
-	CoordinatesPointers c;
+	AtomicPointers c;
 	if(end>=atomicPointers.size()){
 		atomicPointers.resize(end+1,c);
 		atoms.resize(end+1,Vector(3));
@@ -58,15 +59,16 @@ void Molecule::constructAtoms(int end){
 		epsilons.resize(end+1,0);
 		radii.resize(end+1,0);
 		areas.resize(end+1,0);
-		forces.resize(end+1,0);
+		forces.resize(end+1,vector<double*>());
 	}
 }
 
 
 void Molecule::addAtom(double* x, double* y, double* z, double* area, double* forceX, double* forceY, double* forceZ, string type, int i){
+	Parameters p;
 	p=topology.getAssociatedCell(string2UpperCase(type));
 	
-	addAtom(x,y,z,p.sigma,p.epsilon,i);	
+	addAtom(x,y,z,area, forceX, forceY, forceZ, p.sigma,p.epsilon,i);
 	
 	
 }
@@ -119,15 +121,15 @@ vector<Vector> &Molecule::fetchCoordinates(){
 	return atoms;
 }
 vector<double> &Molecule::fetchRadii(){
-	return &radii;
+	return radii;
 }
 
 vector<vector<double*> > &Molecule::fetchForcePointers(){
-	return &forces;
+	return forces;
 }
 
 vector<double*> &Molecule::fetchAreaPointers(){
-	return &areas;
+	return areas;
 }
 
 

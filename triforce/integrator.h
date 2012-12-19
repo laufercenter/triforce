@@ -52,17 +52,13 @@ public:
 	double integrate(Molecule *molecule, Tessellation *tessellation);
 	void outputIntegrationData(string filename, Vector &integrationOrigin, list<IntersectionNode*> &frontHemisphere, list<IntersectionNode*> &backHemisphere);
 	
-
+	
 	
 private:
-	vector<Interpolation*> convex;
-	vector<Interpolation*> concave;
-	
-	
+	Interpolation *dataConvex;
+	Interpolation *dataConcave;
 	Tessellation* tessellation;
 	Molecule* molecule;
-	vector<double*> areas;
-	vector<vector<double*> > forces;
 	
 	//void splitSASA(list<IntersectionNode*> &sasa, vector<CircularRegion> &circles, int c, Vector &integrationOrigin, double radius, list<IntersectionNode*>** frontHemisphere, list<IntersectionNode*>** backHemisphere,  IntersectionGraph &intersectionGraph);
 	//Vector halfSphereIntersectionPoint(Vector &integrationOrigin, CircularRegion &c, double radius, int sign);
@@ -72,6 +68,7 @@ private:
 	double complLongAngle(Vector &n, Vector &o, Vector &a);
 	double angle(Vector &a, Vector &b);
 	double integrateTriangle(SASANode &x0, SASANode &x1, Vector integrationOrigin, double &totalAngle);
+	double integrateTriangle2(SASANode &x0, SASANode &x1, Vector integrationOrigin, double &totalAngle);
 	//double integrateHemisphere(list<IntersectionNode*> &sasa, Vector &integrationOrigin, vector<CircularRegion> &circles, int ci);
 	double integrateAtomicSASA(SASAsForAtom sasasForAtom);
 	double integrateSASA(SASA &s);
@@ -80,6 +77,7 @@ private:
 	bool isInPositiveEpsilonRange(double v, double eps);
 	mat33 rotz(double theta);
 	double PHI2phi2(Vector integrationOrigin, double PHI, double psi, double lambda);
+	double calculateArea(double PHI, double psi, double lambda, double maxArea);
 	
 	
 };

@@ -142,13 +142,12 @@ void Data3D::closestGridPoint(Vector &x, VectorInt &p, Vector &l){
 	
 	i_parameter2 = static_cast<int>(floor((x(2)-minParameter2)/cellLengthParameter2));
 	
-	printf("CLOSESTGRRRID: %f %f %f\n",x(2),x(2)-minParameter2,(x(2)-minParameter2)/cellLengthParameter2);
+	//printf("CLOSESTGRRRID: %f %f %f\n",x(2),x(2)-minParameter2,(x(2)-minParameter2)/cellLengthParameter2);
 	
 	p(0) = i_parameter0;
 	p(1) = i_parameter1;
 	p(2) = i_parameter2;
 }
-
 
 
 
