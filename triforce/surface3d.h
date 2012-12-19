@@ -26,7 +26,6 @@ class Surface3D: public Data3D{
 public:
 	Surface3D(Data3D* d);
 	void surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Vector &lengths);
-	void assimilate(Data3D* d);
 	
 	
 private:

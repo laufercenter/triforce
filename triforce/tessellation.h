@@ -78,23 +78,12 @@ enum Hemisphere{
 };
 
 
-
-typedef struct
-{
-	double d;
-	bool visited;
-	
-	
-}
-CircularIntersection;
-
-
 typedef struct
 {
 	double rotation;
 	Vector drotation_dxi;
 	Vector drotation_dxj;
-	Vector drotation_dxdelta;
+	Vector drotation_dxl;
 }
 Rotation;
 
@@ -105,6 +94,26 @@ typedef struct
 	Rotation in;
 }
 PHIContainer;
+
+
+
+typedef struct
+{
+	double d;
+	bool visited;
+	
+	
+}
+CircularIntersection;
+
+typedef struct
+{
+	double out;
+	Vector vectorOut;
+	double in;
+	Vector vectorIn;
+}
+Interfaces;
 
 typedef struct
 {
@@ -194,16 +203,12 @@ typedef struct
 	int index;
 	Vector vector;
 	Vector normal;
-	double lambda;
+	Rotation lambda;
 	double g;
 	double g_normalised;
+	double a;
 	double sphereRadius;
 	double d;
-	Rotation lambda;
-	Rotation psi;
-	Matrix dmu_dx;
-	
-	
 //	double radius;
 	map<int,CircularIntersection> circularIntersections;
 	IntersectionBranches intersectionBranches;
@@ -227,7 +232,7 @@ typedef struct
 	Rotation rotation0;
 	Rotation rotation1;
 	Vector normalForCircularInterface;
-	double lambda;
+	Rotation lambda;
 	CircularInterfaceForm form;
 }
 SASANode;
@@ -297,23 +302,16 @@ public:
 	void build(bool split);
 	SASAsForMolecule &sasas();
 	
-	vector<vector<double*> > &fetchForcePointers();
-	vector<double*> &fetchAreaPointers();
-
-	
 	
 private:
 	
 	Molecule molecule;
 	vector<Vector> atoms;
 	vector<double> radii;
-	vector<double*> areas;
-	vector<vector<double*> > forces;
 	//#atoms #circularregions
 	//#atoms #sasas #circularregions
 	SASAsForMolecule sasasForMolecule;
 
-	
 	CircularInterfacesPerAtom coverHemisphere(Vector tessellationOrigin, double radius, CircularInterfacesPerAtom circles, CircularInterfaceForm form);
 	void buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<double> &radii, SASAsForMolecule &sasas, bool split);
 	double vsign(double v);
@@ -332,15 +330,20 @@ private:
 	void insertArtificialIntersectionPoints(CircularInterface &I, IntersectionGraph &intersectionGraph, Vector &tessellationOrigin);
 	int sgn(double d);
 	void determineCircularIntersections(CircularInterfacesPerAtom &circles);
-	PHIContainer calculatePHI(Vector &tessellationOrigin, CircularInterface &I, CircularInterface J, double dij, double radius);
+	double complLongAngle(Vector &vi, Vector &vj, Vector &vk);
+	double angularInterface(Vector &x0, Vector &v, Vector &p0, Vector &p1);
+	void measurementPoints(Vector &p0, Vector &p1, Vector &tessellationOrigin, CircularInterface &I);
+	Interfaces angularInterfaces(Vector &x0, Vector &x1, Vector &tessellationOrigin, CircularInterface &I);
+	Interfaces retrieveInterfaces(Vector &tessellationOrigin, CircularInterface &I, CircularInterface J, double dij, double radius);
 	IntersectionBranches::iterator increaseBranchInterator(IntersectionBranches::iterator it);
 	IntersectionBranches::iterator decreaseBranchInterator(IntersectionBranches::iterator it);
 	IntersectionBranches::iterator increaseBranchInterator(multimap<double, IntersectionBranch>::iterator it, int ignore);
 	IntersectionBranches::iterator decreaseBranchInterator(IntersectionBranches::iterator it, int ignore);
+	void disconnectIntersectionPoint(IntersectionNode &a);
 	void connectIntersectionPoints(IntersectionNode &a, IntersectionNode &b, IntersectionGraph &intersectionGraph);
 	void createIntersectionNode(IntersectionAddress &address, IntersectionGraph &intersectionGraph);
 	void createIntersectionNode(int id0, int id1, IntersectionGraph &intersectionGraph);
-	void createIntersectionBranch(IntersectionAddress &address, Interfaces interfacesI, Interfaces interfacesJ, CircularInterface &I, CircularInterface &J, IntersectionGraph &intersectionGraph);
+	void createIntersectionBranch(IntersectionAddress &address, PHIContainer &PHII, PHIContainer &PHIJ, CircularInterface &I, CircularInterface &J, IntersectionGraph &intersectionGraph);
 	void printBranch(const char* s, multimap<double, IntersectionBranch>::iterator &it);
 	void printIntersectionGraph(IntersectionGraph &g);
 	void buildIntersectionGraph(double radius, Vector &tessellationOrigin, CircularInterfacesPerAtom &circles, SASAs &sasas, Hemisphere hemisphere, string filename);
@@ -349,6 +352,9 @@ private:
 	void depleteCircularInterfaces(Vector tessellationOrigin, double radius, vector<CircularInterface> &circles);
 	double rotationalAngle(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J);
 	bool isWithinNumericalLimits(double x, double l);
+	Rotation calculateOmega(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J);
+	Rotation calculateEta(CircularInterface &I, CircularInterface &J);
+	PHIContainer calculatePHI(Vector &tessellationOrigin, CircularInterface &I, CircularInterface J, double dij, double radius);
 
 	
 	

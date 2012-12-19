@@ -99,10 +99,10 @@ double IntegratorGaussBonnet::integrateArc(SASANode &x0, SASANode &x1){
 	double dot1, dot2;
 	
 	//calculate lambda
-	lambda_k = x1.lambda;
-	lambda_j = x0.lambda;
-	mu_k=x1.normalForCircularRegion;
-	mu_j=x0.normalForCircularRegion;
+	lambda_k = x1.lambda.rotation;
+	lambda_j = x0.lambda.rotation;
+	mu_k=x1.normalForCircularInterface;
+	mu_j=x0.normalForCircularInterface;
 	
 	//extract g and a from lambda
 	a_k = sin(lambda_k);
