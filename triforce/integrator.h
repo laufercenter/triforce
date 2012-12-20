@@ -47,7 +47,7 @@ class IntegratorTriforce: public Integrator{
 	
 public:
 	IntegratorTriforce();
-	IntegratorTriforce(Interpolation *dataConvex, Interpolation *dataConcave);
+	IntegratorTriforce(Interpolation *data);
 	
 	double integrate(Molecule *molecule, Tessellation *tessellation);
 	void outputIntegrationData(string filename, Vector &integrationOrigin, list<IntersectionNode*> &frontHemisphere, list<IntersectionNode*> &backHemisphere);
@@ -55,8 +55,7 @@ public:
 	
 	
 private:
-	Interpolation *dataConvex;
-	Interpolation *dataConcave;
+	Interpolation *data;
 	Tessellation* tessellation;
 	Molecule* molecule;
 	
@@ -77,7 +76,7 @@ private:
 	bool isInPositiveEpsilonRange(double v, double eps);
 	mat33 rotz(double theta);
 	double PHI2phi2(Vector integrationOrigin, double PHI, double psi, double lambda);
-	double calculateArea(double PHI, double psi, double lambda, double maxArea);
+	double calculateArea(double PHI, double psi, double lambda);
 	
 	
 };
