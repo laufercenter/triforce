@@ -50,6 +50,8 @@ void Tessellation::build(bool split){
 CircularInterfacesPerAtom Tessellation::coverHemisphere(Vector tessellationOrigin, double radius, CircularInterfacesPerAtom circles, CircularInterfaceForm form){
 	CircularInterface C;
 	Vector v(3);
+	Matrix NullMatrix(3,3);
+	NullMatrix.zeros();
 	
 	v = -tessellationOrigin;
 	
@@ -60,6 +62,13 @@ CircularInterfacesPerAtom Tessellation::coverHemisphere(Vector tessellationOrigi
 	C.normal = v;
 	C.form = form;
 	C.id = circles.size()+1;
+	
+	
+	C.dmu_dx = NullMatrix;
+	C.lambda.drotation_dxi = Vector(3).zeros();
+	C.lambda.drotation_dxj = Vector(3).zeros();
+	C.lambda.drotation_dxl = Vector(3).zeros();
+	
 	
 	circles.push_back(C);
 	
@@ -115,6 +124,10 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 		
 		filterCircularInterfaces(frontTessellationOrigin,radius, circlesFrontHemisphere);
 		filterCircularInterfaces(backTessellationOrigin,radius, circlesBackHemisphere);
+		
+		determinePsiRotations(frontTessellationOrigin, circlesFrontHemisphere);
+		determinePsiRotations(backTessellationOrigin, circlesBackHemisphere);
+		
 		reindexCircularInterfaces(circlesFrontHemisphere);
 		reindexCircularInterfaces(circlesBackHemisphere);
 		
@@ -127,7 +140,8 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 		buildIntersectionGraph(radius, backTessellationOrigin, circlesBackHemisphere, *newSasas, BACKHEMISPHERE, string("gbonnet1.csv"));
 	}
 	else{
-		
+		printf("not supported\n");
+		exit(-1);
 		
 		filterCircularInterfaces(frontTessellationOrigin, radius, circles);
 		reindexCircularInterfaces(circles);
@@ -206,8 +220,7 @@ void Tessellation::determineProjection(Vector &origin, double radius, CircularIn
 	Identity.eye();
 	double dlambda_dg;
 	double dg_dd;
-	double dmui_dxi;
-	double dpsi_dmui, dpsi_dxi, dpsi_dxdelta;
+	Matrix dmu_dx(3,3);
 	
 	
 	
@@ -237,35 +250,31 @@ void Tessellation::determineProjection(Vector &origin, double radius, CircularIn
 	dlambda_dg = -1/sqrt(1-g_normalised*g_normalised);
 	dg_dd = -g_normalised/d_i + 1/r_l;
 	
-	/*
 	circle.lambda.drotation_dxi = dlambda_dg * dg_dd * circle.normal;
-	circle.lambda.drotation_dxj = 0;
-	circle.lambda.drotation_dxdelta = -circle.lambda.drotation_dxi;
+	circle.lambda.drotation_dxj = Vector(3).zeros();
+	circle.lambda.drotation_dxl = -circle.lambda.drotation_dxi;
 	
 	
 	
-	dmui_dxi = 1.0/I.d*(Identity - kron(I.normal,I.normal.t());
+	dmu_dx = (1.0/circle.d)*(Identity - kron(circle.normal,circle.normal.t()));
+	circle.dmu_dx = dmu_dx;
 	
-	circle.dmui_dxi = dmui_dxi;
-	
-	dpsi_dmui = -1.0/sqrt(1-circle.normal(0)*circle.normal(0));
-	dpsi_dxi = dpsi_dmui * dmui_dxi;
-	dpsi_dxdelta = -dpsi_dxi;
-	
-	*/
-	
-/*	
-	circle.psi.rotation = getAngleBetweenNormals(tessellationOrigin,circle.normal);
-	circle.psi.drotation_dxi = dpsi_dxi;
-	circle.psi.drotation_dxj = 0;
-	circle.psi.drotation_dxdelta = dpsi_dxdelta;
-*/	
+
+
 	
 	
 
 	//printf("DET: [%f %f %f] %f %f %f %f\n",circle.normal(0),circle.normal(1),circle.normal(2), r_i, r_k, g, circle.lambda);
 	//printf("%f %f %f %f %f\n",d_k, r_i, r_k, g, circle.lambda);
 }
+
+
+void Tessellation::determinePsiRotations(Vector &tessellationOrigin, CircularInterfacesPerAtom &circles){
+	int i;
+	for(i=0; i < circles.size(); ++i)
+		circles[i].psi=calculatePsi(tessellationOrigin, circles[i]);
+}
+
 
 IntersectionPair Tessellation::determineIntersectionPoints(double radius, CircularInterface &K, CircularInterface &J){
 	IntersectionPair res;
@@ -881,6 +890,26 @@ Interfaces Tessellation::retrieveInterfaces(Vector &tessellationOrigin, Circular
 
 
 
+Matrix Tessellation::matrixCross(Matrix &m, Vector &v){
+	Vector c(3);
+	Vector r(3);
+	Matrix res(3,3);
+	int i,j;
+	//produce a matrix in which each column is the crossproduct with the corresponding column in m and v
+	
+	for(i=0;i<3;++i){
+		for(j=0;j<3;++j){
+			c(j) = m(j,i);			
+		}
+		r = cross(c,v);
+		for(j=0;j<3;++j){
+			res(j,i) = r(j);			
+		}
+	}
+	
+	return res;
+}
+
 
 
 
@@ -894,10 +923,17 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, CircularInterf
 	double sn;
 	double varpi;
 	double rho;
-	Matrix Identity(3,3);
+	Matrix Identity(3,3),reverseIdentity(3,3);
 	Identity.eye();
+	reverseIdentity.eye();
+	reverseIdentity = reverseIdentity * -1;
 	Rotation omega;
 	double dot_ni_nij;
+	Matrix dmui_dxi, dmui_dxl, dmuj_dxj, dmuj_dxl;
+	double domega_dvarpi;
+	Vector dvarpi_dnij, dvarpi_dni;
+	Matrix dni_dmui, dnij_dmui, dnij_dmuj;
+	Vector domega_dxi, domega_dxj, domega_dxl;
 	
 	ez(0)=0;
 	ez(1)=0;
@@ -940,37 +976,36 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, CircularInterf
 			omega.rotation = -M_PI + omega.rotation;
 	}
 	
-	/*
-	dmui_dxi = I.dmu_dx;
-	dmui_dxdelta = -I.dmu_dx;
-	dmuj_dxj = J.dmu_dx;
-	dmuj_dxdelta = -J.dmu_dx;
 	
-	domega_dvarpi = S0;
+	dmui_dxi = I.dmu_dx;
+	dmui_dxl = -I.dmu_dx;
+	dmuj_dxj = J.dmu_dx;
+	dmuj_dxl = -J.dmu_dx;
+	
+	domega_dvarpi = s0;
 	dvarpi_dni = nij / sqrt(1-dot_ni_nij*dot_ni_nij);
 	dvarpi_dnij = ni / sqrt(1-dot_ni_nij*dot_ni_nij);
 	
 	dni_dmui=Matrix(3,3);
 	dni_dmui.zeros();
-	dni_dmui(2,3)=1;
-	dni_dmui(3,2)=-1;
+	dni_dmui(1,2)=1;
+	dni_dmui(2,1)=-1;
 	
-	dni_muj = -dni_mui;
 	
 	dnij_dmui = matrixCross(Identity,J.normal);
-	dnij_dmuj = matrixCross(-1*Identity,I.normal);
+	dnij_dmuj = matrixCross(reverseIdentity,I.normal);
 	
-	domega_dxi = domega_dvarpi * (dvarpi_dni * dni_dmui * dmui_dxi + dvarpi_dnij * dnij_dmui * dmui_dxi);
-	domega_dxj = domega_dvarpi * dvarpi_dnij * dnij_dmuj * dmui_dxj;
+	domega_dxi = domega_dvarpi * ((dvarpi_dni.t() * dni_dmui * dmui_dxi).t() + (dvarpi_dnij.t() * dnij_dmui * dmui_dxi).t() );
+	domega_dxj = domega_dvarpi * (dvarpi_dnij.t() * dnij_dmuj * dmuj_dxj).t();
 
 	//domega_dxdelta = -domega_dxi-domega_dxj;
 
-	domega_dxdelta = domega_dvarpi * (dvarpi_dni * dni_dmui * dmui_dxi + dvarpi_dnij * (dnij_dmui * dmui_dxdelta + dnij_dmuj * dmuj_dxdelta);
+	domega_dxl = domega_dvarpi * ( (dvarpi_dni.t() * dni_dmui * dmui_dxi).t() + (dvarpi_dnij.t() * (dnij_dmui * dmui_dxl + dnij_dmuj * dmuj_dxl) ).t() );
 	
 	omega.drotation_dxi = domega_dxi;
 	omega.drotation_dxj = domega_dxj;
-	omega.drotation_dxdelta = domega_dxdelta;
-	*/
+	omega.drotation_dxl = domega_dxl;
+	
 	
 	return omega;
 	
@@ -982,14 +1017,14 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, CircularInterf
 Rotation Tessellation::calculateEta(CircularInterface &I, CircularInterface &J){
 	double lambda_i, lambda_j, lambda_k, rho;
 	double dot_IJ;
-	double drho_mui, drho_muj;
-	double drho_dxi, drho_dxj;
-	double drho_dxl;
+	Vector drho_mui(3), drho_muj(3);
+	Vector drho_dxi(3), drho_dxj(3);
+	Vector drho_dxl(3);
 	double sig0,sig1,sig2;
-	double deta_dlambdai, deta_dlambdaj;
-	double deta_drhoij;
-	double deta_dxi, deta_dxj, deta_dxl;
+	double deta_dlambdai, deta_dlambdaj, deta_drhoij;
+	Vector deta_dxi(3), deta_dxj(3), deta_dxl(3);
 	Rotation eta;
+	Matrix dmui_dxi, dmuj_dxj;
 	
 	
 	lambda_i = I.lambda.rotation;
@@ -997,17 +1032,6 @@ Rotation Tessellation::calculateEta(CircularInterface &I, CircularInterface &J){
 	dot_IJ = norm_dot(I.normal,J.normal);
 	rho = acos(dot_IJ);
 	
-	/*
-	drho_mui = -J.normal/sqrt(1-dotIJ*dotIJ);
-	drho_muj = -I.normal/sqrt(1-dotIJ*dotIJ);
-	
-	dmui_dxi = I.dmu_dx;
-	dmui_dxj = J.dmu_dx;
-	
-	drho_dxi = drho_mui * dmui_dxi;
-	drho_dxj = drho_muj * dmuj_dxj;
-	drho_dxl = -drho_dxi - drho_dxj;
-	*/
 	
 	sig0 = cot(lambda_i) * cot(rho);
 	sig1 = cos(lambda_j)*csc(lambda_i)*csc(rho);
@@ -1015,7 +1039,21 @@ Rotation Tessellation::calculateEta(CircularInterface &I, CircularInterface &J){
 	
 	eta.rotation = -asin(sig2);
 	
-	/*
+	
+	
+	drho_mui = -J.normal/sqrt(1-dot_IJ*dot_IJ);
+	drho_muj = -I.normal/sqrt(1-dot_IJ*dot_IJ);
+	
+	dmui_dxi = I.dmu_dx;
+	dmuj_dxj = J.dmu_dx;
+	
+	printf("MATRIX FORM %d\n",J.form);
+	dmuj_dxj.print("dmuj_dxj");
+	
+	drho_dxi = (drho_mui.t() * dmui_dxi).t();
+	drho_dxj = (drho_muj.t() * dmuj_dxj).t();
+	drho_dxl = -drho_dxi - drho_dxj;
+	
 	deta_dlambdai = (csc(lambda_i) * sig0/cos(lambda_i) - sig1*cos(lambda_i)) / sqrt(1-sig2*sig2);
 	deta_dlambdaj = - sig1*tan(lambda_j) / sqrt(1-sig2*sig2);
 	deta_drhoij = (csc(rho) * sig0/cos(rho) - sig1*cos(rho)) / sqrt(1-sig2*sig2);
@@ -1028,7 +1066,6 @@ Rotation Tessellation::calculateEta(CircularInterface &I, CircularInterface &J){
 	eta.drotation_dxi = deta_dxi;
 	eta.drotation_dxj = deta_dxj;
 	eta.drotation_dxl = deta_dxl;
-	*/
 	
 	
 	return eta;
@@ -1072,12 +1109,33 @@ PHIContainer Tessellation::calculatePHI(Vector &tessellationOrigin, CircularInte
 
 
 
-
-
-
-
-
-
+Rotation Tessellation::calculatePsi(Vector tessellationOrigin, CircularInterface &circle){
+	Vector dpsi_dmui;
+	Rotation r;
+	Vector dpsi_dxi, dpsi_dxl;
+	
+	
+	if(circle.form != SPLITTER){
+		dpsi_dmui = -tessellationOrigin/sqrt(1-circle.normal(0)*circle.normal(0));
+		dpsi_dxi = (dpsi_dmui.t() * circle.dmu_dx).t();
+		dpsi_dxl = -dpsi_dxi;
+		
+		r.rotation = getAngleBetweenNormals(tessellationOrigin,circle.normal);
+		r.drotation_dxi = dpsi_dxi;
+		r.drotation_dxj = Vector(3).zeros();
+		r.drotation_dxl = dpsi_dxl;
+	}
+	else{
+		//the splitter is immovable
+		r.rotation = getAngleBetweenNormals(tessellationOrigin,circle.normal);
+		r.drotation_dxi = Vector(3).zeros();
+		r.drotation_dxj = Vector(3).zeros();
+		r.drotation_dxl = Vector(3).zeros();
+	}
+	
+	return r;
+	
+}
 
 
 
@@ -1566,6 +1624,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 				sasaNode.rotation0 = intersectionGraph[x].rotation0;
 				sasaNode.rotation1 = intersectionGraph[x].rotation1;
 				sasaNode.lambda = circles[cid0].lambda;
+				sasaNode.psi = circles[cid0].psi;
 				sasaNode.vector = intersectionGraph[x].vector;
 				sasaNode.normalForCircularInterface = circles[cid0].normal;
 				sasaNode.form = circles[cid0].form;

@@ -204,12 +204,14 @@ typedef struct
 	Vector vector;
 	Vector normal;
 	Rotation lambda;
+	Rotation psi;
 	double g;
 	double g_normalised;
 	double a;
 	double sphereRadius;
 	double d;
 //	double radius;
+	Matrix dmu_dx;
 	map<int,CircularIntersection> circularIntersections;
 	IntersectionBranches intersectionBranches;
 	
@@ -233,6 +235,7 @@ typedef struct
 	Rotation rotation1;
 	Vector normalForCircularInterface;
 	Rotation lambda;
+	Rotation psi;
 	CircularInterfaceForm form;
 }
 SASANode;
@@ -355,6 +358,9 @@ private:
 	Rotation calculateOmega(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J);
 	Rotation calculateEta(CircularInterface &I, CircularInterface &J);
 	PHIContainer calculatePHI(Vector &tessellationOrigin, CircularInterface &I, CircularInterface J, double dij, double radius);
+	void determinePsiRotations(Vector &tessellationOrigin, CircularInterfacesPerAtom &circles);
+	Rotation calculatePsi(Vector tessellationOrigin, CircularInterface &circle);
+	Matrix matrixCross(Matrix &m, Vector &v);
 
 	
 	
