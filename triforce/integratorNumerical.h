@@ -39,6 +39,7 @@ public:
 	IntegratorNumerical();
 	IntegratorNumerical(int trials);
 	double integrate(Molecule *molecule, Tessellation *tessellation);
+	double integrate(Molecule *molecule);
 	
 	
 private:
@@ -47,6 +48,10 @@ private:
 	int trials;
 	FILE* file;
 	vector<double*> areas;
+	
+	vector<Vector> atoms;
+	vector<double> radii;
+	
 	
 	double angle(Vector &a, Vector &b);
 	double integrateAtomicSASA(SASAsForAtom sasasForAtom);
