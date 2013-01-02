@@ -46,6 +46,7 @@ private:
 	Molecule* molecule;
 	int trials;
 	FILE* file;
+	vector<double*> areas;
 	
 	double angle(Vector &a, Vector &b);
 	double integrateAtomicSASA(SASAsForAtom sasasForAtom);

@@ -63,6 +63,8 @@ void Surface3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r,
 	
 	//printf("CLOSEST GRIDPOINT: %d %d %d\n",v(0),v(1),v(2));
 	
+	//printf("DISCONTINUITY: %d\n",discontinuity);
+	
 	
 	r.clear();
 	for(i=0;i<2;++i)
@@ -80,7 +82,7 @@ void Surface3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r,
 							if(vpsi < vlambda) r.push_back(v2);
 						}
 						else if(discontinuity==1){
-							if(vpsi >= vlambda && vpsi + vlambda < M_PI) r.push_back(v2);
+							if(vpsi >= vlambda && vpsi + vlambda < M_PI && !isWithinNumericalLimits(vpsi + vlambda,M_PI)) r.push_back(v2);
 						}
 						else{
 							if(vpsi >= vlambda && vpsi + vlambda >= M_PI) r.push_back(v2);

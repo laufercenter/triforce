@@ -45,6 +45,7 @@ double IntegratorNumerical::integrate(Molecule *molecule, Tessellation *tessella
 	vector<double> radii;
 	
 	radii = molecule->fetchRadii();
+	areas = molecule->fetchAreaPointers();
 	
 	
 	sasas = tessellation->sasas();
@@ -58,6 +59,7 @@ double IntegratorNumerical::integrate(Molecule *molecule, Tessellation *tessella
 	for(int i=0;i<sasas.size();++i){
 		radius = sasas[i].radius;
 		a = radius*radius * integrateAtomicSASA(sasas[i]);
+		*(areas[i]) = a;
 		area += a;
 	}
 	

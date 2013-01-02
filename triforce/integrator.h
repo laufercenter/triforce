@@ -33,6 +33,17 @@
 using namespace std;
 using namespace arma;
 
+typedef struct
+{
+	double area;
+	Vector force_i;
+	Vector force_j;
+	Vector force_k;
+	Vector force_l;
+}
+Area;
+
+
 
 
 class Integrator{
@@ -47,7 +58,7 @@ class IntegratorTriforce: public Integrator{
 	
 public:
 	IntegratorTriforce();
-	IntegratorTriforce(Interpolation *data);
+	IntegratorTriforce(Interpolation *dataConcave, Interpolation *forcesConcave1, Interpolation *forcesConcave2, Interpolation *forcesConcave3);
 	
 	double integrate(Molecule *molecule, Tessellation *tessellation);
 	void outputIntegrationData(string filename, Vector &integrationOrigin, list<IntersectionNode*> &frontHemisphere, list<IntersectionNode*> &backHemisphere);
@@ -55,28 +66,24 @@ public:
 	
 	
 private:
-	Interpolation *data;
+	vector<Interpolation*> data;
 	Tessellation* tessellation;
 	Molecule* molecule;
 	
-	//void splitSASA(list<IntersectionNode*> &sasa, vector<CircularRegion> &circles, int c, Vector &integrationOrigin, double radius, list<IntersectionNode*>** frontHemisphere, list<IntersectionNode*>** backHemisphere,  IntersectionGraph &intersectionGraph);
-	//Vector halfSphereIntersectionPoint(Vector &integrationOrigin, CircularRegion &c, double radius, int sign);
+	vector<double*> areas;
+	vector<vector<double*> > forces;	
+	
 	double csc(double a);
 	int sgn(double d);
 	double complAngle(Vector &a, Vector &b);
 	double complLongAngle(Vector &n, Vector &o, Vector &a);
 	double angle(Vector &a, Vector &b);
-	double integrateTriangle(SASANode &x0, SASANode &x1, Vector integrationOrigin, double &totalAngle);
-	double integrateTriangle2(SASANode &x0, SASANode &x1, Vector integrationOrigin, double &totalAngle);
-	//double integrateHemisphere(list<IntersectionNode*> &sasa, Vector &integrationOrigin, vector<CircularRegion> &circles, int ci);
-	double integrateAtomicSASA(SASAsForAtom sasasForAtom);
-	double integrateSASA(SASA &s);
-	double PHI2phi(double PHI, double psi, double lambda);
-	double V2phi(Vector &integrationOrigin, Vector cv, Vector &v);
-	bool isInPositiveEpsilonRange(double v, double eps);
-	mat33 rotz(double theta);
-	double PHI2phi2(Vector integrationOrigin, double PHI, double psi, double lambda);
-	double calculateArea(double PHI, double psi, double lambda);
+	Area integrateTriangle(SASANode &x0, SASANode &x1, Vector integrationOrigin);
+	double integrateAtomicSASA(int l, SASAsForAtom sasasForAtom);
+	double integrateSASA(int l, SASA &s);
+	Vector lookUp(double PHI, double psi, double lambda);
+	void addForce(int i, Vector force);
+	void clearForces();
 	
 	
 };
