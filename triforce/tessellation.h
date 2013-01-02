@@ -67,6 +67,11 @@ enum CircularInterfaceForm{
 
 
 
+enum Location{
+	INTERNAL,
+	EXTERNAL
+};
+
 enum Direction{
 	IN,
 	OUT
@@ -84,6 +89,7 @@ typedef struct
 	Vector drotation_dxi;
 	Vector drotation_dxj;
 	Vector drotation_dxl;
+	Vector vector;
 }
 Rotation;
 
@@ -173,8 +179,11 @@ typedef struct IntersectionBranch
 	IntersectionBranches::iterator it;
 	int visited;
 	Direction direction;
+	Location forward;
+	Location backward;
 	IntersectionBranches* body;
 	int id;
+	bool flagged;
 }
 IntersectionBranch;
 
@@ -218,6 +227,7 @@ typedef struct
 	CircularInterfaceForm form;
 	bool intersect;
 	bool flagged;
+	bool valid;
 		
 	
 }
@@ -230,6 +240,8 @@ typedef struct
 {
 	int id0;
 	int id1;
+	int index0;
+	int index1;
 	Vector vector;
 	Rotation rotation0;
 	Rotation rotation1;
@@ -337,7 +349,7 @@ private:
 	double angularInterface(Vector &x0, Vector &v, Vector &p0, Vector &p1);
 	void measurementPoints(Vector &p0, Vector &p1, Vector &tessellationOrigin, CircularInterface &I);
 	Interfaces angularInterfaces(Vector &x0, Vector &x1, Vector &tessellationOrigin, CircularInterface &I);
-	Interfaces retrieveInterfaces(Vector &tessellationOrigin, CircularInterface &I, CircularInterface J, double dij, double radius);
+	PHIContainer retrieveInterfaces(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J, double dij, double radius);
 	IntersectionBranches::iterator increaseBranchInterator(IntersectionBranches::iterator it);
 	IntersectionBranches::iterator decreaseBranchInterator(IntersectionBranches::iterator it);
 	IntersectionBranches::iterator increaseBranchInterator(multimap<double, IntersectionBranch>::iterator it, int ignore);
@@ -351,16 +363,19 @@ private:
 	void printIntersectionGraph(IntersectionGraph &g);
 	void buildIntersectionGraph(double radius, Vector &tessellationOrigin, CircularInterfacesPerAtom &circles, SASAs &sasas, Hemisphere hemisphere, string filename);
 	void outputGaussBonnetData(string filename, double radius, CircularInterfacesPerAtom &circles, SASAs &sasas, IntersectionGraph &intersectionGraph);
-	void deleteIntersectionPoint(IntersectionBranches::iterator &it,IntersectionGraph &intersectionGraph);
+	void deleteIntersectionPoint(IntersectionBranches::iterator &it,IntersectionGraph &intersectionGraph, CircularInterfacesPerAtom &circles);
 	void depleteCircularInterfaces(Vector tessellationOrigin, double radius, vector<CircularInterface> &circles);
 	double rotationalAngle(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J);
 	bool isWithinNumericalLimits(double x, double l);
 	Rotation calculateOmega(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J);
 	Rotation calculateEta(CircularInterface &I, CircularInterface &J);
-	PHIContainer calculatePHI(Vector &tessellationOrigin, CircularInterface &I, CircularInterface J, double dij, double radius);
+	PHIContainer calculatePHI(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J, double dij, double radius);
 	void determinePsiRotations(Vector &tessellationOrigin, CircularInterfacesPerAtom &circles);
 	Rotation calculatePsi(Vector tessellationOrigin, CircularInterface &circle);
 	Matrix matrixCross(Matrix &m, Vector &v);
+	bool addToEraseList(map<IntersectionBranches::iterator,bool,IteratorComparator> &masterEraseList, map<IntersectionBranches::iterator,bool,IteratorComparator> &eraseList, IntersectionBranches::iterator &it, int limit);
+	bool addToEraseListCascade(map<IntersectionBranches::iterator,bool,IteratorComparator> &masterEraseList, map<IntersectionBranches::iterator,bool,IteratorComparator> &eraseList, IntersectionBranches::iterator &it, int limit);
+
 
 	
 	

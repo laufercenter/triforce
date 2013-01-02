@@ -145,6 +145,10 @@ void Molecule::print(){
 	for(int i=0;i<atomicPointers.size();++i){
 		printf("[%d]: (%f, %f, %f), eps: %f, sig: %f, pointers: (%d,%d,%d)\n",i,atoms[i](0),atoms[i](1),atoms[i](2),epsilons[i],sigmas[i],
 		       atomicPointers[i].x,atomicPointers[i].y,atomicPointers[i].z);
-		
 	}
+	printf("Areas and forces:\n");
+	for(int i=0;i<areas.size();++i){
+		printf("[%d]: %f (%f, %f, %f) pointers: (%d, %d, %d)\n",i,*(areas[i]), *(forces[i][0]), *(forces[i][1]), *(forces[i][2]), forces[i][0], forces[i][1], forces[i][2]);
+	}
+	
 }
