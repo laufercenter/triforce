@@ -24,8 +24,8 @@ void Tessellation::build(bool split){
 	
 	//atoms.size()
 	//iterate over all atoms and build the tessellation for each of them
-	for(int i=0; i<atoms.size(); ++i){
-	//	int i=8;
+	//for(int i=0; i<atoms.size(); ++i){
+		int i=0;
 		buildGaussBonnetPath(i, atoms, radii, sasasForMolecule, split);
 		
 		
@@ -39,7 +39,7 @@ void Tessellation::build(bool split){
 		
 		//outputCircularInterfaces(*circles[circles.size()-1]);
 
-	}
+	//}
 	
 	
 	
@@ -53,7 +53,7 @@ CircularInterfacesPerAtom Tessellation::coverHemisphere(Vector tessellationOrigi
 	Matrix NullMatrix(3,3);
 	NullMatrix.zeros();
 	
-	v = -tessellationOrigin;
+	v = tessellationOrigin;
 	
 	C.lambda.rotation = M_PI * 0.5;
 	C.g=0;
@@ -246,7 +246,7 @@ void Tessellation::determineProjection(Vector &origin, double radius, CircularIn
 	circle.g_normalised = g_normalised;
 	circle.lambda.rotation = acos(g_normalised);
 	circle.d=d_i;
-	circle.a= sqrt(r_i * r_i - g * g);
+	circle.a= sqrt(r_l * r_l - g * g);
 	circle.valid=true;
 
 	
@@ -401,19 +401,23 @@ int Tessellation::filterCircularInterfaces(Vector tessellationOrigin, double rad
 	while(it != circles.end()){
 		erased=false;
 	
-		if(it->form==CONVEX) n0 = it->normal;
-		else n0 = -it->normal;
+		//if(it->form==CONVEX) n0 = it->normal;
+		//else n0 = -it->normal;
+		
+		n0 = it->normal;
 		
 		for(i=0;i<circles.size();i++){
 			if(it->id != circles[i].id){
 
 				//in case the interface is not convex, we have to reverse the normal (since we already reversed it one time when we calculated the interface)
-				if(circles[i].form == CONVEX) n1 = circles[i].normal;
-				else n1 = -circles[i].normal;
+				//if(circles[i].form == CONVEX) n1 = circles[i].normal;
+				//else n1 = -circles[i].normal;
 				
-				
+				n1 = circles[i].normal;
 				
 				angle = getAngleBetweenNormals(n0,n1);
+				
+				printf("FILTER: %d %d: %f\n",it->id, circles[i].id, angle);
 				
 				if(it->form==CONVEX){
 					//convex circle IT is inside of convex circle i
@@ -671,15 +675,36 @@ void Tessellation::measurementPoints(Vector &p0, Vector &p1, Vector &tessellatio
 	o = tessellationOrigin;
 	v = I.normal * I.g;
 	
-	if(isInPositiveEpsilonRange(fabs(dot(o,I.normal)),1.0) ){
+	printf("O: %f %f %f\n",o(0),o(1),o(2));
+	printf("V: %f %f %f\n",v(0),v(1),v(2));
+	printf("INORMAL: %f %f %f\n",I.normal(0),I.normal(1),I.normal(2));
+	printf("DOT: %f\n",dot(o,I.normal));
+	
+	
+	if(isWithinNumericalLimits(dot(o,I.normal),1.0) ){
+		p1 = Vector(3);
+		p1(0) = 0;
+		p1(1) = -1;
+		p1(2) = 0;
+		
+		p0 = cross(p1,-o);
+		printf("FIRST\n");
+		
+	}
+	else 	if(isWithinNumericalLimits(dot(o,I.normal),-1.0) ){
 		p1 = Vector(3);
 		p1(0) = 0;
 		p1(1) = 1;
 		p1(2) = 0;
 		
-		p0 = cross(p1,o);
+		p0 = cross(p1,-o);
+
+		printf("SECOND\n");
+		
 	}
 	else{
+
+		
 		s = cross(v,o);
 		s = I.a*s / norm(s,2);
 		p0 = v+s;
@@ -687,41 +712,56 @@ void Tessellation::measurementPoints(Vector &p0, Vector &p1, Vector &tessellatio
 		s2 = -cross(v,s);
 		s2 = I.a*s2 / norm(s2,2);
 		p1 = v+s2;
+		printf("THIRD\n");
+		
 	}
 	
 }
 
-Interfaces Tessellation::angularInterfaces(Vector &x0, Vector &x1, Vector &tessellationOrigin, CircularInterface &I){
+Interfaces Tessellation::angularInterfaces(Vector &x0, Vector &x1, Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J){
 	Vector p0(3), p1(3);
 	Interfaces res;
 	Vector v(3);
 	Vector t;
+	int q;
 	
-	
+	/*
 	//measurement points will be written into p0 and p1
 	if(I.form != CONVEX){
 		t = -tessellationOrigin;
 		measurementPoints(p0,p1,t,I);
 	}
-	else measurementPoints(p0,p1,tessellationOrigin,I);
-	
-	
+	else 
+	*/
+	measurementPoints(p0,p1,tessellationOrigin,I);
 	v = I.normal * I.g;
 	
+	printf("I: %d J: %d\n",I.id,J.id);
 	printf("V: %f %f %f\n",v(0),v(1),v(2));
 	printf("P0: %f %f %f\n",p0(0),p0(1),p0(2));
 	printf("P1: %f %f %f\n",p1(0),p1(1),p1(2));
 	
 	
-	res.out = angularInterface(x0,v,p0,p1);
-	res.vectorOut = x0;
-	res.in = angularInterface(x1,v,p0,p1);
-	res.vectorIn = x1;
 	
-	if(I.form != CONVEX){
-		res.out = -res.out;
-		res.in = -res.in;
+	q = 1;
+	if(I.form != CONVEX) q*=-1;
+	if(J.form != CONVEX) q*=-1;
+	
+	
+	if(q>0){
+		res.out = angularInterface(x0,v,p0,p1);
+		res.vectorOut = x0;
+		res.in = angularInterface(x1,v,p0,p1);
+		res.vectorIn = x1;
 	}
+	else{
+		res.in = angularInterface(x0,v,p0,p1);
+		res.vectorIn = x0;
+		res.out = angularInterface(x1,v,p0,p1);
+		res.vectorOut = x1;
+	}
+	
+	
 	
 	return res;
 	
@@ -1047,7 +1087,7 @@ PHIContainer Tessellation::retrieveInterfaces(Vector &tessellationOrigin, Circul
 		x1 = ip.j_k;
 		
 		
-		intf1 = angularInterfaces(x0,x1, tessellationOrigin, I);
+		intf1 = angularInterfaces(x0,x1, tessellationOrigin, I, J);
 		
 		
 
@@ -1116,50 +1156,82 @@ Rotation Tessellation::calculatePsi(Vector tessellationOrigin, CircularInterface
 
 
 
-IntersectionBranches::iterator Tessellation::increaseBranchInterator(IntersectionBranches::iterator it){
+IntersectionBranches::iterator Tessellation::increaseBranchInterator(IntersectionBranches::iterator it, CircularInterfacesPerAtom &circles){
 	IntersectionBranches* p;
 	p = it->second.body;
-	++it;
-	if(it == p->end()) it=p->begin();
+	printf("FORM: %d id: %d\n",circles[it->second.id-1].form,it->second.id);
+	if(circles[it->second.id-1].form == CONVEX){
+		++it;
+		if(it == p->end()) it=p->begin();
+		
+	}
+	else{
+		if(it == p->begin()) it=p->end();
+		--it;
+	}
 	
 	return it;
 	
 }
 
-IntersectionBranches::iterator Tessellation::decreaseBranchInterator(IntersectionBranches::iterator it){
+IntersectionBranches::iterator Tessellation::decreaseBranchInterator(IntersectionBranches::iterator it, CircularInterfacesPerAtom &circles){
 	IntersectionBranches* p;
 	p = it->second.body;
-	if(it == p->begin()) it=p->end();
+	printf("FORM: %d id: %d\n",circles[it->second.id-1].form,it->second.id);
 	
-	
-	--it;
+	if(circles[it->second.id-1].form == CONVEX){
+		if(it == p->begin()) it=p->end();
+		--it;
+		
+	}
+	else{
+		++it;
+		if(it == p->end()) it=p->begin();
+	}
 	
 	return it;
 }
 
 
 
-IntersectionBranches::iterator Tessellation::increaseBranchInterator(multimap<double, IntersectionBranch>::iterator it, int ignore){
+IntersectionBranches::iterator Tessellation::increaseBranchInterator(multimap<double, IntersectionBranch>::iterator it, int ignore, CircularInterfacesPerAtom &circles){
 	IntersectionBranches* p;
 	p = it->second.body;
-	++it;
-	if(it == p->end()) it=p->begin();
+	printf("FORM: %d id: %d\n",circles[it->second.id-1].form,it->second.id);
 	
-	if(it->second.it->second.id == ignore) it = increaseBranchInterator(it, ignore);
+	if(circles[it->second.id-1].form == CONVEX){
+		++it;
+		if(it == p->end()) it=p->begin();
+		
+	}
+	else{
+		if(it == p->begin()) it=p->end();
+		--it;
+	}
+	
+	if(it->second.it->second.id == ignore) it = increaseBranchInterator(it, ignore, circles);
 	
 	return it;
 	
 }
 
-IntersectionBranches::iterator Tessellation::decreaseBranchInterator(IntersectionBranches::iterator it, int ignore){
+IntersectionBranches::iterator Tessellation::decreaseBranchInterator(IntersectionBranches::iterator it, int ignore, CircularInterfacesPerAtom &circles){
 	IntersectionBranches* p;
 	p = it->second.body;
-	if(it == p->begin()) it=p->end();
+	printf("FORM: %d id: %d\n",circles[it->second.id-1].form,it->second.id);
 	
-	--it;
+	if(circles[it->second.id-1].form == CONVEX){
+		if(it == p->begin()) it=p->end();
+		--it;
+		
+	}
+	else{
+		++it;
+		if(it == p->end()) it=p->begin();
+	}
 	
 	//printf("chk %d against %d\n",it->second.it->second.id, ignore);
-	if(it->second.it->second.id == ignore) it = decreaseBranchInterator(it, ignore);
+	if(it->second.it->second.id == ignore) it = decreaseBranchInterator(it, ignore, circles);
 	
 	
 	return it;
@@ -1365,7 +1437,7 @@ bool Tessellation::addToEraseList(map<IntersectionBranches::iterator, bool, Iter
 }
 
 
-bool Tessellation::addToEraseListCascade(map<IntersectionBranches::iterator, bool, IteratorComparator> &masterEraseList, map<IntersectionBranches::iterator, bool, IteratorComparator> &eraseList, IntersectionBranches::iterator &it, int limit){
+bool Tessellation::addToEraseListCascade(map<IntersectionBranches::iterator, bool, IteratorComparator> &masterEraseList, map<IntersectionBranches::iterator, bool, IteratorComparator> &eraseList, IntersectionBranches::iterator &it, int limit, CircularInterfacesPerAtom &circles){
 	IntersectionBranches::iterator it2, it_mirror;
 	bool res;
 	res = false;
@@ -1376,35 +1448,35 @@ bool Tessellation::addToEraseListCascade(map<IntersectionBranches::iterator, boo
 
 		printf("spreading %d-%d limit(%d)\n",it->second.node->id0,it->second.node->id1,limit);
 	
-		it2 = increaseBranchInterator(it);
+		it2 = increaseBranchInterator(it, circles);
 		res = res || addToEraseList(masterEraseList, eraseList, it2, limit);
 
-		it2 = decreaseBranchInterator(it);
+		it2 = decreaseBranchInterator(it, circles);
 		res = res || addToEraseList(masterEraseList, eraseList, it2, limit);
 		
 
-		it2 = increaseBranchInterator(it_mirror);
+		it2 = increaseBranchInterator(it_mirror, circles);
 		res = res || addToEraseList(masterEraseList, eraseList, it2, limit);
 
-		it2 = decreaseBranchInterator(it_mirror);
+		it2 = decreaseBranchInterator(it_mirror, circles);
 		res = res || addToEraseList(masterEraseList, eraseList, it2, limit);
 	}
 	else{
 		if(it->second.direction == IN){
-			it2 = decreaseBranchInterator(it);
+			it2 = decreaseBranchInterator(it, circles);
 			res = res || addToEraseList(masterEraseList, eraseList, it2, limit);
 		}
 		else{
-			it2 = increaseBranchInterator(it);
+			it2 = increaseBranchInterator(it, circles);
 			res = res || addToEraseList(masterEraseList, eraseList, it2, limit);
 		}
 		
 		if(it_mirror->second.direction == IN){
-			it2 = decreaseBranchInterator(it_mirror);
+			it2 = decreaseBranchInterator(it_mirror, circles);
 			res = res || addToEraseList(masterEraseList, eraseList, it2, limit);
 		}
 		else{
-			it2 = increaseBranchInterator(it_mirror);
+			it2 = increaseBranchInterator(it_mirror, circles);
 			res = res || addToEraseList(masterEraseList, eraseList, it2, limit);
 		}
 		
@@ -1451,8 +1523,8 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 	//iterate through all circles and add them to the intersectiongraph, one by one
 	for(i=0; i < circles.size(); ++i){
 		
-		//printf("adding %d\n",i);
 		I = &circles[i];
+		printf("PROCESSING %d id: %d\n",i,I->id);
 		processed[i]=true;
 		
 		if(I->form!=CONVEX) printf("I FORM CONCAVE\n");
@@ -1476,6 +1548,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 		for(it_j=I->circularIntersections.begin(); it_j != I->circularIntersections.end(); ++it_j){
 			j=(*it_j).first;
 			J = &circles[j];
+			printf("CHECKING CIRCLE %d id: %d\n",j,J->id);
 			if(J->valid){
 				
 				
@@ -1540,37 +1613,47 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 				//external points have an OUT anchestor and an IN successor
 				
 				it_mirror = it->second.it;
+				
+				printBranch("it",it);
+				printBranch("it_mirror",it_mirror);
+				
+				it_next = increaseBranchInterator(it, circles);
+				printBranch("it_next",it_next);
+				
+				it_prev = decreaseBranchInterator(it, circles);
+				printBranch("it_prev",it_prev);
+				
+				it_mirror_next = increaseBranchInterator(it_mirror, circles);
+				printBranch("it_mirror_next",it_mirror_next);
+				it_mirror_prev = decreaseBranchInterator(it_mirror, circles);
+				printBranch("it_mirror_prev",it_mirror_prev);
+				
+				
 				//if the mirror was previously empty, then we just added 2 branches. Hence, if it has two branches, it's considered empty.
 				if(it_mirror->second.body->size()<=2) empty=true;
 				else empty=false;
 				
+				
+				
 				if(!empty){
-					it_mirror_next_ignore = increaseBranchInterator(it_mirror, it->second.id);
-					it_mirror_prev_ignore = decreaseBranchInterator(it_mirror, it->second.id);
+					it_mirror_next_ignore = increaseBranchInterator(it_mirror, it->second.id, circles);
+				printBranch("it_mirror_next_ignore",it_mirror_next_ignore);
+					it_mirror_prev_ignore = decreaseBranchInterator(it_mirror, it->second.id, circles);
+				printBranch("it_mirror_prev_ignore",it_mirror_prev_ignore);
 				}
 				else{
 					//printf("EMPTY\n");
-					it_mirror_next_ignore = increaseBranchInterator(it_mirror);
-					it_mirror_prev_ignore = decreaseBranchInterator(it_mirror);
+					it_mirror_next_ignore = increaseBranchInterator(it_mirror, circles);
+				printBranch("it_mirror_next_ignore",it_mirror_next_ignore);
+					it_mirror_prev_ignore = decreaseBranchInterator(it_mirror, circles);
+				printBranch("it_mirror_prev_ignore",it_mirror_prev_ignore);
 				}
 				
 				
-				it_mirror_next = increaseBranchInterator(it_mirror);
-				it_mirror_prev = decreaseBranchInterator(it_mirror);
-				
-				it_next = increaseBranchInterator(it);
-				it_prev = decreaseBranchInterator(it);
 				
 				
 				
-				printBranch("it",it);
-				printBranch("it_next",it_next);
-				printBranch("it_prev",it_prev);
-				printBranch("it_mirror",it_mirror);
-				printBranch("it_mirror_next",it_mirror_next);
-				printBranch("it_mirror_prev",it_mirror_prev);
-				printBranch("it_mirror_next_ignore",it_mirror_next_ignore);
-				printBranch("it_mirror_prev_ignore",it_mirror_prev_ignore);
+				
 				printf("it_mirror_prev forward %d\n",it_mirror_prev->second.forward);
 				printf("it_mirror_prev backward %d\n",it_mirror_prev->second.backward);
 				printf("it_mirror_next forward %d\n",it_mirror_next->second.forward);
@@ -1748,7 +1831,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 			for(it_e=eraseList2.begin(); it_e != eraseList2.end(); ++it_e){
 				it = it_e->first;
 				
-				addedToEraseList = addedToEraseList || addToEraseListCascade(eraseList, eraseList3, it, I->id);
+				addedToEraseList = addedToEraseList || addToEraseListCascade(eraseList, eraseList3, it, I->id, circles);
 				
 			}
 			
@@ -1883,16 +1966,32 @@ void Tessellation::outputGaussBonnetData(string filename, double radius, Circula
 	CircularInterface circle;
 	double area=0;
 	int k;
+	Vector origin(3), v(3);
+	
 	
 	fprintf(file, "atom radius %f\n", radius);
 	
 	
 	for(int i=0; i< circles.size(); ++i){
 		circle = circles[i];
-		fprintf(file, "circularregion %d radius %f vector %f %f %f form %d\n", circle.id, circle.a, circle.normal(0)*circle.g, circle.normal(1)*circle.g, circle.normal(2)*circle.g, circle.form);
-		fprintf(file, "intersector %d radius %f vector %f %f %f\n", i, circle.sphereRadius, circle.vector(0), circle.vector(1), circle.vector(2));
-	}
+		if(circle.form==SPLITTER){
+			fprintf(file, "circularregion %d radius %f vector %f %f %f form %d\n", circle.id, circle.a, 0.0001, 0.0, 0.0, 2);
+		}
+		else{
+			fprintf(file, "circularregion %d radius %f vector %f %f %f form %d\n", circle.id, circle.a, circle.normal(0)*circle.g, circle.normal(1)*circle.g, circle.normal(2)*circle.g, circle.form);
+			fprintf(file, "intersector %d radius %f vector %f %f %f\n", i, circle.sphereRadius, circle.vector(0), circle.vector(1), circle.vector(2));
+		}
+	} 
+	/*
+	origin = atoms[13];
 	
+	for(int i=0; i< atoms.size(); ++i){
+		if(i!=13){
+			v = atoms[i] - origin;
+			fprintf(file, "intersector %d radius %f vector %f %f %f\n", i, radii[i], v(0), v(1), v(2));
+		}
+	}
+	*/
 	
 	
 	for(int i=0;i<sasas.size();++i){

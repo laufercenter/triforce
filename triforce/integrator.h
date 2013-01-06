@@ -84,7 +84,11 @@ private:
 	Vector lookUp(double PHI, double psi, double lambda);
 	void addForce(int i, Vector force);
 	void clearForces();
-	
+	double PHI2phi(double PHI, double psi, double lambda);
+	double PHI2phi2(Vector integrationOrigin, double PHI, double psi, double lambda);
+	bool isInPositiveEpsilonRange(double v, double eps);
+	double V2phi(Vector &integrationOrigin, Vector cv, Vector &v);
+	mat33 rotz(double theta);
 	
 };
 

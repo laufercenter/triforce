@@ -84,10 +84,12 @@ double IntegratorNumerical::integrate(Molecule *molecule){
 	atoms = molecule->fetchCoordinates();
 	areas = molecule->fetchAreaPointers();
 	
-	file = fopen ("gbonnet0.csv","a");
+	file = fopen ("gbonnet1.csv","a");
 	
 	
-	for(i=0; i<atoms.size(); ++i){
+	//for(i=0; i<atoms.size(); ++i){
+		i=0;
+		{
 		origin = atoms[i];
 		radius = radii[i];
 		mus.clear();
@@ -107,7 +109,6 @@ double IntegratorNumerical::integrate(Molecule *molecule){
 				//reject, if no intersection
 				if(lenv < r_i + r_k && lenv+r_k > r_i && lenv+r_i > r_k){
 					normal = v / lenv;
-					normal = normal;
 					d_i = norm(v,2);
 					mu = normal;
 					
@@ -128,7 +129,7 @@ double IntegratorNumerical::integrate(Molecule *molecule){
 					g_normalised = g/radius;
 					lambda = acos(g_normalised);
 					
-					mus.push_back(mu);
+					mus.push_back(normal);
 					lambdas.push_back(lambda);
 					forms.push_back(form);
 				}				
