@@ -348,12 +348,12 @@ private:
 	double complLongAngle(Vector &vi, Vector &vj, Vector &vk);
 	double angularInterface(Vector &x0, Vector &v, Vector &p0, Vector &p1);
 	void measurementPoints(Vector &p0, Vector &p1, Vector &tessellationOrigin, CircularInterface &I);
-	Interfaces angularInterfaces(Vector &x0, Vector &x1, Vector &tessellationOrigin, CircularInterface &I);
+	Interfaces angularInterfaces(Vector &x0, Vector &x1, Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J);
 	PHIContainer retrieveInterfaces(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J, double dij, double radius);
-	IntersectionBranches::iterator increaseBranchInterator(IntersectionBranches::iterator it);
-	IntersectionBranches::iterator decreaseBranchInterator(IntersectionBranches::iterator it);
-	IntersectionBranches::iterator increaseBranchInterator(multimap<double, IntersectionBranch>::iterator it, int ignore);
-	IntersectionBranches::iterator decreaseBranchInterator(IntersectionBranches::iterator it, int ignore);
+	IntersectionBranches::iterator increaseBranchInterator(IntersectionBranches::iterator it, CircularInterfacesPerAtom &circles);
+	IntersectionBranches::iterator decreaseBranchInterator(IntersectionBranches::iterator it, CircularInterfacesPerAtom &circles);
+	IntersectionBranches::iterator increaseBranchInterator(multimap<double, IntersectionBranch>::iterator it, int ignore, CircularInterfacesPerAtom &circles);
+	IntersectionBranches::iterator decreaseBranchInterator(IntersectionBranches::iterator it, int ignore, CircularInterfacesPerAtom &circles);
 	void disconnectIntersectionPoint(IntersectionNode &a);
 	void connectIntersectionPoints(IntersectionNode &a, IntersectionNode &b, IntersectionGraph &intersectionGraph);
 	void createIntersectionNode(IntersectionAddress &address, IntersectionGraph &intersectionGraph);
@@ -374,7 +374,7 @@ private:
 	Rotation calculatePsi(Vector tessellationOrigin, CircularInterface &circle);
 	Matrix matrixCross(Matrix &m, Vector &v);
 	bool addToEraseList(map<IntersectionBranches::iterator,bool,IteratorComparator> &masterEraseList, map<IntersectionBranches::iterator,bool,IteratorComparator> &eraseList, IntersectionBranches::iterator &it, int limit);
-	bool addToEraseListCascade(map<IntersectionBranches::iterator,bool,IteratorComparator> &masterEraseList, map<IntersectionBranches::iterator,bool,IteratorComparator> &eraseList, IntersectionBranches::iterator &it, int limit);
+	bool addToEraseListCascade(map<IntersectionBranches::iterator,bool,IteratorComparator> &masterEraseList, map<IntersectionBranches::iterator,bool,IteratorComparator> &eraseList, IntersectionBranches::iterator &it, int limit, CircularInterfacesPerAtom &circles);
 
 
 	
