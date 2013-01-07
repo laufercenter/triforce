@@ -25,7 +25,7 @@ void Tessellation::build(bool split){
 	//atoms.size()
 	//iterate over all atoms and build the tessellation for each of them
 	//for(int i=0; i<atoms.size(); ++i){
-		int i=0;
+		int i=16;
 		buildGaussBonnetPath(i, atoms, radii, sasasForMolecule, split);
 		
 		
@@ -1492,6 +1492,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 	IntersectionGraph intersectionGraph;
 	IntersectionGraph::iterator it_g, it_x;
 	int cid0, cid1;
+	int q;
 	
 	SASA potentialSasa;
 	SASANode sasaNode;
@@ -1654,24 +1655,37 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 				
 				
 				
-				printf("it_mirror_prev forward %d\n",it_mirror_prev->second.forward);
-				printf("it_mirror_prev backward %d\n",it_mirror_prev->second.backward);
-				printf("it_mirror_next forward %d\n",it_mirror_next->second.forward);
-				printf("it_mirror_next backward %d\n",it_mirror_next->second.backward);
+				printf("it_mirror_prev ig forward %d\n",it_mirror_prev_ignore->second.forward);
+				printf("it_mirror_prev ig backward %d\n",it_mirror_prev_ignore->second.backward);
+				printf("it_mirror_next ig forward %d\n",it_mirror_next_ignore->second.forward);
+				printf("it_mirror_next ig backward %d\n",it_mirror_next_ignore->second.backward);
 				
 				if(empty){
 					printf("EMPTY\n");
-					if(it->second.direction == IN){
-						it->second.forward = EXTERNAL;
-						it->second.backward = INTERNAL;
-						it_mirror->second.forward = INTERNAL;
-						it_mirror->second.backward = EXTERNAL;
-					}
-					if(it->second.direction == OUT){
+					q = 1;
+					if(it->second.direction == IN) q*=-1;
+					printf("Q: %d\n",q);
+					//if(circles[it->second.id-1].form != CONVEX) q*=-1;
+					//printf("Q: %d\n",q);
+					//if(circles[it_mirror->second.id-1].form != CONVEX) q*=-1;
+					//printf("Q: %d\n",q);
+					
+					
+					
+					
+					if(q>0){
+						printf("POSITIVE Q\n");
 						it->second.forward = INTERNAL;
 						it->second.backward = EXTERNAL;
 						it_mirror->second.forward = EXTERNAL;
 						it_mirror->second.backward = INTERNAL;
+					}
+					else{
+						printf("NEGATIVE Q\n");
+						it->second.forward = EXTERNAL;
+						it->second.backward = INTERNAL;
+						it_mirror->second.forward = INTERNAL;
+						it_mirror->second.backward = EXTERNAL;
 					}
 					connectIntersectionPoints(*it_mirror->second.node, *it_next->second.node, intersectionGraph);
 				}
