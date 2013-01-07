@@ -41,12 +41,28 @@ void Molecule::addRealAtom(double x, double y, double z, double sigma, double ep
 	atoms[i](1)=y;
 	atoms[i](2)=z;
 	
-	realArea.push_back(0);
-	realForceX.push_back(0);
-	realForceY.push_back(0);
-	realForceZ.push_back(0);
 	
 	addAtom(&atoms[i](0),&atoms[i](1),&atoms[i](2),&realArea[realArea.size()-1],&realForceX[realForceX.size()-1],&realForceY[realForceY.size()-1],&realForceZ[realForceZ.size()-1], sigma, epsilon,i);
+	
+	source[i] = INTERNAL_SOURCE;
+	
+	//pointers might have been invalidated. We need to restore them
+	refreshInternalPointers();
+}
+
+void Molecule::refreshInternalPointers(){
+	int i;
+	for(i=0; i < source.size(); ++i){
+		if(source[i]==INTERNAL_SOURCE){
+			atomicPointers[i].x = &(atoms[i](0));
+			atomicPointers[i].y = &(atoms[i](1));
+			atomicPointers[i].z = &(atoms[i](2));
+			areas[i] = &(realArea[i]);
+			forces[i][0] = &(realForceX[i]);
+			forces[i][1] = &(realForceY[i]);
+			forces[i][2] = &(realForceZ[i]);
+		}
+	}
 }
 
 
@@ -60,6 +76,11 @@ void Molecule::constructAtoms(int end){
 		radii.resize(end+1,0);
 		areas.resize(end+1,0);
 		forces.resize(end+1,vector<double*>());
+		realArea.resize(end+1,0);
+		realForceX.resize(end+1,0);
+		realForceY.resize(end+1,0);
+		realForceZ.resize(end+1,0);
+		source.resize(end+1,EXTERNAL_SOURCE);
 	}
 }
 
@@ -101,6 +122,7 @@ void Molecule::addAtom(double* x, double* y, double* z, double* area, double* fo
 	
 	areas[i] = area;
 	forces[i] = force;
+	source[i] = EXTERNAL_SOURCE;
 		
 }
 
@@ -148,8 +170,8 @@ void Molecule::print(){
 	}
 	printf("Areas and forces:\n");
 	for(int i=0;i<areas.size();++i){
-		//printf("[%d]: %f (%f, %f, %f) pointers: (%d, %d, %d)\n",i,*(areas[i]), *(forces[i][0]), *(forces[i][1]), *(forces[i][2]), forces[i][0], forces[i][1], forces[i][2]);
-		printf("[%d]: pointers: (%d, %d, %d, %d)\n",i,areas[i], forces[i][0], forces[i][1], forces[i][2]);
+		printf("[%d]: %f (%f, %f, %f) pointers: (%d, %d, %d)\n",i,*(areas[i]), *(forces[i][0]), *(forces[i][1]), *(forces[i][2]), forces[i][0], forces[i][1], forces[i][2]);
+		//printf("[%d]: pointers: (%d, %d, %d, %d)\n",i,areas[i], forces[i][0], forces[i][1], forces[i][2]);
 	}
 	
 }
