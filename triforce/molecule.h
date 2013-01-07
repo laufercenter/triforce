@@ -48,6 +48,12 @@ enum ForceField {
 	Amber96
 };
 
+enum Source {
+	EXTERNAL_SOURCE,
+	INTERNAL_SOURCE
+};
+
+
 
 class Molecule{
 	
@@ -81,6 +87,7 @@ private:
 	vector<double> epsilons;
 	vector<double*> areas;
 	vector<vector<double*> >forces;
+	vector<Source> source;
 	
 	
 	ForceField forcefield;
@@ -93,6 +100,9 @@ private:
 	vector<double> realForceZ;
 	
 
+	
+	void refreshInternalPointers();
+	
 	
 };
 
