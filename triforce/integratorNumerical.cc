@@ -88,7 +88,7 @@ double IntegratorNumerical::integrate(Molecule *molecule){
 	
 	
 	//for(i=0; i<atoms.size(); ++i){
-		i=0;
+		i=16;
 		{
 		origin = atoms[i];
 		radius = radii[i];
