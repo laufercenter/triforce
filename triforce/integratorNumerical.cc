@@ -87,9 +87,8 @@ double IntegratorNumerical::integrate(Molecule *molecule){
 	file = fopen ("gbonnet1.csv","a");
 	
 	
-	//for(i=0; i<atoms.size(); ++i){
-		i=16;
-		{
+	for(i=0; i<atoms.size(); ++i){
+		//i=16;	{
 		origin = atoms[i];
 		radius = radii[i];
 		mus.clear();
