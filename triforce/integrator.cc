@@ -377,8 +377,10 @@ Area IntegratorTriforce::integrateTriangle(SASANode &x0, SASANode &x1, Vector in
 	printf("MAXAREA: %f\n",maxArea);
 	
 	
-	
-	area = Tjk(0)-Tij(0);
+	if(PHIjk.rotation >= PHIij.rotation)
+		area = Tjk(0) - Tij(0);
+	else 
+		area = Tij(0) - Tjk(0);
 	
 	force_i = -( Tij(1) * PHIij.drotation_dxi + Tij(2) * psi.drotation_dxi + Tij(3) * lambda.drotation_dxi);
 	force_j = Tjk(1) * PHIjk.drotation_dxi + Tjk(2) * psi.drotation_dxi + Tjk(3) * lambda.drotation_dxi - (Tij(1) * PHIij.drotation_dxj + Tij(2) * psi.drotation_dxj + Tij(3) * lambda.drotation_dxj);

@@ -24,8 +24,8 @@ void Tessellation::build(bool split){
 	
 	//atoms.size()
 	//iterate over all atoms and build the tessellation for each of them
-	//for(int i=0; i<atoms.size(); ++i){
-		int i=16;
+	for(int i=0; i<atoms.size(); ++i){
+		//int i=16;
 		buildGaussBonnetPath(i, atoms, radii, sasasForMolecule, split);
 		
 		
@@ -39,7 +39,7 @@ void Tessellation::build(bool split){
 		
 		//outputCircularInterfaces(*circles[circles.size()-1]);
 
-	//}
+	}
 	
 	
 	
@@ -703,6 +703,7 @@ void Tessellation::measurementPoints(Vector &p0, Vector &p1, Vector &tessellatio
 		
 	}
 	else{
+		
 
 		
 		s = cross(v,o);
@@ -712,6 +713,12 @@ void Tessellation::measurementPoints(Vector &p0, Vector &p1, Vector &tessellatio
 		s2 = -cross(v,s);
 		s2 = I.a*s2 / norm(s2,2);
 		p1 = v+s2;
+		
+		if(dot(tessellationOrigin,I.normal)<0){
+			//p0 = v-s;
+			//p1 = v-s2;
+		}
+		
 		printf("THIRD\n");
 		
 	}
@@ -764,6 +771,59 @@ Interfaces Tessellation::angularInterfaces(Vector &x0, Vector &x1, Vector &tesse
 	
 	
 	return res;
+	
+}
+
+
+
+
+
+
+PHIContainer Tessellation::retrieveInterfaces(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J, double dij, double radius){
+	double gij;
+	double eta;
+	double mu;
+	double entryPoint, exitPoint;
+	IntersectionPair ip;
+	Vector x0(3), x1(3);
+	Interfaces intf;
+	Interfaces intf1;
+	double baseAngleIJ;
+	double rotationalPartIJ;
+	double baseAngleJI;
+	double rotationalPartJI;
+	PHIContainer p;
+	Vector Null(3);
+	Null.zeros();
+	
+	
+		ip = determineIntersectionPoints(radius, I, J);
+		x0 = ip.k_j;
+		x1 = ip.j_k;
+		
+		
+		intf1 = angularInterfaces(x0,x1, tessellationOrigin, I, J);
+		
+		
+
+	p.in.rotation = intf1.in;
+	p.in.drotation_dxi = Null;
+	p.in.drotation_dxj = Null;
+	p.in.drotation_dxl = Null;
+	p.in.vector=intf1.vectorIn;
+	p.out.rotation = intf1.out;
+	p.out.drotation_dxi = Null;
+	p.out.drotation_dxj = Null;
+	p.out.drotation_dxl = Null;
+	p.out.vector=intf1.vectorOut;
+	
+	printf("INTERFACES: %f %f\n",p.in.rotation, p.out.rotation);
+	printf("X0: %f %f %f\n",x0(0),x0(1),x0(2));
+	printf("X1: %f %f %f\n",x1(0),x1(1),x1(2));
+
+		
+	return p;
+	
 	
 }
 
@@ -1058,59 +1118,6 @@ PHIContainer Tessellation::calculatePHI(Vector &tessellationOrigin, CircularInte
 
 
 
-
-
-
-
-
-
-PHIContainer Tessellation::retrieveInterfaces(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J, double dij, double radius){
-	double gij;
-	double eta;
-	double mu;
-	double entryPoint, exitPoint;
-	IntersectionPair ip;
-	Vector x0(3), x1(3);
-	Interfaces intf;
-	Interfaces intf1;
-	double baseAngleIJ;
-	double rotationalPartIJ;
-	double baseAngleJI;
-	double rotationalPartJI;
-	PHIContainer p;
-	Vector Null(3);
-	Null.zeros();
-	
-	
-		ip = determineIntersectionPoints(radius, I, J);
-		x0 = ip.k_j;
-		x1 = ip.j_k;
-		
-		
-		intf1 = angularInterfaces(x0,x1, tessellationOrigin, I, J);
-		
-		
-
-	p.in.rotation = intf1.in;
-	p.in.drotation_dxi = Null;
-	p.in.drotation_dxj = Null;
-	p.in.drotation_dxl = Null;
-	p.in.vector=x1;
-	p.out.rotation = intf1.out;
-	p.out.drotation_dxi = Null;
-	p.out.drotation_dxj = Null;
-	p.out.drotation_dxl = Null;
-	p.out.vector=x0;
-	
-	printf("INTERFACES: %f %f\n",p.in.rotation, p.out.rotation);
-	printf("X0: %f %f %f\n",x0(0),x0(1),x0(2));
-	printf("X1: %f %f %f\n",x1(0),x1(1),x1(2));
-
-		
-	return p;
-	
-	
-}
 
 
 
@@ -1425,6 +1432,8 @@ bool Tessellation::addToEraseList(map<IntersectionBranches::iterator, bool, Iter
 	IntersectionBranches::iterator it_mirror;
 	it_mirror = it->second.it;
 	
+	printf("[%d-%d] id!=limit: %d mirror_id!=limit: %d flagged: %d mirror_flagged: %d masterfind: %d eraselistfind: %d\n",it->second.node->id0,it->second.node->id1,it->second.id != limit,  it_mirror->second.id != limit , !it->second.flagged ,  !it_mirror->second.flagged , masterEraseList.find(it_mirror)==masterEraseList.end()  , eraseList.find(it_mirror)==eraseList.end());
+	
 	if(it->second.id != limit && it_mirror->second.id != limit && !it->second.flagged &&  !it_mirror->second.flagged && masterEraseList.find(it_mirror)==masterEraseList.end()  && eraseList.find(it_mirror)==eraseList.end()){
 			eraseList[it]=true;
 			it->second.flagged=true;
@@ -1444,40 +1453,47 @@ bool Tessellation::addToEraseListCascade(map<IntersectionBranches::iterator, boo
 	
 	it_mirror = it->second.it;
 	
+	printf("TRYING TO ADD %d %d\n",it->second.node->id0,it->second.node->id1);
 	if(it->second.id != limit && it_mirror->second.id != limit){
 
 		printf("spreading %d-%d limit(%d)\n",it->second.node->id0,it->second.node->id1,limit);
 	
 		it2 = increaseBranchInterator(it, circles);
-		res = res || addToEraseList(masterEraseList, eraseList, it2, limit);
+		res = addToEraseList(masterEraseList, eraseList, it2, limit) || res;
 
 		it2 = decreaseBranchInterator(it, circles);
-		res = res || addToEraseList(masterEraseList, eraseList, it2, limit);
+		res = addToEraseList(masterEraseList, eraseList, it2, limit) || res;
 		
 
 		it2 = increaseBranchInterator(it_mirror, circles);
-		res = res || addToEraseList(masterEraseList, eraseList, it2, limit);
+		res = addToEraseList(masterEraseList, eraseList, it2, limit) || res;
 
 		it2 = decreaseBranchInterator(it_mirror, circles);
-		res = res || addToEraseList(masterEraseList, eraseList, it2, limit);
+		res = addToEraseList(masterEraseList, eraseList, it2, limit) || res;
 	}
 	else{
+		printf("trying to spread %d-%d limit(%d)\n",it->second.node->id0,it->second.node->id1,limit);
+		
 		if(it->second.direction == IN){
+			printf("IN\n");
 			it2 = decreaseBranchInterator(it, circles);
-			res = res || addToEraseList(masterEraseList, eraseList, it2, limit);
+			res = addToEraseList(masterEraseList, eraseList, it2, limit) || res;
 		}
 		else{
+			printf("OUT\n");
 			it2 = increaseBranchInterator(it, circles);
-			res = res || addToEraseList(masterEraseList, eraseList, it2, limit);
+			res = addToEraseList(masterEraseList, eraseList, it2, limit) || res;
 		}
 		
 		if(it_mirror->second.direction == IN){
+			printf("MIRROR IN\n");
 			it2 = decreaseBranchInterator(it_mirror, circles);
-			res = res || addToEraseList(masterEraseList, eraseList, it2, limit);
+			res = addToEraseList(masterEraseList, eraseList, it2, limit) || res;
 		}
 		else{
+			printf("MIRROR OUT\n");
 			it2 = increaseBranchInterator(it_mirror, circles);
-			res = res || addToEraseList(masterEraseList, eraseList, it2, limit);
+			res = addToEraseList(masterEraseList, eraseList, it2, limit) || res;
 		}
 		
 	}
@@ -1582,17 +1598,17 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 				}
 			}
 		}
-		/*
+		
 		for(int m=0; m<circles.size(); ++m){
 			printf("circle %d\n",m);
 			for(it_main = circles[m].intersectionBranches.begin(); it_main != circles[m].intersectionBranches.end(); ++it_main){
 				if(it_main->second.direction==OUT)
-					printf("[%d] (%d,%d) d: %f - (%f,%f) (OUT)\n",it_main->second.id, it_main->second.node->id0, it_main->second.node->id1, it_main->first, it_main->second.node->angle0, it_main->second.node->angle1);
+					printf("[%d] (%d,%d) d: %f - (%f,%f) (OUT)\n",it_main->second.id, it_main->second.node->id0, it_main->second.node->id1, it_main->first, it_main->second.node->rotation0.rotation, it_main->second.node->rotation1.rotation);
 				else
-					printf("[%d] (%d,%d) d: %f - (%f,%f) (IN)\n",it_main->second.id, it_main->second.node->id0, it_main->second.node->id1, it_main->first, it_main->second.node->angle0, it_main->second.node->angle1);
+					printf("[%d] (%d,%d) d: %f - (%f,%f) (IN)\n",it_main->second.id, it_main->second.node->id0, it_main->second.node->id1, it_main->first, it_main->second.node->rotation0.rotation, it_main->second.node->rotation1.rotation);
 			}
 		}
-		*/
+		
 			
 			
 		//all intersectionpoints have been added, it is time to change topologies
@@ -1838,14 +1854,29 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 		}
 		
 		do{
-			printf("ERASING\n");
+			printf("-------MASTER LIST--------\n");
+			for(it_e=eraseList.begin(); it_e != eraseList.end(); ++it_e){
+				it = it_e->first;
+				printf("%d-%d\n",it->second.node->id0,it->second.node->id1);
+			}
+			printf("-------------------------------");
+			printf("-------SEARCH LIST--------\n");
+			for(it_e=eraseList2.begin(); it_e != eraseList2.end(); ++it_e){
+				it = it_e->first;
+				printf("%d-%d\n",it->second.node->id0,it->second.node->id1);
+			}
+			printf("-------------------------------");
+			
+			printf("ERASING %d\n",eraseList2.size());
 			addedToEraseList = false;
 			eraseList3.clear();
 			
+			int b2=0;
 			for(it_e=eraseList2.begin(); it_e != eraseList2.end(); ++it_e){
 				it = it_e->first;
-				
-				addedToEraseList = addedToEraseList || addToEraseListCascade(eraseList, eraseList3, it, I->id, circles);
+				printf("B: %d\n",b2);
+				++b2;
+				addedToEraseList = addToEraseListCascade(eraseList, eraseList3, it, I->id, circles) || addedToEraseList; //order of the or operands is important
 				
 			}
 			
