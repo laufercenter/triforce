@@ -972,14 +972,13 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, CircularInterf
 	
 	nij = cross(I.normal, J.normal);
 	
-	s0 = sgn(dot_ni_nij);
 	varpi = acos(norm_dot(ni,nij));
-	s1 = -sgn(dot(nij,tessellationOrigin));
+	s0 = -sgn(dot(nij,tessellationOrigin));
 	
 	//omega.rotation = -s0*(s1*(1-s0)*M_PI/2 - varpi);
 	
-	omega.rotation = s1*varpi;
-	
+	omega.rotation = s0*varpi;
+	/*
 	if(omega.rotation < -M_PI){
 		printf("omega.rotation < -M_PI\n");
 		omega.rotation = 2*M_PI + omega.rotation;
@@ -989,7 +988,7 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, CircularInterf
 		printf("omega.rotation > M_PI\n");
 		omega.rotation = -2*M_PI + omega.rotation;
 	}
-	
+	*/
 	omega.rotation = omega.rotation * s2;
 	
 	/*
@@ -1107,6 +1106,7 @@ PHIContainer Tessellation::calculatePHI(Vector &tessellationOrigin, CircularInte
 	
 	Rotation eta,omega;
 	int q;
+	double S1;
 	
 	
 	//eta = M_PI/2 - acos(-(1/tan(lambda_j))*(1/tan(rho))+cos(lambda_k)*(1/sin(lambda_j))*(1/sin(rho)));
@@ -1114,7 +1114,7 @@ PHIContainer Tessellation::calculatePHI(Vector &tessellationOrigin, CircularInte
 	eta = calculateEta(I,J);
 	omega = calculateOmega(tessellationOrigin,I,J);
 
-	
+	S1 = sgn(M_PI-p.out.rotation);
 
 	
 	p.out.rotation = omega.rotation + eta.rotation;
