@@ -936,43 +936,75 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, CircularInterf
 	ez(1)=0;
 	ez(2)=1;
 	double d;
-	double s0,s1;
+	double s0,s1,s2;
+	Vector p(3);
 
 	
 	d = dot(tessellationOrigin,I.normal);
-	
+	s2 = 1;
 	if(isWithinNumericalLimits(d,1.0)){
-		ni = Vector(3);
-		ni(0) = 0;
-		ni(1) = 0;
-		ni(2) = 1;
 		printf("POSITIVE RANGE +1 %f\n",d);
+		p(0) = 0;
+		p(1) = 1;
+		p(2) = 0;
+		
+		ni=cross(p,-tessellationOrigin);
+		
+		if(dot(ni,J.normal)<0)
+			s2 = -1;
 	}
 	else if(isWithinNumericalLimits(d,-1.0)){
-		ni = Vector(3);
-		ni(0) = 0;
-		ni(1) = 0;
-		ni(2) = -1;
 		printf("POSITIVE RANGE -1 %f\n",d);
+		p(0) = 0;
+		p(1) = -1;
+		p(2) = 0;
+		
+		ni=cross(p,-tessellationOrigin);
+		if(dot(ni,J.normal)<0)
+			s2 = -1;
 	}
 	else ni = cross(tessellationOrigin,I.normal);
 	
-	nii = cross(I.normal,ni);
+	printf("CROSS: %f,%f,%f\n",ni(0),ni(1),ni(2));
+	printf("TESSELLATION: %f,%f,%f\n",tessellationOrigin(0),tessellationOrigin(1),tessellationOrigin(2));
+	
+	//nii = cross(I.normal,ni);
 	
 	nij = cross(I.normal, J.normal);
-	dot_ni_nij = norm_dot(nij,nii);
 	
 	s0 = sgn(dot_ni_nij);
-	varpi = asin(norm_dot(ni,nij));
-	s1 = sgn(varpi);
+	varpi = acos(norm_dot(ni,nij));
+	s1 = -sgn(dot(nij,tessellationOrigin));
 	
-	omega.rotation = -s0*(s1*(1-s0)*M_PI/2 - varpi);
+	//omega.rotation = -s0*(s1*(1-s0)*M_PI/2 - varpi);
 	
+	omega.rotation = s1*varpi;
+	
+	if(omega.rotation < -M_PI){
+		printf("omega.rotation < -M_PI\n");
+		omega.rotation = 2*M_PI + omega.rotation;
+	}
+
+	if(omega.rotation > M_PI){
+		printf("omega.rotation > M_PI\n");
+		omega.rotation = -2*M_PI + omega.rotation;
+	}
+	
+	omega.rotation = omega.rotation * s2;
+	
+	/*
+	if(isWithinNumericalLimits(d,1.0)){
+		if(dot(ni,J.normal)<0)
+			omega.rotation = -omega.rotation;
+	}
+*/
+	
+	/*
 	if(I.form != CONVEX){
 		if(omega.rotation>=0)
 			omega.rotation = -M_PI + omega.rotation;
 	}
-	
+	*/
 	
 	dmui_dxi = I.dmu_dx;
 	dmui_dxl = -I.dmu_dx;
@@ -1034,7 +1066,7 @@ Rotation Tessellation::calculateEta(CircularInterface &I, CircularInterface &J){
 	sig1 = cos(lambda_j)*csc(lambda_i)*csc(rho);
 	sig2 = sig0-sig1;
 	
-	eta.rotation = -asin(sig2);
+	eta.rotation = acos(sig2);
 	
 	
 	
@@ -1071,41 +1103,69 @@ Rotation Tessellation::calculateEta(CircularInterface &I, CircularInterface &J){
 
 
 PHIContainer Tessellation::calculatePHI(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J, double dij, double radius){
-	PHIContainer p,p2;
+	PHIContainer p,p2,p3;
 	
 	Rotation eta,omega;
+	int q;
 	
 	
 	//eta = M_PI/2 - acos(-(1/tan(lambda_j))*(1/tan(rho))+cos(lambda_k)*(1/sin(lambda_j))*(1/sin(rho)));
 	
 	eta = calculateEta(I,J);
 	omega = calculateOmega(tessellationOrigin,I,J);
+
 	
 
 	
-	p.out.rotation = eta.rotation + omega.rotation;
-	if(p.out.rotation>=M_PI) p.out.rotation = (eta.rotation + omega.rotation) - 2*M_PI;
-	else if(p.out.rotation<=-M_PI) p.out.rotation = (eta.rotation + omega.rotation) + 2*M_PI;
+	p.out.rotation = omega.rotation + eta.rotation;
+	if(p.out.rotation > M_PI)
+		p.out.rotation = -2*M_PI + p.out.rotation;
+	
+	
+	//if(p.out.rotation>=M_PI) p.out.rotation = (eta.rotation + omega.rotation) - 2*M_PI;
+	//else if(p.out.rotation<=-M_PI) p.out.rotation = (eta.rotation + omega.rotation) + 2*M_PI;
 	p.out.drotation_dxi = eta.drotation_dxi + omega.drotation_dxi;
 	p.out.drotation_dxj = eta.drotation_dxj + omega.drotation_dxj;
 	p.out.drotation_dxl = eta.drotation_dxl + omega.drotation_dxl;
 	
 	
 	
-	p.in.rotation = (-M_PI-eta.rotation) + omega.rotation;
-	if(p.in.rotation<=-M_PI) p.in.rotation = (M_PI-eta.rotation) + omega.rotation;
+	p.in.rotation = omega.rotation - eta.rotation;
+	if(p.in.rotation < -M_PI)
+		p.in.rotation = 2*M_PI + p.in.rotation;
+	
 	p.in.drotation_dxi = -eta.drotation_dxi + omega.drotation_dxi;
 	p.in.drotation_dxj = -eta.drotation_dxj + omega.drotation_dxj;
 	p.in.drotation_dxl = -eta.drotation_dxl + omega.drotation_dxl;
+	
+	
+	q = 1;
+	if(I.form != CONVEX) q*=-1;
+	if(J.form != CONVEX) q*=-1;
+	
+	if(q<0){
+		printf("EXCHANGE\n");
+		p3=p;
+		p.in=p3.out;
+		p.out=p3.in;
+	}
+
 		
 	
 	p2 = retrieveInterfaces(tessellationOrigin, I, J, dij, radius);
-	return p2;
 	
-	if(I.form!=SPLITTER)
+	printf("ROTATIONAL INFO: in p:%f, p2:%f  out: p:%f p2:%f\n",p.in.rotation, p2.in.rotation, p.out.rotation, p2.out.rotation);
+	printf("omega: %f, eta: %f\n",omega.rotation, eta.rotation);
+	
+	//return p2;
+	
+	//if(I.form!=SPLITTER)
 		if(!isWithinNumericalLimits(p.in.rotation,p2.in.rotation) || !isWithinNumericalLimits(p.out.rotation,p2.out.rotation)){
+		printf("I and J: c(%f,%f,%f),c(%f,%f,%f)\n",I.normal(0),I.normal(1),I.normal(2),J.normal(0),J.normal(1),J.normal(2));
+			
 			printf("ROTATIONAL ERROR: in p:%f, p2:%f  out: p:%f p2:%f\n",p.in.rotation, p2.in.rotation, p.out.rotation, p2.out.rotation);
-			exit(-1);
+			printf("omega: %f, eta: %f\n",omega.rotation, eta.rotation);
+			//exit(-1);
 		}
 
 	
@@ -2038,7 +2098,7 @@ void Tessellation::outputGaussBonnetData(string filename, double radius, Circula
 	}
 	*/
 	
-	
+	/*
 	for(int i=0;i<sasas.size();++i){
 		sasa = sasas[i];
 		fprintf(file, "sasa %d size %d\n", i, sasa.sasa.size());
@@ -2048,7 +2108,7 @@ void Tessellation::outputGaussBonnetData(string filename, double radius, Circula
 		}
 		
 	}
-	
+	*/
 	fclose(file);
 	
 		
