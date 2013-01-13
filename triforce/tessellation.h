@@ -46,6 +46,10 @@ using namespace arma;
 #define ORDER_CLOCKWISE 0
 #define ORDER_COUNTERCLOCKWISE 1
 
+#define FD 0.0000001
+#define FDT 0.1
+
+#define MINISCULE 0.00001
 
 
 
@@ -323,6 +327,8 @@ private:
 	Molecule molecule;
 	vector<Vector> atoms;
 	vector<double> radii;
+	Vector torigin;
+	double tradius;
 	//#atoms #circularregions
 	//#atoms #sasas #circularregions
 	SASAsForMolecule sasasForMolecule;
@@ -368,7 +374,7 @@ private:
 	double rotationalAngle(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J);
 	bool isWithinNumericalLimits(double x, double l);
 	Rotation calculateOmega(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J);
-	Rotation calculateEta(CircularInterface &I, CircularInterface &J);
+	Rotation calculateEta(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J);
 	PHIContainer calculatePHI(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J, double dij, double radius);
 	void determinePsiRotations(Vector &tessellationOrigin, CircularInterfacesPerAtom &circles);
 	Rotation calculatePsi(Vector tessellationOrigin, CircularInterface &circle);

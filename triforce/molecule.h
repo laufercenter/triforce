@@ -63,8 +63,11 @@ public:
 	void addAtom(double* x, double* y, double* z, double* area, double* forceX, double* forceY, double* forceZ, string type, int i=-1);
 	void addAtom(double* x, double* y, double* z, double* area, double* forceX, double* forceY, double* forceZ, double sigma, double epsilon, int i=-1);
 	void update();
-	void addRealAtom(double x, double y, double z, string type, int i=-1);
-	void addRealAtom(double x, double y, double z, double sigma, double epsilon, int i=-1);
+	void addInternallyStoredAtom(double x, double y, double z, string type, int i=-1);
+	void addInternallyStoredAtom(double x, double y, double z, double sigma, double epsilon, int i=-1);
+	Vector getInternallyStoredAtomCoordinates(int i);
+	void setInternallyStoredAtomCoordinates(int i, Vector &v);
+	void perturbInternallyStoredAtomCoordinates(int i, Vector p);
 	
 	void print();
 	vector<Vector> &fetchCoordinates();

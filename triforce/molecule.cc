@@ -20,17 +20,27 @@ Molecule::Molecule(Topology topology){
 }
 
 
+Vector Molecule::getInternallyStoredAtomCoordinates(int i){
+	return atoms[i];
+}
 
+void Molecule::setInternallyStoredAtomCoordinates(int i, Vector &v){
+	atoms[i] = v;
+}
 
-void Molecule::addRealAtom(double x, double y, double z, string type, int i){
+void Molecule::perturbInternallyStoredAtomCoordinates(int i, Vector p){
+	atoms[i] = atoms[i] + p;
+}
+
+void Molecule::addInternallyStoredAtom(double x, double y, double z, string type, int i){
 	Parameters p;
 	p=topology.getAssociatedCell(string2UpperCase(type));
 	
-	addRealAtom(x,y,z,p.sigma,p.epsilon,i);
+	addInternallyStoredAtom(x,y,z,p.sigma,p.epsilon,i);
 	
 }
 	
-void Molecule::addRealAtom(double x, double y, double z, double sigma, double epsilon, int i){
+void Molecule::addInternallyStoredAtom(double x, double y, double z, double sigma, double epsilon, int i){
 	if(i<0) i = atomicPointers.size();
 	
 	if(i>=atomicPointers.size()){

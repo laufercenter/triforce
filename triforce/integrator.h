@@ -79,8 +79,8 @@ private:
 	double complLongAngle(Vector &n, Vector &o, Vector &a);
 	double angle(Vector &a, Vector &b);
 	Area integrateTriangle(SASANode &x0, SASANode &x1, Vector integrationOrigin);
-	double integrateAtomicSASA(int l, SASAsForAtom sasasForAtom);
-	double integrateSASA(int l, SASA &s);
+	double integrateAtomicSASA(int l, SASAsForAtom sasasForAtom, double radius);
+	double integrateSASA(int l, SASA &s, double radius);
 	Vector lookUp(double PHI, double psi, double lambda);
 	void addForce(int i, Vector force);
 	void clearForces();
