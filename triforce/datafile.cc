@@ -477,7 +477,7 @@ Molecule *DataFile::digestGRO(Topology &top){
 					x=string2double((*content)[3])*10;
 					y=string2double((*content)[4])*10;
 					z=string2double((*content)[5])*10;
-					mol->addRealAtom(x,y,z,ident);
+					mol->addInternallyStoredAtom(x,y,z,ident);
 					i++;
 				}
 			}

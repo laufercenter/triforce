@@ -29,7 +29,7 @@ void IntegratorTriforce::clearForces(){
 	int i,j;
 	for(i=0; i<forces.size(); ++i)
 		for(j=0; j<3; ++j){
-			//*(forces[i][j]) = 0;
+			*(forces[i][j]) = 0;
 		}
 }
 
@@ -67,7 +67,7 @@ double IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 	//iterate over all atoms
 	for(int i=0;i<sasas.size();++i){
 		radius = sasas[i].radius;
-		a = integrateAtomicSASA(i, sasas[i]);
+		a = integrateAtomicSASA(i, sasas[i], radius);
 		
 		printf("TOTAL SUBAREA: %f\n",a);
 		
@@ -85,17 +85,16 @@ double IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 }
 
 
-double IntegratorTriforce::integrateAtomicSASA(int l, SASAsForAtom sasasForAtom){
-	double radius;
+double IntegratorTriforce::integrateAtomicSASA(int l, SASAsForAtom sasasForAtom, double radius){
 	double area0, area1, a, area;
 	
-	radius = sasasForAtom.radius;
+	//radius = sasasForAtom.radius;
 	area0 = 0;
 	area1 = 0;
 	for(int i=0;i<sasasForAtom.sasas.size();++i){
 		//int i=1;
 		
-		a = integrateSASA(l, sasasForAtom.sasas[i]);
+		a = integrateSASA(l, sasasForAtom.sasas[i], radius);
 		
 		printf("ACC SUB SUBAREA: %f\n",a);
 
@@ -127,17 +126,24 @@ double IntegratorTriforce::integrateAtomicSASA(int l, SASAsForAtom sasasForAtom)
 
 void IntegratorTriforce::addForce(int i, Vector force){
 	int j;
-	for(j=0; j<3; ++j){
-		//*(forces[i][j]) += force(j);
+	printf("ADDING FORCE TO %d\n",i);
+	if(i>=0){
+		for(j=0; j<3; ++j){
+			*(forces[i][j]) += force(j);
+		}
 	}
+	else printf("DISREGARDING SPLITTER FORCE %f %f %f\n",force(0),force(1),force(2));
 }
 
-double IntegratorTriforce::integrateSASA(int l, SASA &sasa){
+double IntegratorTriforce::integrateSASA(int l, SASA &sasa, double radius){
 	SASANodeList::iterator it;
 	SASANode x0, x1;
 	double area=0;
 	double totalAngle=0;
 	Area integral;
+	double r_square;
+	
+	r_square = radius*radius;
 	
 	x0 = *(--sasa.sasa.end());
 	for(it = sasa.sasa.begin(); it!=sasa.sasa.end(); ++it){
@@ -147,10 +153,10 @@ double IntegratorTriforce::integrateSASA(int l, SASA &sasa){
 		printf("SUBAREA: %f\n",integral.area);
 
 		area += integral.area;
-		addForce(x0.index0, integral.force_i);
-		addForce(x0.index1, integral.force_j);
-		addForce(x1.index1, integral.force_k);
-		addForce(l, integral.force_l);
+		addForce(x0.index0, integral.force_i * r_square);
+		addForce(x0.index1, integral.force_j * r_square);
+		addForce(x1.index1, integral.force_k * r_square);
+		addForce(l, integral.force_l * r_square);
 		
 		
 		
@@ -173,13 +179,9 @@ Vector IntegratorTriforce::lookUp(double PHI, double psi, double lambda){
 	aPHI=abs(PHI);
 	
 	
-	res(0) = data[0]->interpolate(aPHI, psi, lambda);
-	res(1) = 0;
-	res(2) = 0;
-	res(3) = 0;
 	
-	//for(i=0;i<4;++i)
-		//res(i) = data[i]->interpolate(aPHI, psi, lambda);
+	for(i=0;i<4;++i)
+		res(i) = data[i]->interpolate(aPHI, psi, lambda);
 	
 	if(PHI <0) res=-1*res;
 	
@@ -377,21 +379,36 @@ Area IntegratorTriforce::integrateTriangle(SASANode &x0, SASANode &x1, Vector in
 	printf("MAXAREA: %f\n",maxArea);
 	
 	
-	if(PHIjk.rotation >= PHIij.rotation)
-		area = Tjk(0) - Tij(0);
-	else 
-		area = Tij(0) - Tjk(0);
+	if(PHIjk.rotation >= PHIij.rotation) q= 1;
+	else q=-1;
 	
-	force_i = -( Tij(1) * PHIij.drotation_dxi + Tij(2) * psi.drotation_dxi + Tij(3) * lambda.drotation_dxi);
-	force_j = Tjk(1) * PHIjk.drotation_dxi + Tjk(2) * psi.drotation_dxi + Tjk(3) * lambda.drotation_dxi - (Tij(1) * PHIij.drotation_dxj + Tij(2) * psi.drotation_dxj + Tij(3) * lambda.drotation_dxj);
-	force_k = Tjk(1) * PHIjk.drotation_dxj + Tjk(2) * psi.drotation_dxj + Tjk(3) * lambda.drotation_dxj;
-	force_l = Tjk(1) * PHIjk.drotation_dxl + Tjk(2) * psi.drotation_dxl + Tjk(3) * lambda.drotation_dxl - (Tij(1) * PHIij.drotation_dxl + Tij(2) * psi.drotation_dxl + Tij(3) * lambda.drotation_dxl);
+	area = q*Tjk(0) - q*Tij(0);
+	
+	force_i = -q*(Tij(1) * PHIij.drotation_dxj + Tij(2) * psi.drotation_dxj + Tij(3) * lambda.drotation_dxj);
+	force_j = q*(Tjk(1) * PHIjk.drotation_dxi + Tjk(2) * psi.drotation_dxi + Tjk(3) * lambda.drotation_dxi) - q*(Tij(1) * PHIij.drotation_dxi + Tij(2) * psi.drotation_dxi + Tij(3) * lambda.drotation_dxi);
+	force_k = q*(Tjk(1) * PHIjk.drotation_dxj + Tjk(2) * psi.drotation_dxj + Tjk(3) * lambda.drotation_dxj);
+	force_l = q*(Tjk(1) * PHIjk.drotation_dxl + Tjk(2) * psi.drotation_dxl + Tjk(3) * lambda.drotation_dxl) - q*(Tij(1) * PHIij.drotation_dxl + Tij(2) * psi.drotation_dxl + Tij(3) * lambda.drotation_dxl);
 	
 	
+	printf("PHIij dxi : (%f %f %f) \t PHIij dxj : (%f %f %f) \t PHIij dxl : (%f %f %f)\n",PHIij.drotation_dxi(0),PHIij.drotation_dxi(1),PHIij.drotation_dxi(2),PHIij.drotation_dxj(0),PHIij.drotation_dxj(1),PHIij.drotation_dxj(2),PHIij.drotation_dxl(0),PHIij.drotation_dxl(1),PHIij.drotation_dxl(2));
+	printf("PHIjk dxi : (%f %f %f) \t PHIjk dxj : (%f %f %f) \t PHIjk dxl : (%f %f %f)\n",PHIjk.drotation_dxi(0),PHIjk.drotation_dxi(1),PHIjk.drotation_dxi(2),PHIjk.drotation_dxj(0),PHIjk.drotation_dxj(1),PHIjk.drotation_dxj(2),PHIjk.drotation_dxl(0),PHIjk.drotation_dxl(1),PHIjk.drotation_dxl(2));
+	printf("psi dxi   : (%f %f %f) \t psi dxj   : (%f %f %f) \t psi dxl   : (%f %f %f)\n",psi.drotation_dxi(0),psi.drotation_dxi(1),psi.drotation_dxi(2),psi.drotation_dxj(0),psi.drotation_dxj(1),psi.drotation_dxj(2),psi.drotation_dxl(0),psi.drotation_dxl(1),psi.drotation_dxl(2));
+	printf("lambda dxi: (%f %f %f) \t lambda dxj: (%f %f %f) \t lambda dxl: (%f %f %f)\n",lambda.drotation_dxi(0),lambda.drotation_dxi(1),lambda.drotation_dxi(2),lambda.drotation_dxj(0),lambda.drotation_dxj(1),lambda.drotation_dxj(2),lambda.drotation_dxl(0),lambda.drotation_dxl(1),lambda.drotation_dxl(2));
+	
+	
+	q=1;
 	if(PHIjk.rotation < PHIij.rotation){
 		area = 2*maxArea - area;
+		q=-1;
 		printf("COMPLEMENTING\n");
 	}
+	
+
+	force_i = q* force_i;
+	force_j = q* force_j;
+	force_k = q* force_k;
+	force_l = q* force_l;
+	
 	
 	if(psi.rotation < lambda.rotation){
 		if(x1.form==CONVEX){
@@ -424,10 +441,10 @@ Area IntegratorTriforce::integrateTriangle(SASANode &x0, SASANode &x1, Vector in
 	
 	
 	a.area = area;
-	a.force_i = -1* force_i;
-	a.force_j = -1* force_j;
-	a.force_k = -1* force_k;
-	a.force_l = -1* force_l;
+	a.force_i = 1* force_i;
+	a.force_j = 1* force_j;
+	a.force_k = 1* force_k;
+	a.force_l = 1* force_l;
 	
 
 	
