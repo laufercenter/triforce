@@ -72,13 +72,16 @@ private:
 	
 	vector<double*> areas;
 	vector<vector<double*> > forces;	
+	vector<Vector> atoms;
+	vector<double> radii;
+	
 	
 	double csc(double a);
 	int sgn(double d);
 	double complAngle(Vector &a, Vector &b);
 	double complLongAngle(Vector &n, Vector &o, Vector &a);
 	double angle(Vector &a, Vector &b);
-	Area integrateTriangle(SASANode &x0, SASANode &x1, Vector integrationOrigin);
+	Area integrateTriangle(int l, SASANode &x0, SASANode &x1, Vector integrationOrigin);
 	double integrateAtomicSASA(int l, SASAsForAtom sasasForAtom, double radius);
 	double integrateSASA(int l, SASA &s, double radius);
 	Vector lookUp(double PHI, double psi, double lambda);
