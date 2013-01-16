@@ -46,7 +46,7 @@ using namespace arma;
 #define ORDER_CLOCKWISE 0
 #define ORDER_COUNTERCLOCKWISE 1
 
-#define FD 0.0000001
+#define FD 0.001
 #define FDT 0.1
 
 #define MINISCULE 0.00001
@@ -214,12 +214,10 @@ typedef struct
 {
 	int id;
 	int index;
-	Vector vector;
 	Vector normal;
 	Rotation lambda;
 	Rotation psi;
 	double g;
-	double g_normalised;
 	double a;
 	double sphereRadius;
 	double d;
@@ -316,10 +314,26 @@ class Tessellation{
 	
 public:
 	Tessellation(Molecule &m);
-	Tessellation(Molecule &m, Interpolation *dataPHI);
 	
 	void build(bool split);
 	SASAsForMolecule &sasas();
+	
+	
+	Vector calculateInterfaceNormal(const Vector &v_l, const Vector &v_i);
+	Vector calculateInterfaceNormal(const Vector &v_l, const Vector &v_i, double &d);
+	Rotation calculateLambda(int index_i, double d_i, double r_l, double r_i, Vector &mu_i, CircularInterfaceForm &form, double &g2, bool derivatives);
+	Rotation calculateLambda(double d_i, double r_l, double r_i, Vector &mu_i);
+	Rotation calculatePsi(Vector &tessellationOrigin, Vector &mu_i, Matrix &dmu_dx, CircularInterfaceForm form, int index, bool derivatives);
+	Rotation calculatePsi(Vector &tessellationOrigin, Vector &mu_i);
+	Rotation calculateEta(Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j);
+	Rotation calculateEta(Vector &tessellationOrigin, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, Matrix &dmui_dxi, Matrix &dmuj_dxj, int index_i, int index_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, bool derivatives);
+	Rotation calculateOmega(Vector &tessellationOrigin, Vector &mu_i, Vector &mu_j);
+	Rotation calculateOmega(Vector &tessellationOrigin, Vector &mu_i, Vector &mu_j, Matrix &dmui_dxi, Matrix &dmuj_dxj, int index_i, int index_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, bool derivatives);
+	PHIContainer calculatePHI(Vector &tessellationOrigin, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j);
+	PHIContainer calculatePHI(Vector &tessellationOrigin, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, Matrix &dmui_dxi, Matrix &dmuj_dxj, int index_i, int index_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, bool derivatives);
+	double calculateRho(Vector &mu_i, Vector &mu_j);
+	double calculateRho(Vector &mu_i, Vector &mu_j, bool derivatives);
+	
 	
 	
 private:
@@ -377,10 +391,11 @@ private:
 	Rotation calculateEta(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J);
 	PHIContainer calculatePHI(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J, double dij, double radius);
 	void determinePsiRotations(Vector &tessellationOrigin, CircularInterfacesPerAtom &circles);
-	Rotation calculatePsi(Vector tessellationOrigin, CircularInterface &circle);
+	Rotation calculatePsi(Vector &tessellationOrigin, CircularInterface &circle);
 	Matrix matrixCross(Matrix &m, Vector &v);
 	bool addToEraseList(map<IntersectionBranches::iterator,bool,IteratorComparator> &masterEraseList, map<IntersectionBranches::iterator,bool,IteratorComparator> &eraseList, IntersectionBranches::iterator &it, int limit);
 	bool addToEraseListCascade(map<IntersectionBranches::iterator,bool,IteratorComparator> &masterEraseList, map<IntersectionBranches::iterator,bool,IteratorComparator> &eraseList, IntersectionBranches::iterator &it, int limit, CircularInterfacesPerAtom &circles);
+	Vector normalise(Vector x);
 
 
 	
