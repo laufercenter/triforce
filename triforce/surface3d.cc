@@ -45,6 +45,10 @@ void Surface3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r,
 	double vpsi,vlambda;
 	closestGridPoint(x, v, lengths);
 	
+	//printf("CLOSEST GRIDPOINT: %d %d %d\n",v(0),v(1),v(2));
+	
+	if(v(0)>=parameter0Dim || v(1)>=parameter1Dim || v(2)>=parameter2Dim) return;
+	
 	//decide on which side of the discontinuities x lies.
 	
 	if(x(1) < x(2)){
@@ -61,7 +65,6 @@ void Surface3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r,
 	else neg=false;
 	
 	
-	//printf("CLOSEST GRIDPOINT: %d %d %d\n",v(0),v(1),v(2));
 	
 	//printf("DISCONTINUITY: %d\n",discontinuity);
 	
@@ -73,6 +76,7 @@ void Surface3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r,
 				v2(0)=v(0)+i;
 				v2(1)=v(1)+j;
 				v2(2)=v(2)+k;
+				//printf("v2: %d %d %d, par: %d %d %d, bool: %d\n",v2(0),v2(1),v2(2),parameter0Dim,parameter1Dim,parameter2Dim, v2(0)<parameter0Dim && v2(1)<parameter1Dim && v2(2)<parameter2Dim);
 				if(v2(0)<parameter0Dim && v2(1)<parameter1Dim && v2(2)<parameter2Dim){
 					if(!isnan((*data)[v2(0)][v2(1)][v2(2)])){
 						vpsi = (*headerParameter1)[v2(1)];

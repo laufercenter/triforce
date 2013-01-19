@@ -102,7 +102,8 @@ double Interpolation::multiPointTaylor(Vector &x){
 	
 	if(sp.size()==0){
 		printf("NO SPs FOUND. IT's OUTRAGEOUS! (%f, %f, %f)\n",x(0),x(1),x(2));
-		exit(-1);
+		//exit(-1);
+		return 0;
 	}
 		
 	w = weights(sp,x,lengths);
@@ -120,9 +121,9 @@ double Interpolation::multiPointTaylor(Vector &x){
 	for(int i=0;i<sp.size();i++){
 		double t = taylorExtension(sp[i],x);
 		
-		if(abs(t-v) > 0.1){
+		if(abs(t-v) > 10.1){
 			printf("THIS INTERPOLATION IS OUTRAGEOUS: %f\n",abs(t-v));
-			exit(-1);
+			//exit(-1);
 		}
 	}
 	
