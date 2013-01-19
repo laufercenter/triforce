@@ -46,10 +46,10 @@ using namespace arma;
 #define ORDER_CLOCKWISE 0
 #define ORDER_COUNTERCLOCKWISE 1
 
-#define FD 0.001
-#define FDT 0.1
+#define FD 0.000001
+#define FDT 0.0001
 
-#define MINISCULE 0.00001
+#define MINISCULE 0.00000001
 
 
 
@@ -244,6 +244,8 @@ typedef struct
 	int id1;
 	int index0;
 	int index1;
+	CircularInterfaceForm form0;
+	CircularInterfaceForm form1;
 	Vector vector;
 	Rotation rotation0;
 	Rotation rotation1;

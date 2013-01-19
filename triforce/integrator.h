@@ -84,7 +84,9 @@ private:
 	Area integrateTriangle(int l, SASANode &x0, SASANode &x1, Vector integrationOrigin);
 	double integrateAtomicSASA(int l, SASAsForAtom sasasForAtom, double radius);
 	double integrateSASA(int l, SASA &s, double radius);
-	Vector lookUp(double PHI, double psi, double lambda);
+	Vector lookUp(double PHI, double psi, double lambda, double q, CircularInterfaceForm form);
+	Vector lookUp2(double PHI, double psi, double lambda);
+	Vector lookUp3(double PHI, double psi, double lambda);
 	void addForce(int i, Vector force);
 	void clearForces();
 	double PHI2phi(double PHI, double psi, double lambda);
