@@ -195,7 +195,9 @@ Vector IntegratorTriforce::lookUp(double PHI, double psi, double lambda, double 
 	int i;
 	
 	aPHI=abs(PHI);
+	if(apsi < 0) printf("CAPPING psi\n");
 	apsi = max(0.0,psi);
+	if(alambda < 0) printf("CAPPING lambda\n");
 	alambda= max(0.0,lambda);
 	
 	
@@ -215,6 +217,7 @@ Vector IntegratorTriforce::lookUp(double PHI, double psi, double lambda, double 
 		res=-1*res;
 		res(1) = -res(1); //vodoo: I don't know why I have to un-reverse this :/
 	}
+	
 	
 	if(form != CONVEX){
 		res(2) = -res(2);
@@ -262,7 +265,10 @@ Vector IntegratorTriforce::lookUp2(double PHI, double psi, double lambda){
 	int i;
 	
 	aPHI=abs(PHI);
+	
+	if(apsi < 0) printf("CAPPING psi\n");
 	apsi = max(0.0,psi);
+	if(alambda < 0) printf("CAPPING lambda\n");
 	alambda= max(0.0,lambda);
 	
 	
@@ -471,9 +477,19 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	
 	Tij = lookUp(PHIij.rotation, psi.rotation, lambda.rotation, q0, form);
 	Tjk = lookUp(PHIjk.rotation, psi.rotation, lambda.rotation, q1, form);
-
-	Tij2 = lookUp3(PHIij.rotation, psi.rotation, lambda.rotation);
-	Tjk2 = lookUp3(PHIjk.rotation, psi.rotation, lambda.rotation);
+	
+/*	double Aij, Ajk;
+	Aij = Tij(0);
+	Ajk = Tjk(0);
+	
+	Tij = lookUp(PHIij.rotation, psi.rotation, lambda.rotation, q0, form);
+	Tjk = lookUp(PHIjk.rotation, psi.rotation, lambda.rotation, q1, form);
+	
+	Tij(0) = Aij;
+	Tjk(0) = Ajk;
+*/
+	Tij2 = lookUp3(PHIij.rotation2, psi.rotation, lambda.rotation);
+	Tjk2 = lookUp3(PHIjk.rotation2, psi.rotation, lambda.rotation);
 	
 	
 	printf("Tij: %f %f %f %f\n",Tij(0),Tij(1),Tij(2),Tij(3));
@@ -481,8 +497,8 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	printf("io: %f %f %f\n", integrationOrigin(0), integrationOrigin(1), integrationOrigin(2));
 	
 	
-	#define FD2 0.1
-	#define FDT2 0.1
+	#define FD2 0.000001
+	#define FDT2 0.01
 	#define FDT3 0.3
 
 	
@@ -499,11 +515,20 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	dA_dPHIjk = (lookUp2(PHIjk.rotation+FD2, psi.rotation, lambda.rotation)(0) - lookUp2(PHIjk.rotation-FD2, psi.rotation, lambda.rotation)(0)) / (2*FD2);
 	printf("dA_dPHIjk: %f FD: %f\n",Tjk(1),dA_dPHIjk);
 	
-	dA_dpsij0 = (lookUp2(PHIij.rotation, psi.rotation+FD2, lambda.rotation)(0) - lookUp2(PHIij.rotation, psi.rotation-FD2, lambda.rotation)(0)) / (2*FD2);
-	printf("dA_dpsij0: %f FD: %f\n",Tij(2),dA_dpsij0);
-	
-	dA_dpsij1 = (lookUp2(PHIjk.rotation, psi.rotation+FD2, lambda.rotation)(0) - lookUp2(PHIjk.rotation, psi.rotation-FD2, lambda.rotation)(0)) / (2*FD2);
-	printf("dA_dpsij1: %f FD: %f\n",Tjk(2),dA_dpsij1);
+	if(psi.rotation-FD2 < 0.0){
+		dA_dpsij0 = (lookUp2(PHIij.rotation, psi.rotation+2*FD2, lambda.rotation)(0) - lookUp2(PHIij.rotation, psi.rotation, lambda.rotation)(0)) / (2*FD2);
+		printf("dA_dpsij0: %f FD: %f psi: %f\n",Tij(2),dA_dpsij0,psi.rotation);
+		
+		dA_dpsij1 = (lookUp2(PHIjk.rotation, psi.rotation+2*FD2, lambda.rotation)(0) - lookUp2(PHIjk.rotation, psi.rotation, lambda.rotation)(0)) / (2*FD2);
+		printf("dA_dpsij1: %f FD: %f psi: %f\n",Tjk(2),dA_dpsij1,psi.rotation);
+	}
+	else{
+		dA_dpsij0 = (lookUp2(PHIij.rotation, psi.rotation+FD2, lambda.rotation)(0) - lookUp2(PHIij.rotation, psi.rotation-FD2, lambda.rotation)(0)) / (2*FD2);
+		printf("dA_dpsij0: %f FD: %f psi: %f\n",Tij(2),dA_dpsij0,psi.rotation);
+		
+		dA_dpsij1 = (lookUp2(PHIjk.rotation, psi.rotation+FD2, lambda.rotation)(0) - lookUp2(PHIjk.rotation, psi.rotation-FD2, lambda.rotation)(0)) / (2*FD2);
+		printf("dA_dpsij1: %f FD: %f psi: %f\n",Tjk(2),dA_dpsij1,psi.rotation);
+	}
 	
 	dA_dlambdaj0 = (lookUp2(PHIij.rotation, psi.rotation, lambda.rotation+FD2)(0) - lookUp2(PHIij.rotation, psi.rotation, lambda.rotation-FD2)(0)) / (2*FD2);
 	printf("dA_dlambdaj0: %f FD: %f\n",Tij(3),dA_dlambdaj0);
@@ -880,6 +905,7 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	force_k = q*(Tjk(1) * PHIjk.drotation_dxj);
 	force_l = q*((Tjk(1) * PHIjk.drotation_dxl + Tjk(2) * psi.drotation_dxl + Tjk(3) * lambda.drotation_dxl) - (Tij(1) * PHIij.drotation_dxl + Tij(2) * psi.drotation_dxl + Tij(3) * lambda.drotation_dxl));
 	
+	printf("ALL: (Tjk(1) %f  * PHIjk.drotation_dxi %f %f %f + Tjk(2) %f * psi.drotation_dxi %f %f %f + Tjk(3) %f * lambda.drotation_dxi %f %f %f) - q*(Tij(1) %f * PHIij.drotation_dxi %f %f %f+ Tij(2) %f * psi.drotation_dxi %f %f %f + Tij(3) %f * lambda.drotation_dxi %f %f %f)\n", Tjk(1) , PHIjk.drotation_dxi(0), PHIjk.drotation_dxi(1), PHIjk.drotation_dxi(2) , Tjk(2) , psi.drotation_dxi(0), psi.drotation_dxi(1), psi.drotation_dxi(2) , Tjk(3) , lambda.drotation_dxi(0), lambda.drotation_dxi(1), lambda.drotation_dxi(2) , Tij(1) , PHIij.drotation_dxi(0), PHIij.drotation_dxi(1), PHIij.drotation_dxi(2) , Tij(2) , psi.drotation_dxi(0), psi.drotation_dxi(1), psi.drotation_dxi(2) , Tij(3) , lambda.drotation_dxi(0), lambda.drotation_dxi(1), lambda.drotation_dxi(2));
 	
 	//printf("PHIij dxi : (%f %f %f) \t PHIij dxj : (%f %f %f) \t PHIij dxl : (%f %f %f)\n",PHIij.drotation_dxi(0),PHIij.drotation_dxi(1),PHIij.drotation_dxi(2),PHIij.drotation_dxj(0),PHIij.drotation_dxj(1),PHIij.drotation_dxj(2),PHIij.drotation_dxl(0),PHIij.drotation_dxl(1),PHIij.drotation_dxl(2));
 	//printf("PHIjk dxi : (%f %f %f) \t PHIjk dxj : (%f %f %f) \t PHIjk dxl : (%f %f %f)\n",PHIjk.drotation_dxi(0),PHIjk.drotation_dxi(1),PHIjk.drotation_dxi(2),PHIjk.drotation_dxj(0),PHIjk.drotation_dxj(1),PHIjk.drotation_dxj(2),PHIjk.drotation_dxl(0),PHIjk.drotation_dxl(1),PHIjk.drotation_dxl(2));
@@ -890,7 +916,7 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	
 
 	
-	
+	printf("Q: %f\n",q);
 	
 	
 	//dAijk_dxi
@@ -1001,7 +1027,6 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 			
 			PHI2p = t.calculatePHI(integrationOrigin, njp, nk, lambdajp, lambdak);
 			PHI2n = t.calculatePHI(integrationOrigin, njn, nk, lambdajn, lambdak);
-			
 			
 			if(q1 > 0){
 				Ap = q * lookUp(PHI2p.out.rotation,psijp.rotation,lambdajp.rotation, q1, form)(0);

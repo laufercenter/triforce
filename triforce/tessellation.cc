@@ -210,6 +210,12 @@ bool Tessellation::isWithinNumericalLimits(double x, double l){
 }
 
 
+bool Tessellation::isWithinStrongNumericalLimits(double x, double l){
+	if(abs(x-l)<=THRESHOLD_STRONG_NUMERICAL) return true;
+	else return false;
+}
+
+
 Rotation Tessellation::calculateLambda(double d_i, double r_l, double r_i, Vector &mu_i){
 	double g2;
 	CircularInterfaceForm form;
@@ -1104,6 +1110,15 @@ Vector Tessellation::normalise(Vector x){
 	
 }
 
+Vector Tessellation::normalise(Vector x, double &l){
+	Vector v(3);
+	l = norm(x,2);
+	v = x/l;
+	return v;
+	
+}
+
+
 
 Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J){
 	return calculateOmega(tessellationOrigin, I.normal, J.normal, I.dmu_dx, J.dmu_dx, I.index, J.index, I.form, J.form, true);
@@ -1116,6 +1131,29 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 	dmu_dx.zeros();
 	
 	return calculateOmega(tessellationOrigin, mu_i, mu_j, dmu_dx, dmu_dx, 0, 0, CONVEX, CONVEX, false);
+}
+
+
+double Tessellation::sacos(Vector &a, Vector &b){
+	double la = norm(a,2);
+	double lb = norm(b,2);
+	return acos(dot(a,b)/(la*lb));
+	
+}
+
+
+double Tessellation::sdot(Vector &a, Vector &b){
+	double la = norm(a,2);
+	double lb = norm(b,2);
+	return dot(a,b)/(la*lb);
+	
+}
+
+double Tessellation::l(Vector &a){
+	double s = 0;
+	for(int i=0; i<3; ++i)
+		s += a(i)*a(i);
+	return sqrt(s);
 }
 
 
@@ -1138,7 +1176,8 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 	Matrix dmui_dxl, dmuj_dxl;
 	double domega_dvarpi;
 	Vector dvarpi_dnij, dvarpi_dni;
-	Matrix dni_dmui, dnij_dmui, dnij_dmuj;
+	Matrix dvi_dmui, dvij_dmui, dvij_dmuj;
+	Matrix dni_dvi, dnij_dvij;
 	Vector domega_dxi, domega_dxj, domega_dxl;
 	
 	ez(0)=0;
@@ -1150,39 +1189,45 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 	double dotChi_mui, dotmui_muj, d;
 	double s0,s1,s2;
 	Vector p(3),p2(3);
-
+	double di;
+	double dij;
+	Vector vi,vij;
 	
 	dotChi_mui = dot(tessellationOrigin,mu_i);
 	s2 = 1;
 	if(isWithinNumericalLimits(dotChi_mui,1.0)){
-		printf("POSITIVE RANGE +1 %f\n",dotChi_mui);
+		//printf("POSITIVE RANGE +1 %f\n",dotChi_mui);
 		p(0) = 0;
 		p(1) = 1;
 		p(2) = 0;
 		
-		ni=(cross(tessellationOrigin,p));
+		ni=normalise(cross(tessellationOrigin,p),di);
+		vi=cross(tessellationOrigin,p);
 		
 		if(dot(ni,mu_j)<0)
 			s2 = -1;
 	}
 	else if(isWithinNumericalLimits(dotChi_mui,-1.0)){
-		printf("POSITIVE RANGE -1 %f\n",dotChi_mui);
+		//printf("POSITIVE RANGE -1 %f\n",dotChi_mui);
 		p(0) = 0;
 		p(1) = -1;
 		p(2) = 0;
 		
-		ni=(cross(tessellationOrigin,p));
+		ni=normalise(cross(tessellationOrigin,p),di);
+		vi=cross(tessellationOrigin,p);
 		if(dot(ni,mu_j)<0)
 			s2 = -1;
 	}
 	else{
 		p = mu_i;
-		ni = (cross(tessellationOrigin,p));
+		ni = normalise(cross(tessellationOrigin,p),di);
+		vi=cross(tessellationOrigin,p);
 	}
 		
 	
 	
 	//printf("CROSS: %f,%f,%f\n",ni(0),ni(1),ni(2));
+	//printf("P: %f %f %f (%f)\n",p(0),p(1),p(2),dotChi_mui);
 	//printf("TESSELLATION: %f,%f,%f\n",tessellationOrigin(0),tessellationOrigin(1),tessellationOrigin(2));
 	
 	//nii = cross(mu_i,ni);
@@ -1192,24 +1237,29 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 		p2(0) = 0;
 		p2(1) = -1;
 		p2(2) = 0;
-		nij = (cross(tessellationOrigin,p2));
+		nij = normalise(cross(tessellationOrigin,p2),dij);
+		vij=cross(tessellationOrigin,p2);
 		//exit(-2);
 	}
 	else if(isWithinNumericalLimits(dotmui_muj,-1.0)){
 		p2(0) = 0;
 		p2(1) = 1;
 		p2(2) = 0;
-		nij = (cross(tessellationOrigin,p2));
+		nij = normalise(cross(tessellationOrigin,p2),dij);
+		vij=cross(tessellationOrigin,p2);
 		//exit(-3);
 	}
-	else nij = (cross(mu_i, mu_j));	
+	else{
+		nij = normalise(cross(mu_i, mu_j),dij);
+		vij=cross(mu_i, mu_j);
+	}
 	
 	
 	
 	dot_ni_nij = dot((ni),(nij));
 	double dot_ni_nijtest = dot(ni,nij);
 	
-	dot_ni_nij2 = dot((ni),(nij));
+	dot_ni_nij2 = sdot(ni,nij);
 
 	
 	if(!isWithinNumericalLimits(dot_ni_nij,dot_ni_nijtest)){
@@ -1217,13 +1267,14 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 	}
 	
 	
-	double dninij=dot((ni),(nij));
-	if(dninij > 1.0) dninij=2.0 - dninij;
-	if(dninij < -1.0) dninij=-2.0 - dninij;
-	if(derivatives)
-		varpi = acos(norm_dot((ni),(nij)));
-	else
+	double dninij=norm_dot((ni),(nij));
+//	if(dninij > 1.0) dninij=2.0 - dninij;
+//	if(dninij < -1.0) dninij=-2.0 - dninij;
+	if(dninij > 1.0) dninij=1.0;
+	if(dninij < -1.0) dninij=-1.0;
+	
 		varpi = acos(dninij);
+	
 	s0 = -sgn(dot(nij,tessellationOrigin));
 	
 	//omega.rotation = -s0*(s1*(1-s0)*M_PI/2 - varpi);
@@ -1243,57 +1294,114 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 	omega.rotation = omega.rotation * s2;
 	
 	
+	//printf("s0: %f, s2: %f\n",s0,s2);
+	
+	//printf("LENGTH mui: %f muj: %f, ni: %f, nij: %f\n",norm(mu_i,2), norm(mu_j,2), norm(ni,2), norm(nij,2));
+	//printf("LENGTH2 mui: %f muj: %f, ni: %f, nij: %f\n",l(mu_i), l(mu_j), l(ni), l(nij));
+	
+	if(isnan(omega.rotation)) exit(-2);
+	
+	
 	if(derivatives){
 	
-		if(dot_ni_nij2 > 1.0 - MINISCULE) dot_ni_nij2 = 1.0-MINISCULE;
-		if(dot_ni_nij2 < -1.0 + MINISCULE) dot_ni_nij2 = -1.0+MINISCULE;
+		//if(dot_ni_nij2 > 1.0 - MINISCULE) dot_ni_nij2 = 1.0-MINISCULE;
+		//if(dot_ni_nij2 < -1.0 + MINISCULE) dot_ni_nij2 = -1.0+MINISCULE;
 		
 		
-		/*
-		if(isWithinNumericalLimits(d,1.0)){
-			if(dot(ni,mu_j)<0)
-				omega.rotation = -omega.rotation;
-		}
-	*/
+	printf("dotninij: %f %f\n",dot_ni_nij, dot_ni_nij2);
+	
+	printf("ni: %f %f %f nij: %f %f %f, dot: %f\n",ni(0),ni(1),ni(2),nij(0),nij(1),nij(2),dot_ni_nij);
 		
-		/*
-		if(form_i != CONVEX){
-			if(omega.rotation>=0)
-				omega.rotation = -M_PI + omega.rotation;
-		}
-		*/
+
 		
 		dmui_dxl = -dmui_dxi;
 		dmuj_dxl = -dmuj_dxj;
 		
+		if(s2>0)
+			dvi_dmui=-matrixCross(Identity,tessellationOrigin);
+		else
+			dvi_dmui = Matrix(3,3).zeros();
+		
+		
+		
+		dvij_dmui = matrixCross(Identity,mu_j);
+		dvij_dmuj = matrixCross(reverseIdentity,mu_i);
+		
+		dni_dvi = (1.0/(di))*(Identity - kron(ni,ni.t())).t();
+		dnij_dvij = (1.0/(dij))*(Identity - kron(nij,nij.t())).t();
+		
+		
 		domega_dvarpi = s0;
 		
-		printf("ni: %f %f %f nij: %f %f %f, dot: %f\n",ni(0),ni(1),ni(2),nij(0),nij(1),nij(2),dot_ni_nij);
-		
-		dvarpi_dni = -(nij) / (sqrt(1-dot_ni_nij2*dot_ni_nij2));
-		dvarpi_dnij = -(ni) / (sqrt(1-dot_ni_nij2*dot_ni_nij2));
 		
 		
-		if(s2>0)
-			dni_dmui=-matrixCross(Identity,tessellationOrigin);
-		else
-			dni_dmui = Matrix(3,3).zeros();
+		if(isWithinStrongNumericalLimits(abs(dot_ni_nij),1.0)){
+			printf("ZERO LEVEL\n");
+			
+			/*
+			dvarpi_dni = -(nij);
+			dvarpi_dnij = -(ni);
+			
+			double s3;
+			s3 = sgn(dot_ni_nij2);
+			
+		
+			Vector a2 = (ni.t() * dni_dmui * dmui_dxi).t();
+			Vector b2 = (nij.t() * dnij_dmui * dmui_dxi).t();
+			
+			printf("A2: (%f %f %f) B2: (%f %f %f)\n",a2(0),a2(1),a2(2),b2(0),b2(1),b2(2));
+			
+			
+			domega_dxi = s2* domega_dvarpi * ((ni.t() * dni_dmui * dmui_dxi).t() + (nij.t() * dnij_dmui * dmui_dxi).t() );
+			
+			if(dot(a2,b2)>0){
+				domega_dxi *=-s3*M_PI/2.0;
+			}
+			else{
+				domega_dxi *=-s3*M_PI;
+			}
+			
+			domega_dxj = s2* domega_dvarpi * (nij.t() * dnij_dmuj * dmuj_dxj).t();
+			domega_dxj *=-s3*M_PI/2.0;
+			
+			
+		Vector a = (ni.t() * dni_dmui * dmui_dxl).t();
+		Vector b = (nij.t() * (dnij_dmui * dmui_dxl + dnij_dmuj * dmuj_dxl) ).t();
+		
+		printf("A: (%f %f %f) B: (%f %f %f)\n",a(0),a(1),a(2),b(0),b(1),b(2));
+			
+			
+			domega_dxl = s2* domega_dvarpi * (  (ni.t() * dni_dmui * dmui_dxl).t() +  (nij.t() * (dnij_dmui * dmui_dxl + dnij_dmuj * dmuj_dxl) ).t() );
+			domega_dxl *= -s3*M_PI/2.0;
+			
+			*/
+			
+			dvarpi_dni = Vector(3).zeros();
+			dvarpi_dnij = Vector(3).zeros();
+			domega_dxi = Vector(3).zeros();
+			domega_dxj = Vector(3).zeros();
+			domega_dxl = Vector(3).zeros();
+			
+		
+			
+		}
+		else{
 		
 		
-		dnij_dmui = matrixCross(Identity,mu_j);
-		dnij_dmuj = matrixCross(reverseIdentity,mu_i);
 		
-		printf("sizes: %d %d %d %d %d %d\n",dvarpi_dni.size(),dni_dmui.size(),dmui_dxi.size(),dvarpi_dnij.size(),dnij_dmui.size(),dmui_dxi.size());
-		
-		
-		
-		domega_dxi = s2* domega_dvarpi * ((dvarpi_dni.t() * dni_dmui * dmui_dxi).t() + (dvarpi_dnij.t() * dnij_dmui * dmui_dxi).t() );
-		
-		domega_dxj = s2* domega_dvarpi * (dvarpi_dnij.t() * dnij_dmuj * dmuj_dxj).t();
+			dvarpi_dni = -(nij) / (sqrt(1-dot_ni_nij*dot_ni_nij));
+			dvarpi_dnij = -(ni) / (sqrt(1-dot_ni_nij*dot_ni_nij));
+			
+			
 
-		//domega_dxdelta = -domega_dxi-domega_dxj;
+			
+			domega_dxi = s2* domega_dvarpi * ((dvarpi_dni.t() * dni_dvi * dvi_dmui * dmui_dxi).t() + (dvarpi_dnij.t() * dnij_dvij * dvij_dmui * dmui_dxi).t() );
 
-		domega_dxl = s2* domega_dvarpi * ( (dvarpi_dni.t() * dni_dmui * dmui_dxl).t() +  (dvarpi_dnij.t() * (dnij_dmui * dmui_dxl + dnij_dmuj * dmuj_dxl) ).t() );
+			
+			domega_dxj = s2* domega_dvarpi * (dvarpi_dnij.t() * dnij_dvij * dvij_dmuj * dmuj_dxj).t();
+
+			domega_dxl = s2* domega_dvarpi * ( (dvarpi_dni.t() * dni_dvi * dvi_dmui * dmui_dxl).t() +  (dvarpi_dnij.t() * (dnij_dvij * dvij_dmui * dmui_dxl + dnij_dvij * dvij_dmuj * dmuj_dxl) ).t() );
+		}
 		
 		omega.drotation_dxi = domega_dxi;
 		omega.drotation_dxj = domega_dxj;
@@ -1304,15 +1412,19 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 		//finite differences
 		Vector fd_dvarpi_dni(3);
 		Vector fd_dvarpi_dnij(3);
-		Vector fd_dni_dmui_row(3);
-		Vector fd_dnij_dmui_row(3);
-		Vector fd_dnij_dmuj_row(3);
-		Matrix fd_dni_dmui(3,3);
-		Matrix fd_dnij_dmui(3,3);
-		Matrix fd_dnij_dmuj(3,3);
+		Vector fd_dvi_dmui_row(3);
+		Vector fd_dvij_dmui_row(3);
+		Vector fd_dvij_dmuj_row(3);
+		Matrix fd_dvi_dmui(3,3);
+		Matrix fd_dvij_dmui(3,3);
+		Matrix fd_dvij_dmuj(3,3);
 		Vector fd_domega_dxi(3);
 		Vector fd_domega_dxj(3);
 		Vector fd_domega_dxl(3);
+		Vector fd_dni_dvi_row(3);
+		Vector fd_dnij_dvij_row(3);
+		Matrix fd_dni_dvi(3,3);
+		Matrix fd_dnij_dvij(3,3);
 		
 		
 		Vector x(3), xp(3), xn(3);
@@ -1322,6 +1434,7 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 		Vector vp(3), vn(3);
 		double lenvn, lenvp;
 		Vector nip,nin, nijp, nijn;
+		double omp,omn;
 		
 		//dvarpi_dni
 		x = normalise(ni);
@@ -1331,15 +1444,26 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 			xn=x;
 			xn(j) = x(j) - FD;
 			
+			if(abs(dot(xp, normalise(nij))) > 1.0 || abs(dot(xn,normalise(nij))) > 1.0){
+				xp=x;
+				xp(j) = x(j) + 2 * FD;
+				xn=x;
+			}
+			if(abs(dot(xp, normalise(nij))) > 1.0 || abs(dot(xn,normalise(nij))) > 1.0){
+				xp=x;
+				xn=x;
+				xn(j) = x(j) - 2 * FD;
+			}
+			
+			
 
 			fd_dvarpi_dni(j) = (acos(dot((xp),normalise(nij))) - acos(dot((xn),normalise(nij))))/(2*FD);
 			
-			printf("partial(%d): %f %f\n",j, dot(xp,nij), dot(xn,nij));
 		}		
 		printf("dvarpi_dni: (%f %f %f) fd_dvarpi_dni: (%f %f %f)\n",dvarpi_dni(0),dvarpi_dni(1),dvarpi_dni(2),fd_dvarpi_dni(0),fd_dvarpi_dni(1),fd_dvarpi_dni(2));
 		for(int j=0; j<3; ++j){
 			//if(abs(dvarpi_dni(j) - fd_dvarpi_dni(j)) > FDT || isnan(dvarpi_dni(j)) || isnan(fd_dvarpi_dni(j))) exit(-1);
-			if(isnan(dvarpi_dni(j)) ) exit(-1);
+			//if(isnan(dvarpi_dni(j)) ) exit(-1);
 		}
 		
 		
@@ -1351,16 +1475,29 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 			xn=x;
 			xn(j) = x(j) - FD;
 			
+			if(abs(dot(normalise(ni),xp)) > 1.0 || abs(dot(normalise(ni),xn)) > 1.0){
+				xp=x;
+				xp(j) = x(j) + 2 * FD;
+				xn=x;
+			}
+			if(abs(dot(normalise(ni),xp)) > 1.0 || abs(dot(normalise(ni),xn)) > 1.0){
+				xp=x;
+				xn=x;
+				xn(j) = x(j) - 2 * FD;
+			}
+			
+			
 
 			fd_dvarpi_dnij(j) = (acos(dot(normalise(ni),xp)) - acos(dot(normalise(ni),xn)))/(2*FD);
 		}		
 		printf("dvarpi_dnij: (%f %f %f) fd_dvarpi_dnij: (%f %f %f)\n",dvarpi_dnij(0),dvarpi_dnij(1),dvarpi_dnij(2),fd_dvarpi_dnij(0),fd_dvarpi_dnij(1),fd_dvarpi_dnij(2));
 		for(int j=0; j<3; ++j){
 			//if(abs(dvarpi_dnij(j) - fd_dvarpi_dnij(j)) > FDT || isnan(dvarpi_dnij(j)) || isnan(fd_dvarpi_dnij(j))) exit(-1);
+			//if(isnan(dvarpi_dnij(j)) ) exit(-1);
 		}
 		
 		
-		//dni_dmui
+		//dvi_dmui
 		if(s2>0){
 			x = normalise(mu_i);
 			for(int j=0; j<3; ++j){
@@ -1368,26 +1505,27 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 				xp(j) = x(j) + FD;
 				xn=x;
 				xn(j) = x(j) - FD;
+				
 
-				fd_dni_dmui_row = (cross(tessellationOrigin,xp) - cross(tessellationOrigin,xn))/(2*FD);
+				fd_dvi_dmui_row = (cross(tessellationOrigin,xp) - cross(tessellationOrigin,xn))/(2*FD);
 				for(int i=0; i<3; ++i){
-					fd_dni_dmui(i,j) = fd_dni_dmui_row(i);
+					fd_dvi_dmui(i,j) = fd_dvi_dmui_row(i);
 				}
 				
 			}		
 			for(int j=0; j<3; ++j){
-				printf("dni_dmui: %f %f %f \t fd_dni_dmui: %f %f %f\n",dni_dmui(j,0),dni_dmui(j,1),dni_dmui(j,2),fd_dni_dmui(j,0),fd_dni_dmui(j,1),fd_dni_dmui(j,2));
+				printf("dvi_dmui: %f %f %f \t fd_dvi_dmui: %f %f %f\n",dvi_dmui(j,0),dvi_dmui(j,1),dvi_dmui(j,2),fd_dvi_dmui(j,0),fd_dvi_dmui(j,1),fd_dvi_dmui(j,2));
 			}
 			
 			for(int i=0; i<3; ++i)
 				for(int j=0; j<3; ++j){
-					if(abs(dni_dmui(i,j)-fd_dni_dmui(i,j)) > FDT) exit(-1);
+					if(abs(dvi_dmui(i,j)-fd_dvi_dmui(i,j)) > FDT) exit(-1);
 				}
 		}
 		
 		
 		
-		//dnij_dmui
+		//dvij_dmui
 		x = normalise(mu_i);
 		for(int j=0; j<3; ++j){
 			xp=x;
@@ -1395,23 +1533,23 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 			xn=x;
 			xn(j) = x(j) - FD;
 
-			fd_dnij_dmui_row = ((cross(xp, mu_j)) - (cross(xn, mu_j)))/(2*FD);
+			fd_dvij_dmui_row = ((cross(xp, mu_j)) - (cross(xn, mu_j)))/(2*FD);
 			for(int i=0; i<3; ++i){
-				fd_dnij_dmui(i,j) = fd_dnij_dmui_row(i);
+				fd_dvij_dmui(i,j) = fd_dvij_dmui_row(i);
 			}
 			
 		}		
 		for(int j=0; j<3; ++j){
-			printf("dnij_dmui: %f %f %f \t fd_dnij_dmui: %f %f %f\n",dnij_dmui(j,0),dnij_dmui(j,1),dnij_dmui(j,2),fd_dnij_dmui(j,0),fd_dnij_dmui(j,1),fd_dnij_dmui(j,2));
+			printf("dvij_dmui: %f %f %f \t fd_dvij_dmui: %f %f %f\n",dvij_dmui(j,0),dvij_dmui(j,1),dvij_dmui(j,2),fd_dvij_dmui(j,0),fd_dvij_dmui(j,1),fd_dvij_dmui(j,2));
 		}
 		
 		for(int i=0; i<3; ++i)
 			for(int j=0; j<3; ++j){
-				if(abs(dnij_dmui(i,j)-fd_dnij_dmui(i,j)) > FDT) exit(-1);
+				if(abs(dvij_dmui(i,j)-fd_dvij_dmui(i,j)) > FDT) exit(-1);
 			}
 		
 			
-		//dnij_dmuj
+		//dvij_dmuj
 		x = mu_j;
 		for(int j=0; j<3; ++j){
 			xp=x;
@@ -1419,20 +1557,78 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 			xn=x;
 			xn(j) = x(j) - FD;
 
-			fd_dnij_dmuj_row = (cross(mu_i, xp) - cross(mu_i, xn))/(2*FD);
+			fd_dvij_dmuj_row = (cross(mu_i, xp) - cross(mu_i, xn))/(2*FD);
 			for(int i=0; i<3; ++i){
-				fd_dnij_dmuj(i,j) = fd_dnij_dmuj_row(i);
+				fd_dvij_dmuj(i,j) = fd_dvij_dmuj_row(i);
 			}
 			
 		}		
 		for(int j=0; j<3; ++j){
-			printf("dnij_dmuj: %f %f %f \t fd_dnij_dmuj: %f %f %f\n",dnij_dmuj(j,0),dnij_dmuj(j,1),dnij_dmuj(j,2),fd_dnij_dmuj(j,0),fd_dnij_dmuj(j,1),fd_dnij_dmuj(j,2));
+			printf("dvij_dmuj: %f %f %f \t fd_dvij_dmuj: %f %f %f\n",dvij_dmuj(j,0),dvij_dmuj(j,1),dvij_dmuj(j,2),fd_dvij_dmuj(j,0),fd_dvij_dmuj(j,1),fd_dvij_dmuj(j,2));
 		}
 		
 		for(int i=0; i<3; ++i)
 			for(int j=0; j<3; ++j){
-				if(abs(dnij_dmuj(i,j)-fd_dnij_dmuj(i,j)) > FDT) exit(-1);
+				if(abs(dvij_dmuj(i,j)-fd_dvij_dmuj(i,j)) > FDT) exit(-1);
 			}
+			
+			
+			
+			
+		//dni_dvi
+		x = vi;
+		for(int j=0; j<3; ++j){
+			xp=x;
+			xp(j) = x(j) + FD;
+			xn=x;
+			xn(j) = x(j) - FD;
+			
+
+			fd_dni_dvi_row = (normalise(xp) - normalise(xn))/(2*FD);
+			
+			for(int i=0; i<3; ++i){
+				fd_dni_dvi(i,j) = fd_dni_dvi_row(i);
+			}
+			
+		}		
+		for(int j=0; j<3; ++j){
+			printf("dni_dvi: %f %f %f \t fd_dni_dvi: %f %f %f\n",dni_dvi(j,0),dni_dvi(j,1),dni_dvi(j,2),fd_dni_dvi(j,0),fd_dni_dvi(j,1),fd_dni_dvi(j,2));
+		}
+		
+		for(int i=0; i<3; ++i)
+			for(int j=0; j<3; ++j){
+				if(abs(dni_dvi(i,j)-fd_dni_dvi(i,j)) > FDT) exit(-1);
+			}
+		
+				
+	
+		//dnij_dvij
+		x = vij;
+		for(int j=0; j<3; ++j){
+			xp=x;
+			xp(j) = x(j) + FD;
+			xn=x;
+			xn(j) = x(j) - FD;
+			
+
+			fd_dnij_dvij_row = (normalise(xp) - normalise(xn))/(2*FD);
+			
+			for(int i=0; i<3; ++i){
+				fd_dnij_dvij(i,j) = fd_dnij_dvij_row(i);
+			}
+			
+		}		
+		for(int j=0; j<3; ++j){
+			printf("dnij_dvij: %f %f %f \t fd_dnij_dvij: %f %f %f\n",dnij_dvij(j,0),dnij_dvij(j,1),dnij_dvij(j,2),fd_dnij_dvij(j,0),fd_dnij_dvij(j,1),fd_dnij_dvij(j,2));
+		}
+		
+		for(int i=0; i<3; ++i)
+			for(int j=0; j<3; ++j){
+				if(abs(dnij_dvij(i,j)-fd_dnij_dvij(i,j)) > FDT) exit(-1);
+			}
+	
+			
+			
 		
 		
 		
@@ -1441,9 +1637,9 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 			x = atoms[index_i];
 			for(int j=0; j<3; ++j){
 				xp=x;
-				xp(j) = x(j) + FD;
+				xp(j) = x(j) + 2*FD;
 				xn=x;
-				xn(j) = x(j) - FD;
+				xn(j) = x(j) - 2*FD;
 				
 				
 				vp= xp - torigin;
@@ -1459,27 +1655,18 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 					nn=-nn;
 				
 				
-				nip = (cross(tessellationOrigin,np));
-				nin = (cross(tessellationOrigin,nn));
+				omp = (calculateOmega(tessellationOrigin, np, mu_j).rotation);
+				omn = (calculateOmega(tessellationOrigin, nn, mu_j).rotation);
 				
-				nijp = (cross(np, mu_j));		
-				nijn = (cross(nn, mu_j));		
+				printf("OM: %f %f\n",omp,omn);
 				
-				double dnipnijp = dot(nip,nijp);
-				if(dnipnijp>1.0) dnipnijp = 1.0;
-				if(dnipnijp<-1.0) dnipnijp = -1.0;
-				
-				double dninnijn=dot(nin,nijn);
-				if(dninnijn>1.0) dninnijn = 1.0;
-				if(dninnijn<-1.0) dninnijn = -1.0;
 
-				fd_domega_dxi(j) = s2 * s0 * (acos(dnipnijp) - acos(dninnijn))/(2*FD);
+				fd_domega_dxi(j) = sgn(omp-omn)*abs(abs(omp)-abs(omn))/(2*FD);
+				
 			}		
 		}
 		else fd_domega_dxi=Vector(3).zeros();
 		
-		Vector test = s2* domega_dvarpi * ((dvarpi_dni.t() * dni_dmui * dmui_dxi).t() + (dvarpi_dnij.t() * dnij_dmui * dmui_dxi).t());
-		printf("test: %f %f %f\n",test(0),test(1),test(2));
 		printf("domega_dxi: (%f %f %f) fd_domega_dxi: (%f %f %f)\n",domega_dxi(0),domega_dxi(1),domega_dxi(2),fd_domega_dxi(0),fd_domega_dxi(1),fd_domega_dxi(2));
 		for(int j=0; j<3; ++j){
 			//if(abs(domega_dxi(j) - fd_domega_dxi(j)) > FDT || isnan(domega_dxi(j)) || isnan(fd_domega_dxi(j))) exit(-1);
@@ -1509,11 +1696,13 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 					nn=-nn;
 				
 				
-				nijp = (cross(mu_i, np));		
-				nijn = (cross(mu_i, nn));		
+				omp = (calculateOmega(tessellationOrigin, mu_i, np).rotation);
+				omn = (calculateOmega(tessellationOrigin, mu_i, nn).rotation);
 				
-
-				fd_domega_dxj(j) = s2 * s0 * (acos(dot(ni,nijp)) - acos(dot(ni,nijn)))/(2*FD);
+				
+				printf("O: %f %f\n",omp,omn);
+				
+				fd_domega_dxj(j) = sgn(omp-omn)*abs((abs(omp)-abs(omn)))/(2*FD);
 			}		
 		}
 		else fd_domega_dxj=Vector(3).zeros();
@@ -1580,26 +1769,10 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 			}else nn2 = tessellationOrigin;
 			
 			
-			printf("np: %f %f %f\n",np(0),np(1),np(2));
-			printf("nn: %f %f %f\n",nn(0),nn(1),nn(2));
-			printf("np2: %f %f %f\n",np2(0),np2(1),np2(2));
-			printf("nn2: %f %f %f\n",nn2(0),nn2(1),nn2(2));
-			
-			nip = cross(tessellationOrigin,np3);
-			nin = cross(tessellationOrigin,nn3);
-			
-			nijp = cross(np, np2);		
-			nijn = cross(nn, nn2);		
-			
-			printf("nip: %f %f %f\n",nip(0),nip(1),nip(2));
-			printf("nin: %f %f %f\n",nin(0),nin(1),nin(2));
-			printf("nijp: %f %f %f\n",nijp(0),nijp(1),nijp(2));
-			printf("nijn: %f %f %f\n",nijn(0),nijn(1),nijn(2));
-			
-			
-			printf("s: %f %f\n",s0, s2);
-
-			fd_domega_dxl(j) = s2 * s0 * (acos(dot(nip,nijp)) - acos(dot(nin,nijn)))/(2*FD);
+			omp = (calculateOmega(tessellationOrigin, np, np2).rotation);
+			omn = (calculateOmega(tessellationOrigin, nn, nn2).rotation);
+				
+			fd_domega_dxl(j) = sgn(omp-omn)*abs((abs(omp)-abs(omn)))/(2*FD);
 		}		
 		printf("domega_dxl: (%f %f %f) fd_domega_dxl: (%f %f %f)\n",domega_dxl(0),domega_dxl(1),domega_dxl(2),fd_domega_dxl(0),fd_domega_dxl(1),fd_domega_dxl(2));
 		for(int j=0; j<3; ++j){
@@ -2172,7 +2345,17 @@ PHIContainer Tessellation::calculatePHI(Vector &tessellationOrigin, Vector &mu_i
 	p.in.rotation = omega.rotation - eta.rotation;
 	if(p.in.rotation < -M_PI)
 		p.in.rotation = 2*M_PI + p.in.rotation;
+
 	
+	
+	p.out.rotation2 = omega.rotation2 + eta.rotation;
+	if(p.out.rotation2 > M_PI)
+		p.out.rotation2 = -2*M_PI + p.out.rotation2;
+	
+	p.in.rotation2 = omega.rotation2 - eta.rotation;
+	if(p.in.rotation2 < -M_PI)
+		p.in.rotation2 = 2*M_PI + p.in.rotation2;
+
 	
 	
 	if(derivatives){
@@ -2388,19 +2571,174 @@ Rotation Tessellation::calculatePsi(Vector &tessellationOrigin, Vector &mu_i, Ma
 	Rotation r;
 	Vector dpsi_dxi, dpsi_dxl;
 	
+	Vector n_i, nn_i;
+	double psi2;
+	Vector ey(3);
+	Matrix I(3,3);
+	I.eye();
+	
+	double dotmui_nni; 
+	Matrix dni_dmui;
+	Matrix dnni_dni;
+	Vector dpsi_dnni;
+
+	Matrix dni_dxi;
+	Matrix dnni_dxi;
+	double acos_dotmui_nni;
+	double q0,q1,q2,q3;
+	
+	
 	r.drotation_dxi = Vector(3).zeros();
 	r.drotation_dxj = Vector(3).zeros();
 	r.drotation_dxl = Vector(3).zeros();
 	
-	r.rotation = getAngleBetweenNormals(tessellationOrigin,mu_i);
-
+	r.rotation = getAngle(tessellationOrigin,mu_i);
+	r.rotation2 = r.rotation;
+	
+	/*
+	if((r.rotation < M_PI/4 || r.rotation > 3*M_PI/4)){
+		if(isWithinNumericalLimits(r.rotation,0)){
+			ey.zeros();
+			ey(1) = 1;
+			n_i = cross(tessellationOrigin, ey);
+			nn_i = cross(n_i, tessellationOrigin);
+		}
+		else{
+			n_i = cross(tessellationOrigin, mu_i);
+			nn_i = cross(n_i, tessellationOrigin);
+		
+		}
+		
+		//dotmui_nni = norm_dot(nn_i , mu_i);
+		dotmui_nni = dot(nn_i , mu_i);
+		
+		q0=1;
+		q1=1;
+		q2=0;
+		q3=-1;
+		
+		
+		acos_dotmui_nni = acos(dotmui_nni);
+		
+		if(acos_dotmui_nni <= M_PI/2) q0=-1;
+		if(r.rotation >= M_PI/2) q1=-1;
+		if(r.rotation >= M_PI/4 && acos_dotmui_nni >= M_PI/2){
+			q2 = 1;
+			q3 = 1;
+			
+		}
+		
+		
+		
+		psi2 = q3*(q2*M_PI - (q0*(q1*acos_dotmui_nni - M_PI/2)));
+		
+		r.rotation2 = psi2;	
+		
+	}
+*/
+	
+	
+	
+	
 	
 	if(derivatives){
 	
 		if(form != SPLITTER){
-			dpsi_dmui = -tessellationOrigin/(sqrt(1-mu_i(0)*mu_i(0)));
-			dpsi_dxi = (dpsi_dmui.t() * dmu_dx).t();
-			dpsi_dxl = -dpsi_dxi;
+			
+			
+			if(false && (r.rotation < M_PI/4 || r.rotation > 3*M_PI/4)){
+				if(isWithinNumericalLimits(r.rotation,0)){
+					ey.zeros();
+					ey(1) = 1;
+					n_i = cross(tessellationOrigin, ey);
+					nn_i = cross(n_i, tessellationOrigin);
+					printf("ZERO\n");
+				}
+				else{
+					n_i = cross(tessellationOrigin, mu_i);
+					nn_i = cross(n_i, tessellationOrigin);
+					printf("NORMAL\n");
+				
+				}
+				
+				//dotmui_nni = norm_dot(nn_i , mu_i);
+				dotmui_nni = dot(nn_i , mu_i);
+				
+				q0=1;
+				q1=1;
+				q2=0;
+				q3=-1;
+				
+				
+				acos_dotmui_nni = acos(dotmui_nni);
+				
+				if(acos_dotmui_nni <= M_PI/2) q0=-1;
+				if(r.rotation >= M_PI/2) q1=-1;
+				if(r.rotation >= M_PI/4 && acos_dotmui_nni >= M_PI/2){
+					q2 = 1;
+					q3 = 1;
+					
+				}
+				
+				printf("acos %f\n",acos_dotmui_nni);
+				printf("q: %f %f %f %f\n",q0,q1,q2,q3);
+				
+				
+				
+				psi2 = q3*(q2*M_PI - (q0*(q1*acos_dotmui_nni - M_PI/2)));
+				
+				r.rotation2 = psi2;
+				
+				printf("psi2: %f %f\n",r.rotation, psi2);
+				printf("to: %f %f %f\n",tessellationOrigin(0),tessellationOrigin(1),tessellationOrigin(2));
+				//if(!isWithinNumericalLimits(r.rotation,psi2)) exit(-1);
+				
+				
+				
+				dni_dmui = -matrixCross(I,tessellationOrigin);
+				dnni_dni = matrixCross(I, tessellationOrigin);
+				dpsi_dnni = -2*q0*q1*q3*mu_i / sqrt(1-dotmui_nni*dotmui_nni);
+				dpsi_dmui = -2*q0*q1*q3*nn_i / sqrt(1-dotmui_nni*dotmui_nni);
+
+				dni_dxi = dni_dmui * dmu_dx;
+				dnni_dxi = dnni_dni * dni_dxi;
+				dpsi_dxi = 0.5*((dpsi_dnni.t() * dnni_dxi).t() + (dpsi_dmui.t() * dmu_dx).t());
+				
+				dpsi_dxl = -dpsi_dxi;
+				
+				
+				
+			}
+			else{
+
+				/*
+				if(isWithinNumericalLimits(mu_i(0),1.0)){
+					printf("ZERO LEVELII\n");
+					mu_i(0) = 1.0-MINISCULE;
+				}
+				if(isWithinNumericalLimits(mu_i(0),-1.0)){
+					printf("ZERO LEVELIII\n");
+					mu_i(0) = -1.0+MINISCULE;
+				}
+				*/
+				
+				
+				if(isWithinNumericalLimits(mu_i(0),1.0) || isWithinNumericalLimits(mu_i(0),-1.0)){
+					printf("ZERO LEVELIII\n");
+					dpsi_dmui = Vector(3).zeros();
+					dpsi_dxi = Vector(3).zeros();
+					dpsi_dxl = Vector(3).zeros();
+				}
+				else{
+					
+					dpsi_dmui = -tessellationOrigin/(sqrt(1-mu_i(0)*mu_i(0)));
+					dpsi_dxi = (dpsi_dmui.t() * dmu_dx).t();
+					dpsi_dxl = -dpsi_dxi;
+				}
+			}
+			
+			
+			
 			
 			
 			
@@ -2415,7 +2753,7 @@ Rotation Tessellation::calculatePsi(Vector &tessellationOrigin, Vector &mu_i, Ma
 			r.drotation_dxl = Vector(3).zeros();
 		}
 		
-		
+	
 
 		//finite differences
 		Vector fd_dpsi_dmui(3);
@@ -2425,87 +2763,104 @@ Rotation Tessellation::calculatePsi(Vector &tessellationOrigin, Vector &mu_i, Ma
 		Vector np(3), nn(3);
 		Vector vp(3), vn(3);
 		double lenvn, lenvp;
+		Vector nip, nnip, nin, nnin;
+		double a0,a1;
 		
 		
 		if(form != SPLITTER){
 			//dpsi_dmui
-			x = mu_i;
-			for(int j=0; j<3; ++j){
-				xp=x;
-				xp(j) = x(j) + FD;
-				xn=x;
-				xn(j) = x(j) - FD;
-				fd_dpsi_dmui(j) = (getAngleBetweenNormals(tessellationOrigin, xp) -  getAngleBetweenNormals(tessellationOrigin, xn))/(2*FD);
-			}		
-			printf("dpsi_dmui: (%f %f %f) fd_dpsi_mui: (%f %f %f)\n",dpsi_dmui(0),dpsi_dmui(1),dpsi_dmui(2),fd_dpsi_dmui(0),fd_dpsi_dmui(1),fd_dpsi_dmui(2));
-			for(int j=0; j<3; ++j){
-				if(abs(dpsi_dmui(j) - fd_dpsi_dmui(j)) > FDT) exit(-1);
-			}
+			
+
+				x = mu_i;
+				for(int j=0; j<3; ++j){
+					xp=x;
+					xp(j) = x(j) + FD;
+					xn=x;
+					xn(j) = x(j) - FD;
+					if(abs(dot(tessellationOrigin, xp)) > 1.0 || abs(dot(tessellationOrigin, xn)) > 1.0){
+						xp=x;
+						xp(j) = x(j) + 2 * FD;
+						xn=x;
+					}
+					if(abs(dot(tessellationOrigin, xp)) > 1.0 || abs(dot(tessellationOrigin, xn)) > 1.0){
+						xp=x;
+						xn=x;
+						xn(j) = x(j) - 2 * FD;
+					}
+					
+					fd_dpsi_dmui(j) = (getAngleBetweenNormals(tessellationOrigin, xp) -  getAngleBetweenNormals(tessellationOrigin, xn))/(2*FD);
+				}		
+				printf("dpsi_dmui: (%f %f %f) fd_dpsi_mui: (%f %f %f)\n",dpsi_dmui(0),dpsi_dmui(1),dpsi_dmui(2),fd_dpsi_dmui(0),fd_dpsi_dmui(1),fd_dpsi_dmui(2));
+				for(int j=0; j<3; ++j){
+					//if(abs(dpsi_dmui(j) - fd_dpsi_dmui(j)) > FDT || isnan(dpsi_dmui(j)) || isnan(fd_dpsi_dmui(j)) ) exit(-1);
+				}
 		
 		
 		
 			//dpsi_dxi
-			x = atoms[index];
-			for(int j=0; j<3; ++j){
-				xp=x;
-				xp(j) = x(j) + FD;
-				xn=x;
-				xn(j) = x(j) - FD;
-				
-				
-				vp= xp - torigin;
-				lenvp = norm(vp,2);
-				np=vp/lenvp;
-				if(form!=CONVEX)
-					np=-np;
+				x = atoms[index];
+				for(int j=0; j<3; ++j){
+					xp=x;
+					xp(j) = x(j) + FD;
+					xn=x;
+					xn(j) = x(j) - FD;
+					
+					
+					vp= xp - torigin;
+					lenvp = norm(vp,2);
+					np=vp/lenvp;
+					if(form!=CONVEX)
+						np=-np;
 
-				vn= xn - torigin;
-				lenvn = norm(vn,2);
-				nn=vn/lenvn;
-				if(form!=CONVEX)
-					nn=-nn;
+					vn= xn - torigin;
+					lenvn = norm(vn,2);
+					nn=vn/lenvn;
+					if(form!=CONVEX)
+						nn=-nn;
+					
+					a0 = calculatePsi(tessellationOrigin, np).rotation;
+					a1 = calculatePsi(tessellationOrigin, nn).rotation;
+					fd_dpsi_dxi(j) =  (a0-a1)/(2*FD);
+				}		
 				
-				fd_dpsi_dxi(j) = (getAngleBetweenNormals(tessellationOrigin, np) -  getAngleBetweenNormals(tessellationOrigin, nn))/(2*FD);
-			}		
-			printf("CID: %d (%f %f %f) (%f %f %f)\n",index, x(0), x(1), x(2), torigin(0), torigin(1), torigin(2));
-			
-			printf("dpsi_dxi: (%f %f %f) fd_dpsi_dxi: (%f %f %f)\n",dpsi_dxi(0),dpsi_dxi(1),dpsi_dxi(2),fd_dpsi_dxi(0),fd_dpsi_dxi(1),fd_dpsi_dxi(2));
-			for(int j=0; j<3; ++j){
-				if(abs(dpsi_dxi(j) - fd_dpsi_dxi(j)) > FDT) exit(-1);
-			}
-		
+				printf("dpsi_dxi: (%f %f %f) fd_dpsi_dxi: (%f %f %f)\n",dpsi_dxi(0),dpsi_dxi(1),dpsi_dxi(2),fd_dpsi_dxi(0),fd_dpsi_dxi(1),fd_dpsi_dxi(2));
+				for(int j=0; j<3; ++j){
+				//	if(abs(dpsi_dxi(j) - fd_dpsi_dxi(j)) > FDT) exit(-1);
+				}
 		
 			//dpsi_dxl
-			x = torigin;
-			for(int j=0; j<3; ++j){
-				xp=x;
-				xp(j) = x(j) + FD;
-				xn=x;
-				xn(j) = x(j) - FD;
-				
-				
-				vp= atoms[index] - xp;
-				lenvp = norm(vp,2);
-				np=vp/lenvp;
-				if(form!=CONVEX)
-					np=-np;
-				
+				x = torigin;
+				for(int j=0; j<3; ++j){
+					xp=x;
+					xp(j) = x(j) + FD;
+					xn=x;
+					xn(j) = x(j) - FD;
+					
+					
+					vp= atoms[index] - xp;
+					lenvp = norm(vp,2);
+					np=vp/lenvp;
+					if(form!=CONVEX)
+						np=-np;
+					
 
-				vn= atoms[index] - xn;
-				lenvn = norm(vn,2);
-				nn=vn/lenvn;
-				if(form!=CONVEX)
-					nn=-nn;
-				
-				fd_dpsi_dxl(j) = (getAngleBetweenNormals(tessellationOrigin, np) -  getAngleBetweenNormals(tessellationOrigin, nn))/(2*FD);
-			}		
-			printf("dpsi_dxl: (%f %f %f) fd_dpsi_dxl: (%f %f %f)\n",dpsi_dxl(0),dpsi_dxl(1),dpsi_dxl(2),fd_dpsi_dxl(0),fd_dpsi_dxl(1),fd_dpsi_dxl(2));
-			for(int j=0; j<3; ++j){
-				if(abs(dpsi_dxl(j) - fd_dpsi_dxl(j)) > FDT) exit(-1);
-			}
+					vn= atoms[index] - xn;
+					lenvn = norm(vn,2);
+					nn=vn/lenvn;
+					if(form!=CONVEX)
+						nn=-nn;
+					
+					fd_dpsi_dxl(j) = (getAngleBetweenNormals(tessellationOrigin, np) -  getAngleBetweenNormals(tessellationOrigin, nn))/(2*FD);
+				}		
+				printf("dpsi_dxl: (%f %f %f) fd_dpsi_dxl: (%f %f %f)\n",dpsi_dxl(0),dpsi_dxl(1),dpsi_dxl(2),fd_dpsi_dxl(0),fd_dpsi_dxl(1),fd_dpsi_dxl(2));
+				for(int j=0; j<3; ++j){
+				//	if(abs(dpsi_dxl(j) - fd_dpsi_dxl(j)) > FDT) exit(-1);
+				}
 		}
-	}
+		
 	
+		
+	}
 	
 	
 	

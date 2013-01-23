@@ -41,15 +41,16 @@ using namespace arma;
 
 #define ANGLE_TRESHOLD 0.001
 #define THRESHOLD_IP 0.05
-#define THRESHOLD_NUMERICAL 0.0000001
+#define THRESHOLD_NUMERICAL 0.000001
+#define THRESHOLD_STRONG_NUMERICAL 0.000000000001
 #define EPSILON 0.01
 #define ORDER_CLOCKWISE 0
 #define ORDER_COUNTERCLOCKWISE 1
 
 #define FD 0.000001
-#define FDT 0.0001
+#define FDT 0.0025
 
-#define MINISCULE 0.00000001
+#define MINISCULE 0.0000000001
 
 
 
@@ -90,6 +91,7 @@ enum Hemisphere{
 typedef struct
 {
 	double rotation;
+	double rotation2;
 	Vector drotation_dxi;
 	Vector drotation_dxj;
 	Vector drotation_dxl;
@@ -335,6 +337,9 @@ public:
 	PHIContainer calculatePHI(Vector &tessellationOrigin, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, Matrix &dmui_dxi, Matrix &dmuj_dxj, int index_i, int index_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, bool derivatives);
 	double calculateRho(Vector &mu_i, Vector &mu_j);
 	double calculateRho(Vector &mu_i, Vector &mu_j, bool derivatives);
+	double sacos(Vector &a, Vector &b);
+	double sdot(Vector &a, Vector &b);
+	double l(Vector &a);
 	
 	
 	
@@ -389,6 +394,7 @@ private:
 	void depleteCircularInterfaces(Vector tessellationOrigin, double radius, vector<CircularInterface> &circles);
 	double rotationalAngle(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J);
 	bool isWithinNumericalLimits(double x, double l);
+	bool isWithinStrongNumericalLimits(double x, double l);
 	Rotation calculateOmega(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J);
 	Rotation calculateEta(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J);
 	PHIContainer calculatePHI(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J, double dij, double radius);
@@ -398,6 +404,7 @@ private:
 	bool addToEraseList(map<IntersectionBranches::iterator,bool,IteratorComparator> &masterEraseList, map<IntersectionBranches::iterator,bool,IteratorComparator> &eraseList, IntersectionBranches::iterator &it, int limit);
 	bool addToEraseListCascade(map<IntersectionBranches::iterator,bool,IteratorComparator> &masterEraseList, map<IntersectionBranches::iterator,bool,IteratorComparator> &eraseList, IntersectionBranches::iterator &it, int limit, CircularInterfacesPerAtom &circles);
 	Vector normalise(Vector x);
+	Vector normalise(Vector x, double &l);
 
 
 	

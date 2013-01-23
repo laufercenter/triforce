@@ -121,7 +121,7 @@ double Interpolation::multiPointTaylor(Vector &x){
 	for(int i=0;i<sp.size();i++){
 		double t = taylorExtension(sp[i],x);
 		
-		if(abs(t-v) > 10.1){
+		if(abs(t-v) > 0.1){
 			printf("THIS INTERPOLATION IS OUTRAGEOUS: %f\n",abs(t-v));
 			//exit(-1);
 		}
