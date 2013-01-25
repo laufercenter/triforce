@@ -141,6 +141,22 @@ Data3D* DataFile::digest3DBinaryTable(){
 	
 	delete buffer;
 	
+	
+	//read phi
+	totalCells = parameter0Dim*parameter1Dim*parameter2Dim;
+	buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
+	f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
+	for(int z=0; z<parameter2Dim; z++)
+		for(int y=0; y<parameter1Dim; y++)
+			for(int x=0; x<parameter0Dim; x++){
+				double v = charArray2Double(buffer+((z*parameter1Dim+y)*parameter0Dim+x)*BINARY_DATA_BLOCK_SIZE);
+				tbl->setAuxiliaryCell(x,y,z,v);
+			}
+	
+	delete buffer;
+	
+	
+	
 	tbl->init();
 	
 

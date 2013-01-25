@@ -28,6 +28,7 @@ Data3D::Data3D(int parameter0Dim, int parameter1Dim, int parameter2Dim){
 	headerParameter1 = new Table1dDouble(boost::extents[parameter1Dim]);
 	headerParameter2 = new Table1dDouble(boost::extents[parameter2Dim]);
 	data = new Table3dDouble(boost::extents[parameter0Dim][parameter1Dim][parameter2Dim]);
+	auxiliary = new Table3dDouble(boost::extents[parameter0Dim][parameter1Dim][parameter2Dim]);
 	gradient = new Table3dVector(boost::extents[parameter0Dim][parameter1Dim][parameter2Dim]);
 	hessian = new Table3dMatrix(boost::extents[parameter0Dim][parameter1Dim][parameter2Dim]);
 	for(int x=0; x<parameter0Dim; x++)
@@ -68,6 +69,10 @@ void Data3D::setDataCell(int x, int y, int z, double value){
 	(*data)[x][y][z] = value;
 }
 
+void Data3D::setAuxiliaryCell(int x, int y, int z, double value){
+	(*auxiliary)[x][y][z] = value;
+}
+
 void Data3D::setGradientCell(int x, int y, int z, int i, double value){
 	(*gradient)[x][y][z](i) = value;
 }
@@ -105,6 +110,10 @@ double Data3D::getDataCell(int x, int y, int z){
 	return (*data)[x][y][z];
 }
 
+double Data3D::getAuxiliaryCell(int x, int y, int z){
+	return (*auxiliary)[x][y][z];
+}
+
 Vector &Data3D::getGradient(int x, int y, int z){
 	return (*gradient)[x][y][z];
 }
@@ -136,6 +145,8 @@ void Data3D::closestGridPoint(Vector &x, VectorInt &p, Vector &l){
 	
 	//printf("CELL LENGTHS: %f %f %f\n",l(0),l(1),l(2));
 	
+	//printf("X: %f %f %f, l: %f %f %f, min: %f %f %f, celll: %f %f %f\n",x(0),x(1),x(2),l(0),l(1),l(2),minParameter0, minParameter1, minParameter2, cellLengthParameter0, cellLengthParameter1, cellLengthParameter2);
+	
 	i_parameter0 = static_cast<int>(floor((x(0)-minParameter0)/cellLengthParameter0));
 	
 	i_parameter1 = static_cast<int>(floor((x(1)-minParameter1)/cellLengthParameter1));
@@ -161,7 +172,7 @@ void Data3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Ve
 	
 	
 	//printf("CLOSEST GRIDPOINT: %d %d %d (%f, %f, %f)\n",v(0),v(1),v(2),(*headerParameter0)[v(0)],(*headerParameter1)[v(1)],(*headerParameter2)[v(2)]);
-	printf("CLOSEST GRIDPOINT: %d %d %d\n",v(0),v(1),v(2));
+	//printf("CLOSEST GRIDPOINT: %d %d %d\n",v(0),v(1),v(2));
 	
 	
 	r.clear();

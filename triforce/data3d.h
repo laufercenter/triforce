@@ -58,10 +58,12 @@ public:
 	void setHeaderParameter1Cell(int x, double value);
 	void setHeaderParameter2Cell(int x, double value);
 	void setDataCell(int x, int y, int z, double value);
+	void setAuxiliaryCell(int x, int y, int z, double value);
 	void setGradientCell(int x, int y, int z, int i, double value);
 	void setHessianCell(int x, int y, int z, int i, int j, double value);
 	void print();
 	double getDataCell(int x, int y, int z);
+	double getAuxiliaryCell(int x, int y, int z);
 	Vector &getGradient(int x, int y, int z);
 	Matrix &getHessian(int x, int y, int z);
 	
@@ -97,6 +99,7 @@ public:
 	Table3dDouble *data;
 	Table3dVector *gradient;
 	Table3dMatrix *hessian;
+	Table3dDouble *auxiliary;
 	
 	
 	

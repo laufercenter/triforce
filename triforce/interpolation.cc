@@ -77,28 +77,44 @@ vector<double> Interpolation::weights(vector<VectorInt> &sp, Vector &x, Vector &
 }
 
 
+
 double Interpolation::interpolate(Vector &x){
-	return multiPointTaylor(x);
+	double phi;
+	return multiPointTaylor(x, phi);
 }
 
+
+double Interpolation::interpolate(Vector &x, double &phi){
+	return multiPointTaylor(x, phi);
+}
+
+
 double Interpolation::interpolate(double PHI, double psi, double lambda){
+	double phi;
+	return interpolate(PHI, psi, lambda, phi);
+}
+
+double Interpolation::interpolate(double PHI, double psi, double lambda, double &phi){
 	Vector v(3);
 	v(0) = PHI;
 	v(1) = psi;
 	v(2) = lambda;
-	return multiPointTaylor(v);
+	return multiPointTaylor(v, phi);
 }
 
 
 
-double Interpolation::multiPointTaylor(Vector &x){
+double Interpolation::multiPointTaylor(Vector &x, double &phi){
 	vector<VectorInt> sp;
 	vector<double> w;
 	double v=0;
 	Vector lengths(3);
+	double closestSPWeight;
+	int closestSP;
 	
 	
 	data->surroundingPointsAndCellLengths(x,sp,lengths);
+	
 	
 	if(sp.size()==0){
 		printf("NO SPs FOUND. IT's OUTRAGEOUS! (%f, %f, %f)\n",x(0),x(1),x(2));
@@ -107,6 +123,8 @@ double Interpolation::multiPointTaylor(Vector &x){
 	}
 		
 	w = weights(sp,x,lengths);
+	closestSP = -1;
+	closestSPWeight = 0;
 	for(int i=0;i<sp.size();i++){
 		//data->printDataCell(sp[i](0),sp[i](1),sp[i](2));
 		//data->printGradientCell(sp[i](0),sp[i](1),sp[i](2));
@@ -116,7 +134,14 @@ double Interpolation::multiPointTaylor(Vector &x){
 		
 		//printf("taylor %d: %f [%f]\n",i,t,w[i]);
 		v+=w[i]*t;
+		
+		if(w[i] >= closestSPWeight)
+			closestSP = i;
 	}
+	
+	phi = data->getAuxiliaryCell(sp[closestSP](0),sp[closestSP](1),sp[closestSP](2));
+	
+	
 	
 	for(int i=0;i<sp.size();i++){
 		double t = taylorExtension(sp[i],x);
