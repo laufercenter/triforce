@@ -25,7 +25,7 @@ void Tessellation::build(bool split){
 	//atoms.size()
 	//iterate over all atoms and build the tessellation for each of them
 	for(int i=0; i<atoms.size(); ++i){
-		//int i=16;
+		//int i=12;{
 		buildGaussBonnetPath(i, atoms, radii, sasasForMolecule, split);
 		
 		
@@ -553,6 +553,8 @@ void Tessellation::makeCircularInterfaces(int l,Vector &origin, double r_l, vect
 	double r_i;
 	double d_i;
 	Vector mu_i;
+	
+	printf("MAKECIRCLE %d %f\n",l, r_l);
 
 	for(int j=0;j<atoms.size();j++){
 		if(l != j){
@@ -569,6 +571,9 @@ void Tessellation::makeCircularInterfaces(int l,Vector &origin, double r_l, vect
 				circle.intersect = false;
 				circle.index=j;
 				circles.push_back(circle);
+				
+				printf("ADDCIRCLE %d %f %f\n",j,r_i,d_i);
+				
 				
 			}
 		}
@@ -609,9 +614,8 @@ int Tessellation::filterCircularInterfaces(Vector tessellationOrigin, double rad
 				
 				n1 = circles[i].normal;
 				
-				angle = getAngleBetweenNormals(n0,n1);
-				
-				printf("FILTER: %d %d: %f\n",it->id, circles[i].id, angle);
+				angle = getAngle(n0,n1);
+				printf("FILTER: %d %d: %f %f %f\n",it->index, circles[i].index, it->lambda.rotation, circles[i].lambda.rotation, angle);
 				
 				if(it->form==CONVEX){
 					//convex circle IT is inside of convex circle i
@@ -1788,6 +1792,7 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 
 
 Rotation Tessellation::calculateEta(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J){
+	printf("CALCULATING ETA FOR: %d %d\n",I.index, J.index);
 	return calculateEta(tessellationOrigin, I.normal, J.normal, I.lambda, J.lambda, I.dmu_dx, J.dmu_dx, I.index, J.index, I.form, J.form, true);
 }
 
@@ -1811,10 +1816,7 @@ double Tessellation::calculateRho(Vector &mu_i, Vector &mu_j){
 double Tessellation::calculateRho(Vector &mu_i, Vector &mu_j, bool derivatives){
 	double dot_IJ;
 	double rho;
-	if(derivatives)
-		dot_IJ = norm_dot(mu_i,mu_j);
-	else 
-		dot_IJ = dot(mu_i,mu_j);
+	dot_IJ = norm_dot(mu_i,mu_j);
 	rho = acos(dot_IJ);
 	return rho;
 }
@@ -1834,460 +1836,481 @@ Rotation Tessellation::calculateEta(Vector &tessellationOrigin, Vector &mu_i, Ve
 	
 	
 	
-	
 	if(derivatives)
 		dot_IJ = norm_dot(mu_i,mu_j);
 	else
 		dot_IJ = dot(mu_i,mu_j);
 	rho = acos(dot_IJ);
 	
+	printf("etav: %f %f %f\n",lambda_i.rotation, lambda_j.rotation, rho);
 	
-	sig0 = cot(lambda_i.rotation) * cot(rho);
-	sig1 = cos(lambda_j.rotation)*csc(lambda_i.rotation)*csc(rho);
-	sig2 = sig0-sig1;
 	
-	eta.rotation = acos(sig2);
+	if(isWithinNumericalLimits(rho,0)){
+		eta.rotation = 0;
+	}
+	else{
+	
+		sig0 = cot(lambda_i.rotation) * cot(rho);
+		sig1 = cos(lambda_j.rotation)*csc(lambda_i.rotation)*csc(rho);
+		sig2 = sig0-sig1;
+		
+		printf("SIG: %f %f %f\n",sig0, sig1, sig2);
+		
+		eta.rotation = acos(sig2);
+	}
+	
+	printf("ETA: %f\n",eta.rotation);
+	if(isnan(eta.rotation)) exit(-2);
 	
 	if(derivatives){
 	
-	
-		drho_dmui = -mu_j/(sqrt(1-dot_IJ*dot_IJ));
-		drho_dmuj = -mu_i/(sqrt(1-dot_IJ*dot_IJ));
-		
-		dmui_dxl = -dmui_dxi;
-		dmuj_dxl = -dmuj_dxj;
-		
-		printf("MATRIX FORM %d\n",form_j);
-		dmuj_dxj.print("dmuj_dxj");
-		
-		drho_dxi = (drho_dmui.t() * dmui_dxi).t();
-		drho_dxj = (drho_dmuj.t() * dmuj_dxj).t();
-		printf("drho_dmui: %f %f %f drho_dmuj: %f %f %f\n",drho_dmui(0),drho_dmui(1),drho_dmui(2),drho_dmuj(0),drho_dmuj(1),drho_dmuj(2));
-		for(int i=0; i<3; ++i)
-			printf("dmui_dxl: %f %f %f \t\t dmuj_dxl: %f %f %f\n",dmui_dxl(i,0),dmui_dxl(i,1),dmui_dxl(i,2),dmuj_dxl(i,0),dmuj_dxl(i,1),dmuj_dxl(i,2));
-		
-		drho_dxl = ((drho_dmui.t() * dmui_dxl).t() + (drho_dmuj.t() * dmuj_dxl).t());
-		
-		deta_dlambdai = csc(lambda_i.rotation) * (sig0/cos(lambda_i.rotation) - sig1*cos(lambda_i.rotation)) / sqrt(1-sig2*sig2);
-		deta_dlambdaj =  -sin(lambda_j.rotation)*csc(lambda_i.rotation)*csc(rho) / sqrt(1-sig2*sig2);
-		deta_drhoij = csc(rho) * (sig0/cos(rho) - sig1*cos(rho)) / sqrt(1-sig2*sig2);
-		
-		
-		printf("DATA: %f, (%f %f %f), %f, (%f %f %f)\n",deta_dlambdai, lambda_i.drotation_dxi(0), lambda_i.drotation_dxi(1), lambda_i.drotation_dxi(2), deta_drhoij, drho_dxi(0), drho_dxi(1), drho_dxi(2));
-		
-		deta_dxi = deta_dlambdai * lambda_i.drotation_dxi + deta_drhoij * drho_dxi;
-		deta_dxj = deta_dlambdaj * lambda_j.drotation_dxi + deta_drhoij * drho_dxj;
-		deta_dxl = deta_dlambdai * lambda_i.drotation_dxl + deta_dlambdaj * lambda_j.drotation_dxl + deta_drhoij * drho_dxl;
-		
-		eta.drotation_dxi = deta_dxi;
-		eta.drotation_dxj = deta_dxj;
-		eta.drotation_dxl = deta_dxl;
-		
-		
-		
-		//finite differences
-		Vector fd_drho_dmui(3);
-		Vector fd_drho_dmuj(3);
-		Vector fd_drho_dxi(3);
-		Vector fd_drho_dxj(3);
-		Vector fd_drho_dxl(3);
-		double fd_deta_dlambdai;
-		double fd_deta_dlambdaj;
-		double fd_deta_drhoij;
-		Vector fd_deta_dxi(3);
-		Vector fd_deta_dxj(3);
-		Vector fd_deta_dxl(3);
-		double sig0p,sig1p,sig2p;
-		double sig0n,sig1n,sig2n;
-		Vector x(3), xp(3), xn(3);
-		Vector np(3), nn(3);
-		Vector np2(3), nn2(3);
-		Vector vp(3), vn(3);
-		double lenvn, lenvp;
-		
-		
-		//drho_dmui
-		x = mu_i;
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD;
-			xn=x;
-			xn(j) = x(j) - FD;
-			fd_drho_dmui(j) = (getAngleBetweenNormals(xp, mu_j) -  getAngleBetweenNormals(xn, mu_j))/(2*FD);
-		}		
-		printf("drho_dmui: (%f %f %f) fd_drho_mui: (%f %f %f)\n",drho_dmui(0),drho_dmui(1),drho_dmui(2),fd_drho_dmui(0),fd_drho_dmui(1),fd_drho_dmui(2));
-		for(int j=0; j<3; ++j){
-			if(abs(drho_dmui(j) - fd_drho_dmui(j)) > FDT) exit(-1);
-		}
-		
-		
-		//drho_dmuj
-		x = mu_j;
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD;
-			xn=x;
-			xn(j) = x(j) - FD;
-			fd_drho_dmuj(j) = (getAngleBetweenNormals(mu_i, xp) -  getAngleBetweenNormals(mu_i, xn))/(2*FD);
-		}		
-		printf("drho_dmuj: (%f %f %f) fd_drho_muj: (%f %f %f)\n",drho_dmuj(0),drho_dmuj(1),drho_dmuj(2),fd_drho_dmuj(0),fd_drho_dmuj(1),fd_drho_dmuj(2));
-		for(int j=0; j<3; ++j){
-			if(abs(drho_dmuj(j) - fd_drho_dmuj(j)) > FDT) exit(-1);
-		}
-		
 
+		if(isWithinNumericalLimits(rho,0)){
+			deta_dxi = Vector(3).zeros();
+			deta_dxj = Vector(3).zeros();
+			deta_dxl = Vector(3).zeros();
+		}
+		else{
 		
-		//drho_dxi
-		if(form_i!=SPLITTER){
-			x = atoms[index_i];
+			drho_dmui = -mu_j/(sqrt(1-dot_IJ*dot_IJ));
+			drho_dmuj = -mu_i/(sqrt(1-dot_IJ*dot_IJ));
+			
+			dmui_dxl = -dmui_dxi;
+			dmuj_dxl = -dmuj_dxj;
+			
+			printf("MATRIX FORM %d\n",form_j);
+			dmuj_dxj.print("dmuj_dxj");
+			
+			drho_dxi = (drho_dmui.t() * dmui_dxi).t();
+			drho_dxj = (drho_dmuj.t() * dmuj_dxj).t();
+			printf("drho_dmui: %f %f %f drho_dmuj: %f %f %f\n",drho_dmui(0),drho_dmui(1),drho_dmui(2),drho_dmuj(0),drho_dmuj(1),drho_dmuj(2));
+			for(int i=0; i<3; ++i)
+				printf("dmui_dxl: %f %f %f \t\t dmuj_dxl: %f %f %f\n",dmui_dxl(i,0),dmui_dxl(i,1),dmui_dxl(i,2),dmuj_dxl(i,0),dmuj_dxl(i,1),dmuj_dxl(i,2));
+			
+			drho_dxl = ((drho_dmui.t() * dmui_dxl).t() + (drho_dmuj.t() * dmuj_dxl).t());
+			
+			deta_dlambdai = csc(lambda_i.rotation) * (sig0/cos(lambda_i.rotation) - sig1*cos(lambda_i.rotation)) / sqrt(1-sig2*sig2);
+			deta_dlambdaj =  -sin(lambda_j.rotation)*csc(lambda_i.rotation)*csc(rho) / sqrt(1-sig2*sig2);
+			deta_drhoij = csc(rho) * (sig0/cos(rho) - sig1*cos(rho)) / sqrt(1-sig2*sig2);
+			
+			
+			printf("DATA: %f, (%f %f %f), %f, (%f %f %f)\n",deta_dlambdai, lambda_i.drotation_dxi(0), lambda_i.drotation_dxi(1), lambda_i.drotation_dxi(2), deta_drhoij, drho_dxi(0), drho_dxi(1), drho_dxi(2));
+			
+			deta_dxi = deta_dlambdai * lambda_i.drotation_dxi + deta_drhoij * drho_dxi;
+			deta_dxj = deta_dlambdaj * lambda_j.drotation_dxi + deta_drhoij * drho_dxj;
+			deta_dxl = deta_dlambdai * lambda_i.drotation_dxl + deta_dlambdaj * lambda_j.drotation_dxl + deta_drhoij * drho_dxl;
+			
+			eta.drotation_dxi = deta_dxi;
+			eta.drotation_dxj = deta_dxj;
+			eta.drotation_dxl = deta_dxl;
+			
+			
+			
+			
+			//finite differences
+			Vector fd_drho_dmui(3);
+			Vector fd_drho_dmuj(3);
+			Vector fd_drho_dxi(3);
+			Vector fd_drho_dxj(3);
+			Vector fd_drho_dxl(3);
+			double fd_deta_dlambdai;
+			double fd_deta_dlambdaj;
+			double fd_deta_drhoij;
+			Vector fd_deta_dxi(3);
+			Vector fd_deta_dxj(3);
+			Vector fd_deta_dxl(3);
+			double sig0p,sig1p,sig2p;
+			double sig0n,sig1n,sig2n;
+			Vector x(3), xp(3), xn(3);
+			Vector np(3), nn(3);
+			Vector np2(3), nn2(3);
+			Vector vp(3), vn(3);
+			double lenvn, lenvp;
+			
+			
+			//drho_dmui
+			x = mu_i;
 			for(int j=0; j<3; ++j){
 				xp=x;
 				xp(j) = x(j) + FD;
 				xn=x;
 				xn(j) = x(j) - FD;
-				
-				
-				vp= xp - torigin;
-				lenvp = norm(vp,2);
-				np=vp/lenvp;
-				if(form_i!=CONVEX)
-					np=-np;
-
-				vn= xn - torigin;
-				lenvn = norm(vn,2);
-				nn=vn/lenvn;
-				if(form_i!=CONVEX)
-					nn=-nn;
-				
-				fd_drho_dxi(j) = (getAngleBetweenNormals(np, mu_j) -  getAngleBetweenNormals(nn, mu_j))/(2*FD);
+				fd_drho_dmui(j) = (getAngleBetweenNormals(xp, mu_j) -  getAngleBetweenNormals(xn, mu_j))/(2*FD);
 			}		
-		}
-		else{
-			for(int j=0; j<3; ++j)
-				fd_drho_dxi(j) = 0;
-		}
-		printf("drho_dxi: (%f %f %f) fd_drho_dxi: (%f %f %f)\n",drho_dxi(0),drho_dxi(1),drho_dxi(2),fd_drho_dxi(0),fd_drho_dxi(1),fd_drho_dxi(2));
-		for(int j=0; j<3; ++j){
-			if(abs(drho_dxi(j) - fd_drho_dxi(j)) > FDT) exit(-1);
-		}
-		
-		//drho_dxj
-		if(form_j!=SPLITTER){
-			x = atoms[index_j];
+			printf("drho_dmui: (%f %f %f) fd_drho_mui: (%f %f %f)\n",drho_dmui(0),drho_dmui(1),drho_dmui(2),fd_drho_dmui(0),fd_drho_dmui(1),fd_drho_dmui(2));
+			for(int j=0; j<3; ++j){
+				if(abs(drho_dmui(j) - fd_drho_dmui(j)) > FDT) exit(-1);
+			}
+			
+			
+			//drho_dmuj
+			x = mu_j;
 			for(int j=0; j<3; ++j){
 				xp=x;
 				xp(j) = x(j) + FD;
 				xn=x;
 				xn(j) = x(j) - FD;
-				
-				
-				vp= xp - torigin;
-				lenvp = norm(vp,2);
-				np=vp/lenvp;
-				if(form_j!=CONVEX)
-					np=-np;
-
-				vn= xn - torigin;
-				lenvn = norm(vn,2);
-				nn=vn/lenvn;
-				if(form_j!=CONVEX)
-					nn=-nn;
-				
-				fd_drho_dxj(j) = (getAngleBetweenNormals(mu_i, np) -  getAngleBetweenNormals(mu_i, nn))/(2*FD);
+				fd_drho_dmuj(j) = (getAngleBetweenNormals(mu_i, xp) -  getAngleBetweenNormals(mu_i, xn))/(2*FD);
+			}		
+			printf("drho_dmuj: (%f %f %f) fd_drho_muj: (%f %f %f)\n",drho_dmuj(0),drho_dmuj(1),drho_dmuj(2),fd_drho_dmuj(0),fd_drho_dmuj(1),fd_drho_dmuj(2));
+			for(int j=0; j<3; ++j){
+				if(abs(drho_dmuj(j) - fd_drho_dmuj(j)) > FDT) exit(-1);
 			}
-		}
-		else{
-			for(int j=0; j<3; ++j)
-				fd_drho_dxj(j) = 0;
-		}
-		
-		printf("drho_dxj: (%f %f %f) fd_drho_dxj: (%f %f %f)\n",drho_dxj(0),drho_dxj(1),drho_dxj(2),fd_drho_dxj(0),fd_drho_dxj(1),fd_drho_dxj(2));
-		for(int j=0; j<3; ++j){
-			if(abs(drho_dxj(j) - fd_drho_dxj(j)) > FDT) exit(-1);
-		}
+			
 
-		
-		//drho_dxl
-		x = torigin;
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD;
-			xn=x;
-			xn(j) = x(j) - FD;
 			
-			
+			//drho_dxi
 			if(form_i!=SPLITTER){
-				vp= atoms[index_i] - xp;
-				lenvp = norm(vp,2);
-				np=vp/lenvp;
-				if(form_i!=CONVEX)
-					np=-np;
-				
-			}
-			else np = tessellationOrigin;
+				x = atoms[index_i];
+				for(int j=0; j<3; ++j){
+					xp=x;
+					xp(j) = x(j) + FD;
+					xn=x;
+					xn(j) = x(j) - FD;
+					
+					
+					vp= xp - torigin;
+					lenvp = norm(vp,2);
+					np=vp/lenvp;
+					if(form_i!=CONVEX)
+						np=-np;
 
-
-			if(form_i!=SPLITTER){
-				vn= atoms[index_i] - xn;
-				lenvn = norm(vn,2);
-				nn=vn/lenvn;
-				if(form_i!=CONVEX)
-					nn=-nn;
-				
+					vn= xn - torigin;
+					lenvn = norm(vn,2);
+					nn=vn/lenvn;
+					if(form_i!=CONVEX)
+						nn=-nn;
+					
+					fd_drho_dxi(j) = (getAngleBetweenNormals(np, mu_j) -  getAngleBetweenNormals(nn, mu_j))/(2*FD);
+				}		
 			}
-			else nn = tessellationOrigin;
+			else{
+				for(int j=0; j<3; ++j)
+					fd_drho_dxi(j) = 0;
+			}
+			printf("drho_dxi: (%f %f %f) fd_drho_dxi: (%f %f %f)\n",drho_dxi(0),drho_dxi(1),drho_dxi(2),fd_drho_dxi(0),fd_drho_dxi(1),fd_drho_dxi(2));
+			for(int j=0; j<3; ++j){
+				if(abs(drho_dxi(j) - fd_drho_dxi(j)) > FDT) exit(-1);
+			}
 			
-			
+			//drho_dxj
 			if(form_j!=SPLITTER){
-				vp= atoms[index_j] - xp;
-				lenvp = norm(vp,2);
-				np2=vp/lenvp;
-				if(form_j!=CONVEX)
-					np2=-np2;
-				
+				x = atoms[index_j];
+				for(int j=0; j<3; ++j){
+					xp=x;
+					xp(j) = x(j) + FD;
+					xn=x;
+					xn(j) = x(j) - FD;
+					
+					
+					vp= xp - torigin;
+					lenvp = norm(vp,2);
+					np=vp/lenvp;
+					if(form_j!=CONVEX)
+						np=-np;
+
+					vn= xn - torigin;
+					lenvn = norm(vn,2);
+					nn=vn/lenvn;
+					if(form_j!=CONVEX)
+						nn=-nn;
+					
+					fd_drho_dxj(j) = (getAngleBetweenNormals(mu_i, np) -  getAngleBetweenNormals(mu_i, nn))/(2*FD);
+				}
 			}
-			else np2 = tessellationOrigin;
-
-			if(form_j!=SPLITTER){
-				vn= atoms[index_j] - xn;
-				lenvn = norm(vn,2);
-				nn2=vn/lenvn;
-				if(form_j!=CONVEX)
-					nn2=-nn2;
+			else{
+				for(int j=0; j<3; ++j)
+					fd_drho_dxj(j) = 0;
 			}
-			else nn2 = tessellationOrigin;
 			
+			printf("drho_dxj: (%f %f %f) fd_drho_dxj: (%f %f %f)\n",drho_dxj(0),drho_dxj(1),drho_dxj(2),fd_drho_dxj(0),fd_drho_dxj(1),fd_drho_dxj(2));
+			for(int j=0; j<3; ++j){
+				if(abs(drho_dxj(j) - fd_drho_dxj(j)) > FDT) exit(-1);
+			}
+
 			
-			fd_drho_dxl(j) = (getAngleBetweenNormals(np, np2) -  getAngleBetweenNormals(nn, nn2))/(2*FD);
-		}
-		printf("drho_dxl: (%f %f %f) fd_drho_dxl: (%f %f %f)\n",drho_dxl(0),drho_dxl(1),drho_dxl(2),fd_drho_dxl(0),fd_drho_dxl(1),fd_drho_dxl(2));
-		for(int j=0; j<3; ++j){
-			if(abs(drho_dxl(j) - fd_drho_dxl(j)) > FDT) exit(-1);
-		}
-		
-		
-
-		//deta_dlambdai
-		sig0p = cot(lambda_i.rotation+FD) * cot(rho);
-		sig1p = cos(lambda_j.rotation)*csc(lambda_i.rotation+FD)*csc(rho);
-		sig2p = sig0p-sig1p;
-
-		sig0n = cot(lambda_i.rotation-FD) * cot(rho);
-		sig1n = cos(lambda_j.rotation)*csc(lambda_i.rotation-FD)*csc(rho);
-		sig2n = sig0n-sig1n;
-		
-
-		fd_deta_dlambdai = (acos(sig2p) - acos(sig2n)) / (2*FD);
-		printf("deta_dlambdai: %f FD: %f\n",deta_dlambdai, fd_deta_dlambdai);
-		if(abs(deta_dlambdai - fd_deta_dlambdai) > FDT) exit(-1);
-		
-		//deta_dlambdaj
-		sig0p = cot(lambda_i.rotation) * cot(rho);
-		sig1p = cos(lambda_j.rotation+FD)*csc(lambda_i.rotation)*csc(rho);
-		sig2p = sig0p-sig1p;
-
-		sig0n = cot(lambda_i.rotation) * cot(rho);
-		sig1n = cos(lambda_j.rotation-FD)*csc(lambda_i.rotation)*csc(rho);
-		sig2n = sig0n-sig1n;
-		
-		fd_deta_dlambdaj = (acos(sig2p) - acos(sig2n)) / (2*FD);
-		printf("deta_dlambdaj: %f FD: %f\n",deta_dlambdaj, fd_deta_dlambdaj);
-		if(abs(deta_dlambdaj - fd_deta_dlambdaj) > FDT) exit(-1);
-		
-		
-		//deta_drhoij
-		sig0p = cot(lambda_i.rotation) * cot(rho+FD);
-		sig1p = cos(lambda_j.rotation)*csc(lambda_i.rotation)*csc(rho+FD);
-		sig2p = sig0p-sig1p;
-
-		sig0n = cot(lambda_i.rotation) * cot(rho-FD);
-		sig1n = cos(lambda_j.rotation)*csc(lambda_i.rotation)*csc(rho-FD);
-		sig2n = sig0n-sig1n;
-		
-		fd_deta_drhoij = (acos(sig2p) - acos(sig2n)) / (2*FD);
-		printf("deta_drhoij: %f FD: %f\n",deta_drhoij, fd_deta_drhoij);
-		if(abs(deta_drhoij - fd_deta_drhoij) > FDT) exit(-1);
-		
-		
-		
-		
-
-		Vector ai(3), aj(3), al(3);
-		Vector nip,nin,nj;
-		Vector njp,njn,ni;
-		int indexi, indexl, indexj;
-		double ri, rl, rj;
-		Rotation lambdaip;
-		Rotation lambdain;
-		Rotation lambdaj;
-		double dip,din,dj;
-		Vector fd_dPHIij_dxi_in(3);
-		Vector fd_dPHIij_dxi_out(3);
-		PHIContainer PHIp, PHIn;
-		Rotation lambdajp;
-		Rotation lambdajn;
-		Rotation lambdai;
-		double djp,djn,di;
-		Vector fd_dPHIij_dxj_in(3);
-		Vector fd_dPHIij_dxj_out(3);
-		double rhop, rhon;
-		
-
-
-		
-		//deta_dxi
-		indexi = index_i;
-		indexj = index_j;
-		if(indexi >= 0 && indexj >= 0){
-			ai = atoms[indexi];
-			aj = atoms[indexj];
-			al = torigin;
-			ri = radii[indexi];
-			rj = radii[indexj];
-			rl = tradius;
-			
-			printf("ai: %f %f %f aj: %f %f %f\n",ai(0),ai(1),ai(2), aj(0),aj(1),aj(2));
-			
-			
-			x=ai;
+			//drho_dxl
+			x = torigin;
 			for(int j=0; j<3; ++j){
 				xp=x;
 				xp(j) = x(j) + FD;
 				xn=x;
 				xn(j) = x(j) - FD;
 				
-				nip = calculateInterfaceNormal(al, xp, dip);
-				nin = calculateInterfaceNormal(al, xn, din);
-				nj = calculateInterfaceNormal(al, aj, dj);
 				
-				lambdaip = calculateLambda(dip, rl, ri, nip);
-				lambdain = calculateLambda(din, rl, ri, nin);
-				lambdaj = calculateLambda(dj, rl, rj, nj);
-				
-				rhop = calculateRho(nip, nj);
-				rhon = calculateRho(nin, nj);
-				
-				sig0p = cot(lambdaip.rotation) * cot(rhop);
-				sig1p = cos(lambdaj.rotation)*csc(lambdaip.rotation)*csc(rhop);
-				sig2p = sig0p-sig1p;
+				if(form_i!=SPLITTER){
+					vp= atoms[index_i] - xp;
+					lenvp = norm(vp,2);
+					np=vp/lenvp;
+					if(form_i!=CONVEX)
+						np=-np;
+					
+				}
+				else np = tessellationOrigin;
 
-				sig0n = cot(lambdain.rotation) * cot(rhon);
-				sig1n = cos(lambdaj.rotation)*csc(lambdain.rotation)*csc(rhon);
-				sig2n = sig0n-sig1n;
-			
-				fd_deta_dxi(j) = (acos(sig2p) - acos(sig2n)) / (2*FD);
+
+				if(form_i!=SPLITTER){
+					vn= atoms[index_i] - xn;
+					lenvn = norm(vn,2);
+					nn=vn/lenvn;
+					if(form_i!=CONVEX)
+						nn=-nn;
+					
+				}
+				else nn = tessellationOrigin;
 				
+				
+				if(form_j!=SPLITTER){
+					vp= atoms[index_j] - xp;
+					lenvp = norm(vp,2);
+					np2=vp/lenvp;
+					if(form_j!=CONVEX)
+						np2=-np2;
+					
+				}
+				else np2 = tessellationOrigin;
+
+				if(form_j!=SPLITTER){
+					vn= atoms[index_j] - xn;
+					lenvn = norm(vn,2);
+					nn2=vn/lenvn;
+					if(form_j!=CONVEX)
+						nn2=-nn2;
+				}
+				else nn2 = tessellationOrigin;
+				
+				
+				fd_drho_dxl(j) = (getAngleBetweenNormals(np, np2) -  getAngleBetweenNormals(nn, nn2))/(2*FD);
 			}
-			
-			printf("deta_dxi: %f %f %f FD: %f %f %f\n",deta_dxi(0),deta_dxi(1),deta_dxi(2), fd_deta_dxi(0), fd_deta_dxi(1), fd_deta_dxi(2));
-			for(int i=0; i<3; ++i){
-				if(abs(deta_dxi(i) - fd_deta_dxi(i)) > FDT) exit(-1);
-			}
-			
-		}
-	
-		
-		//deta_dxj
-		indexi = index_i;
-		indexj = index_j;
-		if(indexi >= 0 && indexj >= 0){
-			ai = atoms[indexi];
-			aj = atoms[indexj];
-			al = torigin;
-			ri = radii[indexi];
-			rj = radii[indexj];
-			rl = tradius;
-			
-			printf("ai: %f %f %f aj: %f %f %f\n",ai(0),ai(1),ai(2), aj(0),aj(1),aj(2));
-			
-			x=aj;
+			printf("drho_dxl: (%f %f %f) fd_drho_dxl: (%f %f %f)\n",drho_dxl(0),drho_dxl(1),drho_dxl(2),fd_drho_dxl(0),fd_drho_dxl(1),fd_drho_dxl(2));
 			for(int j=0; j<3; ++j){
-				xp=x;
-				xp(j) = x(j) + FD;
-				xn=x;
-				xn(j) = x(j) - FD;
-				
-				njp = calculateInterfaceNormal(al, xp, djp);
-				njn = calculateInterfaceNormal(al, xn, djn);
-				ni = calculateInterfaceNormal(al, ai, di);
-				
-				lambdajp = calculateLambda(djp, rl, rj, njp);
-				lambdajn = calculateLambda(djn, rl, rj, njn);
-				lambdai = calculateLambda(di, rl, ri, ni);
-				
-				rhop = calculateRho(ni, njp);
-				rhon = calculateRho(ni, njn);
-				
-				sig0p = cot(lambdai.rotation) * cot(rhop);
-				sig1p = cos(lambdajp.rotation)*csc(lambdai.rotation)*csc(rhop);
-				sig2p = sig0p-sig1p;
+				if(abs(drho_dxl(j) - fd_drho_dxl(j)) > FDT) exit(-1);
+			}
+			
+			
 
-				sig0n = cot(lambdai.rotation) * cot(rhon);
-				sig1n = cos(lambdajn.rotation)*csc(lambdai.rotation)*csc(rhon);
-				sig2n = sig0n-sig1n;
+			//deta_dlambdai
+			sig0p = cot(lambda_i.rotation+FD) * cot(rho);
+			sig1p = cos(lambda_j.rotation)*csc(lambda_i.rotation+FD)*csc(rho);
+			sig2p = sig0p-sig1p;
+
+			sig0n = cot(lambda_i.rotation-FD) * cot(rho);
+			sig1n = cos(lambda_j.rotation)*csc(lambda_i.rotation-FD)*csc(rho);
+			sig2n = sig0n-sig1n;
 			
-				fd_deta_dxj(j) = (acos(sig2p) - acos(sig2n)) / (2*FD);
+
+			fd_deta_dlambdai = (acos(sig2p) - acos(sig2n)) / (2*FD);
+			printf("deta_dlambdai: %f FD: %f\n",deta_dlambdai, fd_deta_dlambdai);
+			if(abs(deta_dlambdai - fd_deta_dlambdai) > FDT) exit(-1);
+			
+			//deta_dlambdaj
+			sig0p = cot(lambda_i.rotation) * cot(rho);
+			sig1p = cos(lambda_j.rotation+FD)*csc(lambda_i.rotation)*csc(rho);
+			sig2p = sig0p-sig1p;
+
+			sig0n = cot(lambda_i.rotation) * cot(rho);
+			sig1n = cos(lambda_j.rotation-FD)*csc(lambda_i.rotation)*csc(rho);
+			sig2n = sig0n-sig1n;
+			
+			fd_deta_dlambdaj = (acos(sig2p) - acos(sig2n)) / (2*FD);
+			printf("deta_dlambdaj: %f FD: %f\n",deta_dlambdaj, fd_deta_dlambdaj);
+			if(abs(deta_dlambdaj - fd_deta_dlambdaj) > FDT) exit(-1);
+			
+			
+			//deta_drhoij
+			sig0p = cot(lambda_i.rotation) * cot(rho+FD);
+			sig1p = cos(lambda_j.rotation)*csc(lambda_i.rotation)*csc(rho+FD);
+			sig2p = sig0p-sig1p;
+
+			sig0n = cot(lambda_i.rotation) * cot(rho-FD);
+			sig1n = cos(lambda_j.rotation)*csc(lambda_i.rotation)*csc(rho-FD);
+			sig2n = sig0n-sig1n;
+			
+			fd_deta_drhoij = (acos(sig2p) - acos(sig2n)) / (2*FD);
+			printf("deta_drhoij: %f FD: %f\n",deta_drhoij, fd_deta_drhoij);
+			if(abs(deta_drhoij - fd_deta_drhoij) > FDT) exit(-1);
+			
+			
+			
+			
+
+			Vector ai(3), aj(3), al(3);
+			Vector nip,nin,nj;
+			Vector njp,njn,ni;
+			int indexi, indexl, indexj;
+			double ri, rl, rj;
+			Rotation lambdaip;
+			Rotation lambdain;
+			Rotation lambdaj;
+			double dip,din,dj;
+			Vector fd_dPHIij_dxi_in(3);
+			Vector fd_dPHIij_dxi_out(3);
+			PHIContainer PHIp, PHIn;
+			Rotation lambdajp;
+			Rotation lambdajn;
+			Rotation lambdai;
+			double djp,djn,di;
+			Vector fd_dPHIij_dxj_in(3);
+			Vector fd_dPHIij_dxj_out(3);
+			double rhop, rhon;
+			
+
+
+			
+			//deta_dxi
+			indexi = index_i;
+			indexj = index_j;
+			if(indexi >= 0 && indexj >= 0){
+				ai = atoms[indexi];
+				aj = atoms[indexj];
+				al = torigin;
+				ri = radii[indexi];
+				rj = radii[indexj];
+				rl = tradius;
+				
+				printf("ai: %f %f %f aj: %f %f %f\n",ai(0),ai(1),ai(2), aj(0),aj(1),aj(2));
+				
+				
+				x=ai;
+				for(int j=0; j<3; ++j){
+					xp=x;
+					xp(j) = x(j) + FD;
+					xn=x;
+					xn(j) = x(j) - FD;
+					
+					nip = calculateInterfaceNormal(al, xp, dip);
+					nin = calculateInterfaceNormal(al, xn, din);
+					nj = calculateInterfaceNormal(al, aj, dj);
+					
+					lambdaip = calculateLambda(dip, rl, ri, nip);
+					lambdain = calculateLambda(din, rl, ri, nin);
+					lambdaj = calculateLambda(dj, rl, rj, nj);
+					
+					rhop = calculateRho(nip, nj);
+					rhon = calculateRho(nin, nj);
+					
+					sig0p = cot(lambdaip.rotation) * cot(rhop);
+					sig1p = cos(lambdaj.rotation)*csc(lambdaip.rotation)*csc(rhop);
+					sig2p = sig0p-sig1p;
+
+					sig0n = cot(lambdain.rotation) * cot(rhon);
+					sig1n = cos(lambdaj.rotation)*csc(lambdain.rotation)*csc(rhon);
+					sig2n = sig0n-sig1n;
+				
+					fd_deta_dxi(j) = (acos(sig2p) - acos(sig2n)) / (2*FD);
+					
+				}
+				
+				printf("deta_dxi: %f %f %f FD: %f %f %f\n",deta_dxi(0),deta_dxi(1),deta_dxi(2), fd_deta_dxi(0), fd_deta_dxi(1), fd_deta_dxi(2));
+				for(int i=0; i<3; ++i){
+					if(abs(deta_dxi(i) - fd_deta_dxi(i)) > FDT) exit(-1);
+				}
 				
 			}
-			
-			printf("deta_dxj: %f %f %f FD: %f %f %f\n",deta_dxj(0),deta_dxj(1),deta_dxj(2), fd_deta_dxj(0), fd_deta_dxj(1), fd_deta_dxj(2));
-			for(int i=0; i<3; ++i){
-				if(abs(deta_dxj(i) - fd_deta_dxj(i)) > FDT) exit(-1);
-			}
-			
-		}
-	
 		
-		//deta_dxl
-		indexi = index_i;
-		indexj = index_j;
-		if(indexi >= 0 && indexj >= 0){
-			ai = atoms[indexi];
-			aj = atoms[indexj];
-			al = torigin;
-			ri = radii[indexi];
-			rj = radii[indexj];
-			rl = tradius;
 			
-			x=al;
-			for(int j=0; j<3; ++j){
-				xp=x;
-				xp(j) = x(j) + FD;
-				xn=x;
-				xn(j) = x(j) - FD;
+			//deta_dxj
+			indexi = index_i;
+			indexj = index_j;
+			if(indexi >= 0 && indexj >= 0){
+				ai = atoms[indexi];
+				aj = atoms[indexj];
+				al = torigin;
+				ri = radii[indexi];
+				rj = radii[indexj];
+				rl = tradius;
 				
-				nip = calculateInterfaceNormal(xp, ai, dip);
-				nin = calculateInterfaceNormal(xn, ai, din);
-				njp = calculateInterfaceNormal(xp, aj, djp);
-				njn = calculateInterfaceNormal(xn, aj, djn);
+				printf("ai: %f %f %f aj: %f %f %f\n",ai(0),ai(1),ai(2), aj(0),aj(1),aj(2));
 				
-				lambdaip = calculateLambda(dip, rl, ri, nip);
-				lambdain = calculateLambda(din, rl, ri, nin);
-				lambdajp = calculateLambda(djp, rl, rj, njp);
-				lambdajn = calculateLambda(djn, rl, rj, njn);
-				
-				rhop = calculateRho(nip, njp);
-				rhon = calculateRho(nin, njn);
-				
-				sig0p = cot(lambdaip.rotation) * cot(rhop);
-				sig1p = cos(lambdajp.rotation)*csc(lambdaip.rotation)*csc(rhop);
-				sig2p = sig0p-sig1p;
+				x=aj;
+				for(int j=0; j<3; ++j){
+					xp=x;
+					xp(j) = x(j) + FD;
+					xn=x;
+					xn(j) = x(j) - FD;
+					
+					njp = calculateInterfaceNormal(al, xp, djp);
+					njn = calculateInterfaceNormal(al, xn, djn);
+					ni = calculateInterfaceNormal(al, ai, di);
+					
+					lambdajp = calculateLambda(djp, rl, rj, njp);
+					lambdajn = calculateLambda(djn, rl, rj, njn);
+					lambdai = calculateLambda(di, rl, ri, ni);
+					
+					rhop = calculateRho(ni, njp);
+					rhon = calculateRho(ni, njn);
+					
+					sig0p = cot(lambdai.rotation) * cot(rhop);
+					sig1p = cos(lambdajp.rotation)*csc(lambdai.rotation)*csc(rhop);
+					sig2p = sig0p-sig1p;
 
-				sig0n = cot(lambdain.rotation) * cot(rhon);
-				sig1n = cos(lambdajn.rotation)*csc(lambdain.rotation)*csc(rhon);
-				sig2n = sig0n-sig1n;
-			
-				fd_deta_dxl(j) = (acos(sig2p) - acos(sig2n)) / (2*FD);
+					sig0n = cot(lambdai.rotation) * cot(rhon);
+					sig1n = cos(lambdajn.rotation)*csc(lambdai.rotation)*csc(rhon);
+					sig2n = sig0n-sig1n;
+				
+					fd_deta_dxj(j) = (acos(sig2p) - acos(sig2n)) / (2*FD);
+					
+				}
+				
+				printf("deta_dxj: %f %f %f FD: %f %f %f\n",deta_dxj(0),deta_dxj(1),deta_dxj(2), fd_deta_dxj(0), fd_deta_dxj(1), fd_deta_dxj(2));
+				for(int i=0; i<3; ++i){
+					if(abs(deta_dxj(i) - fd_deta_dxj(i)) > FDT) exit(-1);
+				}
 				
 			}
+		
 			
-			printf("deta_dxl: %f %f %f FD: %f %f %f\n",deta_dxl(0),deta_dxl(1),deta_dxl(2), fd_deta_dxl(0), fd_deta_dxl(1), fd_deta_dxl(2));
-			for(int i=0; i<3; ++i){
-				if(abs(deta_dxl(i) - fd_deta_dxl(i)) > FDT) exit(-1);
+			//deta_dxl
+			indexi = index_i;
+			indexj = index_j;
+			if(indexi >= 0 && indexj >= 0){
+				ai = atoms[indexi];
+				aj = atoms[indexj];
+				al = torigin;
+				ri = radii[indexi];
+				rj = radii[indexj];
+				rl = tradius;
+				
+				x=al;
+				for(int j=0; j<3; ++j){
+					xp=x;
+					xp(j) = x(j) + FD;
+					xn=x;
+					xn(j) = x(j) - FD;
+					
+					nip = calculateInterfaceNormal(xp, ai, dip);
+					nin = calculateInterfaceNormal(xn, ai, din);
+					njp = calculateInterfaceNormal(xp, aj, djp);
+					njn = calculateInterfaceNormal(xn, aj, djn);
+					
+					lambdaip = calculateLambda(dip, rl, ri, nip);
+					lambdain = calculateLambda(din, rl, ri, nin);
+					lambdajp = calculateLambda(djp, rl, rj, njp);
+					lambdajn = calculateLambda(djn, rl, rj, njn);
+					
+					rhop = calculateRho(nip, njp);
+					rhon = calculateRho(nin, njn);
+					
+					sig0p = cot(lambdaip.rotation) * cot(rhop);
+					sig1p = cos(lambdajp.rotation)*csc(lambdaip.rotation)*csc(rhop);
+					sig2p = sig0p-sig1p;
+
+					sig0n = cot(lambdain.rotation) * cot(rhon);
+					sig1n = cos(lambdajn.rotation)*csc(lambdain.rotation)*csc(rhon);
+					sig2n = sig0n-sig1n;
+				
+					fd_deta_dxl(j) = (acos(sig2p) - acos(sig2n)) / (2*FD);
+					
+				}
+				
+				printf("deta_dxl: %f %f %f FD: %f %f %f\n",deta_dxl(0),deta_dxl(1),deta_dxl(2), fd_deta_dxl(0), fd_deta_dxl(1), fd_deta_dxl(2));
+				for(int i=0; i<3; ++i){
+					if(abs(deta_dxl(i) - fd_deta_dxl(i)) > FDT) exit(-1);
+				}
+				
 			}
-			
+		
 		}
-	
 	}
 	
 	
@@ -2298,6 +2321,9 @@ PHIContainer Tessellation::calculatePHI(Vector &tessellationOrigin, CircularInte
 	PHIContainer p,p2;	
 	p =  calculatePHI(tessellationOrigin, I.normal, J.normal, I.lambda, J.lambda, I.dmu_dx, J.dmu_dx, I.index, J.index, I.form, J.form, true);
 	p2 = retrieveInterfaces(tessellationOrigin, I, J, dij, radius);
+	
+	p.in.vector = p2.in.vector;
+	p.out.vector = p2.out.vector;
 	
 	printf("ROTATIONAL INFO: in p:%f, p2:%f  out: p:%f p2:%f\n",p.in.rotation, p2.in.rotation, p.out.rotation, p2.out.rotation);
 	
@@ -3752,7 +3778,7 @@ void Tessellation::outputGaussBonnetData(string filename, double radius, Circula
 	}
 	*/
 	
-	/*
+	
 	for(int i=0;i<sasas.size();++i){
 		sasa = sasas[i];
 		fprintf(file, "sasa %d size %d\n", i, sasa.sasa.size());
@@ -3762,7 +3788,7 @@ void Tessellation::outputGaussBonnetData(string filename, double radius, Circula
 		}
 		
 	}
-	*/
+	
 	fclose(file);
 	
 		

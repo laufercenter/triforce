@@ -48,7 +48,7 @@ using namespace arma;
 #define ORDER_COUNTERCLOCKWISE 1
 
 #define FD 0.000001
-#define FDT 0.0025
+#define FDT 10.0025
 
 #define MINISCULE 0.0000000001
 

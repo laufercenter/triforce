@@ -30,6 +30,7 @@ Surface3D::Surface3D(Data3D* d)
 	data=d->data;
 	gradient=d->gradient;
 	hessian=d->hessian;	
+	auxiliary=d->auxiliary;
 
 }
 

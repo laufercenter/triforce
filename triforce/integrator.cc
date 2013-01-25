@@ -118,11 +118,11 @@ double IntegratorTriforce::integrateAtomicSASA(int l, SASAsForAtom sasasForAtom,
 	printf("ACC AREA0: %f AREA1: %f\n",area0,area1);
 	
 	
-	if(area0<=0) area0 = -area0;
-	else area0=2*M_PI - area0;
+	if(area0 < 0 && abs(area0) < THRESHOLD_NEGATIVE) area0 = 0;
+	if(area0 < 0) area0 = 2*M_PI+area0;
 
-	if(area1<=0) area1 = -area1;
-	else area1=2*M_PI - area1;
+	if(area1 < 0 && abs(area1) < THRESHOLD_NEGATIVE) area1 = 0;
+	if(area1 < 0) area1 = 2*M_PI+area1;
 	
 	printf("ACC CORRECTED AREA0: %f AREA1: %f\n",area0,area1);
 	
@@ -149,27 +149,28 @@ double IntegratorTriforce::integrateSASA(int l, SASA &sasa, double radius){
 	SASANodeList::iterator it;
 	SASANode x0, x1;
 	double area=0;
-	double totalAngle=0;
 	Area integral;
 	double r_square;
+	double actphi;
+	double phi;
+	double sign_prephi;
+	
 	
 	r_square = radius*radius;
-	
+	phi = 0;
+	sign_prephi = 1;
 	x0 = *(--sasa.sasa.end());
 	for(it = sasa.sasa.begin(); it!=sasa.sasa.end(); ++it){
 		x1 = *it;
 		
-		integral = integrateTriangle(l, x0, x1, sasa.tessellationOrigin);
+		integral = integrateTriangle(l, x0, x1, sasa.tessellationOrigin, actphi);
+		phi += sign_prephi * actphi;
+		sign_prephi = sgn(actphi);
+		
 		printf("SUBAREA: %f\n",integral.area);
 
 		area += integral.area;
 		
-		/*if(sasa.hemisphere==BACKHEMISPHERE){
-			integral.force_i *= -1;
-			integral.force_j *= -1;
-			integral.force_k *= -1;
-			integral.force_l *= -1;
-		}*/
 		
 		addForce(x0.index0, integral.force_i * r_square);
 		addForce(x0.index1, integral.force_j * r_square);
@@ -182,6 +183,8 @@ double IntegratorTriforce::integrateSASA(int l, SASA &sasa, double radius){
 		
 	}
 	
+		
+	
 	printf("+++++ SAA END +++++\n\n");
 	
 	return area;
@@ -189,7 +192,7 @@ double IntegratorTriforce::integrateSASA(int l, SASA &sasa, double radius){
 
 
 
-Vector IntegratorTriforce::lookUp(double PHI, double psi, double lambda, double q, CircularInterfaceForm form){
+Vector IntegratorTriforce::lookUp(double PHI, double psi, double lambda, double &phi, CircularInterfaceForm form){
 	Vector res(4);
 	double aPHI, apsi, alambda;
 	int i;
@@ -200,11 +203,13 @@ Vector IntegratorTriforce::lookUp(double PHI, double psi, double lambda, double 
 	if(alambda < 0) printf("CAPPING lambda\n");
 	alambda= max(0.0,lambda);
 	
+	printf("lookup: %f %f %f\n",PHI,psi,lambda);
+	
 	
 	
 	for(i=0;i<4;++i){
 		//printf("start lookup %d (%f %f %f)\n",i,PHI,psi,lambda);
-		res(i) = data[i]->interpolate(aPHI, apsi, alambda);
+		res(i) = -data[i]->interpolate(aPHI, apsi, alambda, phi);
 		//printf("end lookup %d\n",i);
 	}
 	
@@ -214,14 +219,16 @@ Vector IntegratorTriforce::lookUp(double PHI, double psi, double lambda, double 
 	}
 	*/
 	if(PHI <0){
-		res=-1*res;
-		res(1) = -res(1); //vodoo: I don't know why I have to un-reverse this :/
+		res=-res;
+		res(1) = -res(1);
+		phi=-phi;
 	}
 	
 	
 	if(form != CONVEX){
 		res(2) = -res(2);
 		res(3) = -res(3);
+		//phi=-phi;
 	}
 	
 	
@@ -240,6 +247,7 @@ Vector IntegratorTriforce::lookUp3(double PHI, double psi, double lambda){
 	apsi = max(0.0,psi);
 	alambda= max(0.0,lambda);
 	
+	printf("lookup3: %f %f %f\n",PHI,psi,lambda);
 	
 	
 	for(i=0;i<4;++i){
@@ -271,6 +279,7 @@ Vector IntegratorTriforce::lookUp2(double PHI, double psi, double lambda){
 	if(alambda < 0) printf("CAPPING lambda\n");
 	alambda= max(0.0,lambda);
 	
+	printf("lookup2: %f %f %f\n",PHI,psi,lambda);
 	
 	
 	for(i=0;i<4;++i){
@@ -407,7 +416,7 @@ mat33 IntegratorTriforce::rotz(double theta){
 }
 
 
-Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Vector integrationOrigin){
+Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Vector integrationOrigin, double &phi){
 	Rotation psi;
 	Rotation lambda;
 	Rotation PHIij;
@@ -418,7 +427,6 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	Vector Tij(4), Tjk(4);
 	Vector Tij2(4), Tjk2(4);
 	Vector force_i(3), force_j(3), force_k(3), force_l(3);
-	double totalAngle;
 	double phi0,phi1;
 	double q, q0, q1;
 	CircularInterfaceForm form;
@@ -426,7 +434,6 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	CircularInterfaceForm formj;
 	CircularInterfaceForm formk;
 	area = 0;
-	totalAngle=0;
 	double s_convex, s_complementation, s_direction;
 	
 	psi = x1.psi;
@@ -475,8 +482,9 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	//if(form!=CONVEX) maxArea*=-1;
 	
 	
-	Tij = lookUp(PHIij.rotation, psi.rotation, lambda.rotation, q0, form);
-	Tjk = lookUp(PHIjk.rotation, psi.rotation, lambda.rotation, q1, form);
+	Tij = lookUp(PHIij.rotation, psi.rotation, lambda.rotation, phi0, form);
+	Tjk = lookUp(PHIjk.rotation, psi.rotation, lambda.rotation, phi1, form);
+	
 	
 /*	double Aij, Ajk;
 	Aij = Tij(0);
@@ -497,7 +505,7 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	printf("io: %f %f %f\n", integrationOrigin(0), integrationOrigin(1), integrationOrigin(2));
 	
 	
-	#define FD2 0.000001
+	#define FD2 0.1
 	#define FDT2 0.01
 	#define FDT3 0.3
 
@@ -627,8 +635,11 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	Vector fd_dA_dxl2(3);
 	
 	
+	Rotation psijp, psijn;
+	PHIContainer PHI2p, PHI2n;
+	Vector fd_dA_dxj(3);
 	
-	
+	/*
 	
 	//dPHIij_dxi
 	indexj = x0.index0;
@@ -868,33 +879,32 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	}
 	
 	
+	*/
 	
 	
+	//phi0 = PHI2phi2(integrationOrigin, PHIij.rotation,psi.rotation,lambda.rotation);
+	//phi1 = PHI2phi2(integrationOrigin, PHIjk.rotation,psi.rotation,lambda.rotation);
 	
-	phi0 = PHI2phi2(integrationOrigin, PHIij.rotation,psi.rotation,lambda.rotation);
-	phi1 = PHI2phi2(integrationOrigin, PHIjk.rotation,psi.rotation,lambda.rotation);
 	
-	
-	if(PHIij.rotation<0){
-		phi0=-phi0;
-	}
-	if(PHIjk.rotation<0) {
-		phi1=-phi1;
-	}
 	if(x1.form!=CONVEX)
-		totalAngle -= phi1 - phi0;
+		phi = -(phi1 - phi0);
 	else
-		totalAngle += phi1 - phi0;
+		phi = phi1 - phi0;
 	
 	printf("ID: (%d-%d) -> (%d-%d)\n",x0.id0, x0.id1,x1.id0,x1.id1);
 	printf("CIRC: %d\n",x1.id0);
-	printf("TOTAL ANGLE: %f phi0:%f (PHI0: %f) phi1:%f (PHI1: %f)\n",totalAngle,phi0, PHIij.rotation, phi1, PHIjk.rotation);
+	//printf("TOTAL ANGLE: %f phi0:%f (PHI0: %f) phi1:%f (PHI1: %f)\n",totalAngle,phi0, PHIij.rotation, phi1, PHIjk.rotation);
 	printf("Tij: %f, Tjk: %f\n",Tij(0),Tjk(0));
 	printf("MAXAREA: %f\n",M(0));
 	
 	
-	if(PHIjk.rotation >= PHIij.rotation) s_direction=1;
-	else s_direction=-1;
+	if(PHIjk.rotation >= PHIij.rotation){
+		s_direction=1;
+	}
+	else{
+		s_direction=-1;
+	}
+	
 	
 	area = s_direction*Tjk(0) - s_direction*Tij(0);
 	
@@ -918,7 +928,7 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	
 	printf("Q: %f\n",q);
 	
-	
+	/*
 	//dAijk_dxi
 	indexi = x0.index0;
 	indexj = x0.index1;
@@ -982,9 +992,6 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	
 	
 	
-	Rotation psijp, psijn;
-	PHIContainer PHI2p, PHI2n;
-	Vector fd_dA_dxj(3);
 	
 	//dAijk_dxj
 	indexi = x0.index0;
@@ -1027,6 +1034,11 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 			
 			PHI2p = t.calculatePHI(integrationOrigin, njp, nk, lambdajp, lambdak);
 			PHI2n = t.calculatePHI(integrationOrigin, njn, nk, lambdajn, lambdak);
+			
+			printf("PH: (%f %f %f) (%f %f %f) %f %f\n", njp(0), njp(1), njp(2), nk(0), nk(1), nk(2), lambdajp.rotation, lambdak.rotation);
+			
+			printf("PHI2: %f %f %f %f\n",PHI2p.in.rotation, PHI2p.out.rotation, PHI2n.in.rotation, PHI2n.out.rotation);
+			printf("PHI: %f %f %f %f\n",PHIp.in.rotation, PHIp.out.rotation, PHIn.in.rotation, PHIn.out.rotation);
 			
 			if(q1 > 0){
 				Ap = q * lookUp(PHI2p.out.rotation,psijp.rotation,lambdajp.rotation, q1, form)(0);
@@ -1193,8 +1205,11 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 		}
 		printf("DRV: dA_dxl: %f %f %f fd_dA_dxl: %f %f %f\n",force_l(0),force_l(1),force_l(2),fd_dA_dxl(0),fd_dA_dxl(1),fd_dA_dxl(2));
 		
-	}	
+	}
+	
+	*/
 		
+		/*
 	if(indexi >= 0 && indexj >= 0 && indexk >= 0){
 
 	for(int j=0; j<3; ++j)
@@ -1206,7 +1221,7 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	for(int j=0; j<3; ++j)
 		if(abs(force_l(j)-fd_dA_dxl(j)) > FDT3) exit(-1);
 	}
-
+*/
 	
 	
 	
@@ -1220,7 +1235,7 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 		force_k = -force_k;
 		force_l = 2*(M(2)*psi.drotation_dxl + M(3)*lambda.drotation_dxl) - force_l;
 		
-		printf("COMPLEMENTING\n");
+		printf("COMPLEMENTING %d %d %d\n",x0.index0, x0.index1, x1.index1);
 	}
 	
 	
@@ -1569,10 +1584,10 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	q = s_convex;
 	
 	a.area=s_convex * area;
-	a.force_i = -q* force_i;
-	a.force_j = -q* force_j;
-	a.force_k = -q* force_k;
-	a.force_l = -q* force_l;
+	a.force_i = q* force_i;
+	a.force_j = q* force_j;
+	a.force_k = q* force_k;
+	a.force_l = q* force_l;
 	
 	
 
