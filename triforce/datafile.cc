@@ -415,7 +415,6 @@ Topology* DataFile::digestTOP(){
 								p.mass=-1;
 								p.epsilon=string2double((*content)[6]);
 								p.sigma=string2double((*content)[5])*10;
-								printf("SIGMA: %s: %s: %f\n",ident.c_str(),(*content)[5].c_str(),p.sigma);
 								data->setCell(ident,p);
 							}
 						}
