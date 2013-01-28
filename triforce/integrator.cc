@@ -67,7 +67,6 @@ double IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 	
 	for(int i=0; i<radii.size();i++){
 		radius = radii[i];
-		printf("RADIUS[%d]: %f\n",i,radius);
 	}
 		
 	
@@ -79,7 +78,6 @@ double IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 		radius = sasas[i].radius;
 		a = integrateAtomicSASA(i, sasas[i], radius);
 		
-		printf("TOTAL SUBAREA: %f\n",a);
 		
 		a = radius*radius * a;
 		
@@ -106,7 +104,6 @@ double IntegratorTriforce::integrateAtomicSASA(int l, SASAsForAtom sasasForAtom,
 		
 		a = integrateSASA(l, sasasForAtom.sasas[i], radius);
 		
-		printf("ACC SUB SUBAREA: %f\n",a);
 
 		
 		if(sasasForAtom.sasas[i].hemisphere == FRONTHEMISPHERE)
@@ -115,7 +112,6 @@ double IntegratorTriforce::integrateAtomicSASA(int l, SASAsForAtom sasasForAtom,
 		
 	}
 	
-	printf("ACC AREA0: %f AREA1: %f\n",area0,area1);
 	
 	
 	if(area0 < 0 && abs(area0) < THRESHOLD_NEGATIVE) area0 = 0;
@@ -124,7 +120,6 @@ double IntegratorTriforce::integrateAtomicSASA(int l, SASAsForAtom sasasForAtom,
 	if(area1 < 0 && abs(area1) < THRESHOLD_NEGATIVE) area1 = 0;
 	if(area1 < 0) area1 = 2*M_PI+area1;
 	
-	printf("ACC CORRECTED AREA0: %f AREA1: %f\n",area0,area1);
 	
 	
 	area = area0 + area1;
@@ -136,13 +131,11 @@ double IntegratorTriforce::integrateAtomicSASA(int l, SASAsForAtom sasasForAtom,
 
 void IntegratorTriforce::addForce(int i, Vector force){
 	int j;
-	printf("ADDING FORCE TO %d\n",i);
 	if(i>=0){
 		for(j=0; j<3; ++j){
 			*(forces[i][j]) += force(j);
 		}
 	}
-	else printf("DISREGARDING SPLITTER FORCE %f %f %f\n",force(0),force(1),force(2));
 }
 
 
@@ -156,12 +149,10 @@ bool IntegratorTriforce::isWithinNumericalLimits(double x, double l){
 Vector  IntegratorTriforce::recoverCircularInterface(Vector p, double psi_b, double lambda_b, double PHI_b0){
 	Vector c(2);
 	if(isWithinNumericalLimits(psi_b,0)) psi_b=0.0001;
-	printf("l: %f %f %f %f  %f %f\n",lambda_b, psi_b, PHI_b0, cos(PHI_b0), p(0), p(1));
 	double denominator = (lambda_b*lambda_b + psi_b*psi_b - 2*lambda_b*psi_b*cos(PHI_b0));
 	
 	c(0) = (psi_b * (p(0) * psi_b - lambda_b * (p(0) * cos(PHI_b0) + p(1) * sin(PHI_b0)))) / denominator;
 	c(1) = (psi_b * (p(1) * psi_b - p(1) * lambda_b * cos(PHI_b0) + p(0) * lambda_b * sin(PHI_b0))) / denominator;
-	printf("c: %f %f %f\n",c(0),c(1), denominator);
 	
 	return c;
 	
@@ -229,7 +220,6 @@ double IntegratorTriforce::integrateSASA(int l, SASA &sasa, double radius){
 		phi += sign_prephi * actphi;
 		sign_prephi = sgn(actphi);
 		
-		printf("SUBAREA: %f\n",integral.area);
 
 		area += integral.area;
 		
@@ -286,8 +276,6 @@ double IntegratorTriforce::integrateSASA(int l, SASA &sasa, double radius){
 	//s = sgn(totalAngle);
 	//area = abs(area)*s;
 	
-	printf("+++++ SAA END +++++\n\n");
-	
 	return area;
 }
 
@@ -299,12 +287,9 @@ Vector IntegratorTriforce::lookUp(double PHI, double psi, double lambda, double 
 	int i;
 	
 	aPHI=abs(PHI);
-	if(apsi < 0) printf("CAPPING psi\n");
 	apsi = max(0.0,psi);
-	if(alambda < 0) printf("CAPPING lambda\n");
 	alambda= max(0.0,lambda);
 	
-	printf("lookup: %f %f %f\n",PHI,psi,lambda);
 	
 	
 	
@@ -314,11 +299,6 @@ Vector IntegratorTriforce::lookUp(double PHI, double psi, double lambda, double 
 		//printf("end lookup %d\n",i);
 	}
 	
-	/*if(PHI <0){
-		res(0)=-1*res(0);
-		res(1)=-1*res(1);
-	}
-	*/
 	if(PHI <0){
 		res=-res;
 		res(1) = -res(1);
@@ -329,7 +309,6 @@ Vector IntegratorTriforce::lookUp(double PHI, double psi, double lambda, double 
 	if(form != CONVEX){
 		res(2) = -res(2);
 		res(3) = -res(3);
-		//phi=-phi;
 	}
 	
 	
@@ -339,64 +318,6 @@ Vector IntegratorTriforce::lookUp(double PHI, double psi, double lambda, double 
 }
 	
 
-Vector IntegratorTriforce::lookUp3(double PHI, double psi, double lambda){
-	Vector res(4);
-	double aPHI, apsi, alambda;
-	int i;
-	
-	aPHI=abs(PHI);
-	apsi = max(0.0,psi);
-	alambda= max(0.0,lambda);
-	
-	printf("lookup3: %f %f %f\n",PHI,psi,lambda);
-	
-	
-	for(i=0;i<4;++i){
-		//printf("start lookup %d (%f %f %f)\n",i,PHI,psi,lambda);
-		res(i) = data[i]->interpolate(aPHI, apsi, alambda);
-		//printf("end lookup %d\n",i);
-	}
-	
-	if(PHI <0){
-		res=-1*res;
-		res(1) = -res(1); //vodoo: I don't know why I have to un-reverse this :/
-	}
-	
-	return res;
-}
-		
-	
-	
-	
-Vector IntegratorTriforce::lookUp2(double PHI, double psi, double lambda){
-	Vector res(4);
-	double aPHI, apsi, alambda;
-	int i;
-	
-	aPHI=abs(PHI);
-	
-	if(apsi < 0) printf("CAPPING psi\n");
-	apsi = max(0.0,psi);
-	if(alambda < 0) printf("CAPPING lambda\n");
-	alambda= max(0.0,lambda);
-	
-	printf("lookup2: %f %f %f\n",PHI,psi,lambda);
-	
-	
-	for(i=0;i<4;++i){
-		//printf("start lookup %d (%f %f %f)\n",i,PHI,psi,lambda);
-		res(i) = data[i]->interpolate(aPHI, apsi, alambda);
-		//printf("end lookup %d\n",i);
-	}
-	
-	if(PHI <0){
-		res=-1*res;
-		res(1) = -res(1);
-	}
-	
-	
-	return res;
-}
 double IntegratorTriforce::PHI2phi(double PHI, double psi, double lambda){
 
 	return acos( 	(-cos(PHI)*cos(psi)*sin(lambda)+cos(lambda)*sin(psi)) /
@@ -547,7 +468,6 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	formj = x0.form1;
 	formk = x1.form1;
 	
-	printf("FORM: %d %d %d %d\n",x0.form0, x0.form1, x1.form0, x1.form1);
 
 	
 	q0 = 1;
@@ -560,7 +480,6 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	
 	
 	
-	printf("NORMAL: %f %f %f\n",x1.normalForCircularInterface(0),x1.normalForCircularInterface(1),x1.normalForCircularInterface(2));
 	
 	
 	PHIij = x0.rotation1;
@@ -568,7 +487,6 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	
 	
 	
-	printf("ROTATIONS: %f %f %f %f\n",x0.rotation0.rotation,x0.rotation1.rotation,x1.rotation0.rotation,x1.rotation1.rotation);
 	
 	
 	s_convex=1;
@@ -577,428 +495,14 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 		PHIjk.rotation *=-1;
 		s_convex=-1;
 		
-		printf("REVERSING ANGLE\n");
 	}
 	
 		
 	M = lookUp(M_PI, psi.rotation, lambda.rotation, q0, form);
-	//if(form!=CONVEX) maxArea*=-1;
 	
 	
 	Tij = lookUp(PHIij.rotation, psi.rotation, lambda.rotation, phi0, form);
 	Tjk = lookUp(PHIjk.rotation, psi.rotation, lambda.rotation, phi1, form);
-	
-	
-/*	double Aij, Ajk;
-	Aij = Tij(0);
-	Ajk = Tjk(0);
-	
-	Tij = lookUp(PHIij.rotation, psi.rotation, lambda.rotation, q0, form);
-	Tjk = lookUp(PHIjk.rotation, psi.rotation, lambda.rotation, q1, form);
-	
-	Tij(0) = Aij;
-	Tjk(0) = Ajk;
-*/
-	Tij2 = lookUp3(PHIij.rotation2, psi.rotation, lambda.rotation);
-	Tjk2 = lookUp3(PHIjk.rotation2, psi.rotation, lambda.rotation);
-	
-	
-	printf("Tij: %f %f %f %f\n",Tij(0),Tij(1),Tij(2),Tij(3));
-	printf("Tjk: %f %f %f %f\n",Tjk(0),Tjk(1),Tjk(2),Tjk(3));
-	printf("io: %f %f %f\n", integrationOrigin(0), integrationOrigin(1), integrationOrigin(2));
-	
-	
-	#define FD2 0.1
-	#define FDT2 0.01
-	#define FDT3 0.3
-
-	
-	//dA_dPHIij
-	double dA_dPHIij;
-	double dA_dPHIjk;
-	double dA_dpsij0;
-	double dA_dpsij1;
-	double dA_dlambdaj0;
-	double dA_dlambdaj1;
-	dA_dPHIij = (lookUp2(PHIij.rotation+FD2, psi.rotation, lambda.rotation)(0) - lookUp2(PHIij.rotation-FD2, psi.rotation, lambda.rotation)(0)) / (2*FD2);
-	printf("dA_dPHIij: %f FD: %f\n",Tij(1),dA_dPHIij);
-	
-	dA_dPHIjk = (lookUp2(PHIjk.rotation+FD2, psi.rotation, lambda.rotation)(0) - lookUp2(PHIjk.rotation-FD2, psi.rotation, lambda.rotation)(0)) / (2*FD2);
-	printf("dA_dPHIjk: %f FD: %f\n",Tjk(1),dA_dPHIjk);
-	
-	if(psi.rotation-FD2 < 0.0){
-		dA_dpsij0 = (lookUp2(PHIij.rotation, psi.rotation+2*FD2, lambda.rotation)(0) - lookUp2(PHIij.rotation, psi.rotation, lambda.rotation)(0)) / (2*FD2);
-		printf("dA_dpsij0: %f FD: %f psi: %f\n",Tij(2),dA_dpsij0,psi.rotation);
-		
-		dA_dpsij1 = (lookUp2(PHIjk.rotation, psi.rotation+2*FD2, lambda.rotation)(0) - lookUp2(PHIjk.rotation, psi.rotation, lambda.rotation)(0)) / (2*FD2);
-		printf("dA_dpsij1: %f FD: %f psi: %f\n",Tjk(2),dA_dpsij1,psi.rotation);
-	}
-	else{
-		dA_dpsij0 = (lookUp2(PHIij.rotation, psi.rotation+FD2, lambda.rotation)(0) - lookUp2(PHIij.rotation, psi.rotation-FD2, lambda.rotation)(0)) / (2*FD2);
-		printf("dA_dpsij0: %f FD: %f psi: %f\n",Tij(2),dA_dpsij0,psi.rotation);
-		
-		dA_dpsij1 = (lookUp2(PHIjk.rotation, psi.rotation+FD2, lambda.rotation)(0) - lookUp2(PHIjk.rotation, psi.rotation-FD2, lambda.rotation)(0)) / (2*FD2);
-		printf("dA_dpsij1: %f FD: %f psi: %f\n",Tjk(2),dA_dpsij1,psi.rotation);
-	}
-	
-	dA_dlambdaj0 = (lookUp2(PHIij.rotation, psi.rotation, lambda.rotation+FD2)(0) - lookUp2(PHIij.rotation, psi.rotation, lambda.rotation-FD2)(0)) / (2*FD2);
-	printf("dA_dlambdaj0: %f FD: %f\n",Tij(3),dA_dlambdaj0);
-
-	dA_dlambdaj1 = (lookUp2(PHIjk.rotation, psi.rotation, lambda.rotation+FD2)(0) - lookUp2(PHIjk.rotation, psi.rotation, lambda.rotation-FD2)(0)) / (2*FD2);
-	printf("dA_dlambdaj1: %f FD: %f\n",Tjk(3),dA_dlambdaj1);
-
-	/*
-	if(form != SPLITTER){
-	
-		if(abs(dA_dPHIij - Tij(1)) > FDT2) exit(-1);
-		if(abs(dA_dPHIjk - Tjk(1)) > FDT2) exit(-1);
-		if(abs(dA_dpsij0 - Tij(2)) > FDT2) exit(-1);
-		if(abs(dA_dpsij1 - Tjk(2)) > FDT2) exit(-1);
-		if(abs(dA_dlambdaj0 - Tij(3)) > FDT2) exit(-1);
-		if(abs(dA_dlambdaj1 - Tjk(3)) > FDT2) exit(-1);
-	}
-	*/
-
-	
-	double dM_dpsij;
-	double dM_dlambdaj;
-	
-	dM_dpsij = (lookUp2(M_PI, psi.rotation+FD2, lambda.rotation)(0) - lookUp2(M_PI, psi.rotation-FD2, lambda.rotation)(0)) / (2*FD2);
-	printf("dM_dpsij: %f FD: %f\n",M(2),dM_dpsij);
-	
-
-	dM_dlambdaj = (lookUp2(M_PI, psi.rotation, lambda.rotation+FD2)(0) - lookUp2(M_PI, psi.rotation, lambda.rotation-FD2)(0)) / (2*FD2);
-	printf("dM_dlambdaj: %f FD: %f\n",M(3),dM_dlambdaj);
-
-	
-	if(form != SPLITTER){
-		printf("HAE? %f\n",abs(dM_dlambdaj - M(3)));
-	
-		//if(abs(dM_dpsij - M(2)) > FDT2) exit(-1);
-		//if(abs(dM_dlambdaj - M(3)) > FDT2) exit(-1);
-	}
-	
-	
-	
-	
-	
-	
-	
-	
-	//finite differences
-	//dPHIij_dxi
-	Tessellation t(*this->molecule);
-	Vector ai(3), aj(3), al(3), x(3), xp(3), xn(3);
-	Vector nip,nin,nj;
-	Vector njp,njn,ni;
-	int indexi, indexl, indexj;
-	double ri, rl, rj;
-	Rotation lambdaip;
-	Rotation lambdain;
-	Rotation lambdaj;
-	Rotation lambdajp;
-	Rotation lambdajn;
-	Rotation lambdai;
-	double dip,din,dj;
-	double djp,djn,di;
-	Vector fd_dPHIij_dxi_in(3);
-	Vector fd_dPHIij_dxi_out(3);
-	Vector fd_dPHIij_dxj_in(3);
-	Vector fd_dPHIij_dxj_out(3);
-	PHIContainer PHIp, PHIn;
-	Vector fd_dPHIij_dxl_out(3);
-	Vector fd_dPHIij_dxl_in(3);
-	
-	Vector fd_dPHIjk_dxi_in(3);
-	Vector fd_dPHIjk_dxi_out(3);
-	Vector fd_dPHIjk_dxj_in(3);
-	Vector fd_dPHIjk_dxj_out(3);
-	Vector fd_dPHIjk_dxl_in(3);
-	Vector fd_dPHIjk_dxl_out(3);
-	
-	Vector fd_dA_dxi(3);
-	Vector nk;
-	Rotation lambdak;
-	Rotation psij;
-	double dk;
-	double Ap,An, Ap2, An2;
-	PHIContainer PHI2;
-	int indexk;
-	double rk;
-	Vector ak;
-	
-	
-	PHIContainer PHI;
-	Vector nkp, nkn;
-	double dkp, dkn;
-	Rotation lambdakp, lambdakn;
-	Vector fd_dA_dxk(3);
-	Vector fd_dA_dxk2(3);
-	Vector fd_dA_dxl(3);
-	Vector fd_dA_dxl2(3);
-	
-	
-	Rotation psijp, psijn;
-	PHIContainer PHI2p, PHI2n;
-	Vector fd_dA_dxj(3);
-	
-	/*
-	
-	//dPHIij_dxi
-	indexj = x0.index0;
-	indexi = x0.index1;
-	indexl = l;
-	if(indexi > 0 && indexj > 0){
-		ai = atoms[indexi];
-		aj = atoms[indexj];
-		al = atoms[indexl];
-		ri = radii[indexi];
-		rj = radii[indexj];
-		rl = radii[indexl];
-		
-		
-		x=ai;
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD;
-			xn=x;
-			xn(j) = x(j) - FD;
-			
-			nip = t.calculateInterfaceNormal(al, xp, dip);
-			nin = t.calculateInterfaceNormal(al, xn, din);
-			nj = t.calculateInterfaceNormal(al, aj, dj);
-			
-			lambdaip = t.calculateLambda(dip, rl, ri, nip);
-			lambdain = t.calculateLambda(din, rl, ri, nin);
-			lambdaj = t.calculateLambda(dj, rl, rj, nj);
-			
-			PHIp = t.calculatePHI(integrationOrigin, nip, nj, lambdaip, lambdaj);
-			PHIn = t.calculatePHI(integrationOrigin, nin, nj, lambdain, lambdaj);
-			
-			fd_dPHIij_dxi_out(j) = (PHIp.out.rotation - PHIn.out.rotation) / (2*FD);
-			fd_dPHIij_dxi_in(j) = (PHIp.in.rotation - PHIn.in.rotation) / (2*FD);
-		}
-		printf("DRV: dPHIij_dxi: %f %f %f fd_dPHIij_dxi_in: %f %f %f fd_dPHIij_dxi_out: %f %f %f\n",PHIij.drotation_dxi(0),PHIij.drotation_dxi(1),PHIij.drotation_dxi(2), fd_dPHIij_dxi_in(0), fd_dPHIij_dxi_in(1), fd_dPHIij_dxi_in(2), fd_dPHIij_dxi_out(0), fd_dPHIij_dxi_out(1), fd_dPHIij_dxi_out(2));
-	}
-	
-	//dPHIij_dxj
-	indexj = x0.index0;
-	indexi = x0.index1;
-	indexl = l;
-	if(indexi > 0 && indexj > 0){
-		ai = atoms[indexi];
-		aj = atoms[indexj];
-		al = atoms[indexl];
-		ri = radii[indexi];
-		rj = radii[indexj];
-		rl = radii[indexl];
-		
-		
-		x=aj;
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD;
-			xn=x;
-			xn(j) = x(j) - FD;
-			
-			njp = t.calculateInterfaceNormal(al, xp, djp);
-			njn = t.calculateInterfaceNormal(al, xn, djn);
-			ni = t.calculateInterfaceNormal(al, ai, di);
-			
-			lambdajp = t.calculateLambda(djp, rl, rj, njp);
-			lambdajn = t.calculateLambda(djn, rl, rj, njn);
-			lambdai = t.calculateLambda(di, rl, ri, ni);
-			
-			PHIp = t.calculatePHI(integrationOrigin, ni, njp, lambdai, lambdajp);
-			PHIn = t.calculatePHI(integrationOrigin, ni, njn, lambdai, lambdajn);
-			
-			fd_dPHIij_dxj_out(j) = (PHIp.out.rotation - PHIn.out.rotation) / (2*FD);
-			fd_dPHIij_dxj_in(j) = (PHIp.in.rotation - PHIn.in.rotation) / (2*FD);
-		}
-		printf("DRV: dPHIij_dxj: %f %f %f fd_dPHIij_dxj_in: %f %f %f fd_dPHIij_dxj_out: %f %f %f\n",PHIij.drotation_dxj(0),PHIij.drotation_dxj(1),PHIij.drotation_dxj(2), fd_dPHIij_dxj_in(0), fd_dPHIij_dxj_in(1), fd_dPHIij_dxj_in(2), fd_dPHIij_dxj_out(0), fd_dPHIij_dxj_out(1), fd_dPHIij_dxj_out(2));
-	}
-	
-	
-
-	
-	
-	//dPHIij_dxl
-	indexj = x0.index0;
-	indexi = x0.index1;
-	indexl = l;
-	if(indexi > 0 && indexj > 0){
-		ai = atoms[indexi];
-		aj = atoms[indexj];
-		al = atoms[indexl];
-		ri = radii[indexi];
-		rj = radii[indexj];
-		rl = radii[indexl];
-		
-		
-		x=al;
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD;
-			xn=x;
-			xn(j) = x(j) - FD;
-			
-			nip = t.calculateInterfaceNormal(xp, ai, dip);
-			nin = t.calculateInterfaceNormal(xn, ai, din);
-			njp = t.calculateInterfaceNormal(xp, aj, djp);
-			njn = t.calculateInterfaceNormal(xn, aj, djn);
-			
-			lambdaip = t.calculateLambda(dip, rl, ri, nip);
-			lambdain = t.calculateLambda(din, rl, ri, nin);
-			lambdajp = t.calculateLambda(djp, rl, rj, njp);
-			lambdajn = t.calculateLambda(djn, rl, rj, njn);
-			
-			PHIp = t.calculatePHI(integrationOrigin, nip, njp, lambdaip, lambdajp);
-			PHIn = t.calculatePHI(integrationOrigin, nin, njn, lambdain, lambdajn);
-			
-			fd_dPHIij_dxl_out(j) = (PHIp.out.rotation - PHIn.out.rotation) / (2*FD);
-			fd_dPHIij_dxl_in(j) = (PHIp.in.rotation - PHIn.in.rotation) / (2*FD);
-		}
-		printf("DRV: dPHIij_dxl: %f %f %f fd_dPHIij_dxl_in: %f %f %f fd_dPHIij_dxl_out: %f %f %f\n",PHIij.drotation_dxl(0),PHIij.drotation_dxl(1),PHIij.drotation_dxl(2), fd_dPHIij_dxl_in(0), fd_dPHIij_dxl_in(1), fd_dPHIij_dxl_in(2), fd_dPHIij_dxl_out(0), fd_dPHIij_dxl_out(1), fd_dPHIij_dxl_out(2));
-	}
-		
-		
-	
-		
-	//dPHIjk_dxi
-	indexj = x1.index1;
-	indexi = x0.index1;
-	indexl = l;
-	if(indexi > 0 && indexj > 0){
-		ai = atoms[indexi];
-		aj = atoms[indexj];
-		al = atoms[indexl];
-		ri = radii[indexi];
-		rj = radii[indexj];
-		rl = radii[indexl];
-		
-		
-		x=ai;
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD;
-			xn=x;
-			xn(j) = x(j) - FD;
-			
-			nip = t.calculateInterfaceNormal(al, xp, dip);
-			nin = t.calculateInterfaceNormal(al, xn, din);
-			nj = t.calculateInterfaceNormal(al, aj, dj);
-			
-			lambdaip = t.calculateLambda(dip, rl, ri, nip);
-			lambdain = t.calculateLambda(din, rl, ri, nin);
-			lambdaj = t.calculateLambda(dj, rl, rj, nj);
-			
-			PHIp = t.calculatePHI(integrationOrigin, nip, nj, lambdaip, lambdaj);
-			PHIn = t.calculatePHI(integrationOrigin, nin, nj, lambdain, lambdaj);
-			
-			fd_dPHIjk_dxi_out(j) = (PHIp.out.rotation - PHIn.out.rotation) / (2*FD);
-			fd_dPHIjk_dxi_in(j) = (PHIp.in.rotation - PHIn.in.rotation) / (2*FD);
-		}
-		printf("DRV: dPHIjk_dxi: %f %f %f fd_dPHIjk_dxi_in: %f %f %f fd_dPHIjk_dxi_out: %f %f %f\n",PHIjk.drotation_dxi(0),PHIjk.drotation_dxi(1),PHIjk.drotation_dxi(2), fd_dPHIjk_dxi_in(0), fd_dPHIjk_dxi_in(1), fd_dPHIjk_dxi_in(2), fd_dPHIjk_dxi_out(0), fd_dPHIjk_dxi_out(1), fd_dPHIjk_dxi_out(2));
-	}
-	
-	//dPHIjk_dxj
-	indexj = x1.index1;
-	indexi = x0.index1;
-	indexl = l;
-	if(indexi > 0 && indexj > 0){
-		ai = atoms[indexi];
-		aj = atoms[indexj];
-		al = atoms[indexl];
-		ri = radii[indexi];
-		rj = radii[indexj];
-		rl = radii[indexl];
-		
-		
-		x=aj;
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD;
-			xn=x;
-			xn(j) = x(j) - FD;
-			
-			njp = t.calculateInterfaceNormal(al, xp, djp);
-			njn = t.calculateInterfaceNormal(al, xn, djn);
-			ni = t.calculateInterfaceNormal(al, ai, di);
-			
-			lambdajp = t.calculateLambda(djp, rl, rj, njp);
-			lambdajn = t.calculateLambda(djn, rl, rj, njn);
-			lambdai = t.calculateLambda(di, rl, ri, ni);
-			
-			PHIp = t.calculatePHI(integrationOrigin, ni, njp, lambdai, lambdajp);
-			PHIn = t.calculatePHI(integrationOrigin, ni, njn, lambdai, lambdajn);
-			
-			fd_dPHIjk_dxj_out(j) = (PHIp.out.rotation - PHIn.out.rotation) / (2*FD);
-			fd_dPHIjk_dxj_in(j) = (PHIp.in.rotation - PHIn.in.rotation) / (2*FD);
-		}
-		printf("DRV: dPHIjk_dxj: %f %f %f fd_dPHIjk_dxj_in: %f %f %f fd_dPHIjk_dxj_out: %f %f %f\n",PHIjk.drotation_dxj(0),PHIjk.drotation_dxj(1),PHIjk.drotation_dxj(2), fd_dPHIjk_dxj_in(0), fd_dPHIjk_dxj_in(1), fd_dPHIjk_dxj_in(2), fd_dPHIjk_dxj_out(0), fd_dPHIjk_dxj_out(1), fd_dPHIjk_dxj_out(2));
-	}
-	
-	
-
-	
-	
-	//dPHIjk_dxl
-	indexj = x1.index1;
-	indexi = x0.index1;
-	indexl = l;
-	if(indexi > 0 && indexj > 0){
-		ai = atoms[indexi];
-		aj = atoms[indexj];
-		al = atoms[indexl];
-		ri = radii[indexi];
-		rj = radii[indexj];
-		rl = radii[indexl];
-		
-		
-		x=al;
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD;
-			xn=x;
-			xn(j) = x(j) - FD;
-			
-			nip = t.calculateInterfaceNormal(xp, ai, dip);
-			nin = t.calculateInterfaceNormal(xn, ai, din);
-			njp = t.calculateInterfaceNormal(xp, aj, djp);
-			njn = t.calculateInterfaceNormal(xn, aj, djn);
-			
-			lambdaip = t.calculateLambda(dip, rl, ri, nip);
-			lambdain = t.calculateLambda(din, rl, ri, nin);
-			lambdajp = t.calculateLambda(djp, rl, rj, njp);
-			lambdajn = t.calculateLambda(djn, rl, rj, njn);
-			
-			PHIp = t.calculatePHI(integrationOrigin, nip, njp, lambdaip, lambdajp);
-			PHIn = t.calculatePHI(integrationOrigin, nin, njn, lambdain, lambdajn);
-			
-			fd_dPHIjk_dxl_out(j) = (PHIp.out.rotation - PHIn.out.rotation) / (2*FD);
-			fd_dPHIjk_dxl_in(j) = (PHIp.in.rotation - PHIn.in.rotation) / (2*FD);
-		}
-		printf("DRV: dPHIjk_dxl: %f %f %f fd_dPHIjk_dxl_in: %f %f %f fd_dPHIjk_dxl_out: %f %f %f\n",PHIjk.drotation_dxl(0),PHIjk.drotation_dxl(1),PHIjk.drotation_dxl(2), fd_dPHIjk_dxl_in(0), fd_dPHIjk_dxl_in(1), fd_dPHIjk_dxl_in(2), fd_dPHIjk_dxl_out(0), fd_dPHIjk_dxl_out(1), fd_dPHIjk_dxl_out(2));
-	}
-	
-	
-	*/
-	
-	
-	//phi0 = PHI2phi2(integrationOrigin, PHIij.rotation,psi.rotation,lambda.rotation);
-	//phi1 = PHI2phi2(integrationOrigin, PHIjk.rotation,psi.rotation,lambda.rotation);
-	
-	
-	if(x1.form!=CONVEX)
-		phi = -(phi1 - phi0);
-	else
-		phi = phi1 - phi0;
-	
-	printf("ID: (%d-%d) -> (%d-%d)\n",x0.id0, x0.id1,x1.id0,x1.id1);
-	printf("CIRC: %d\n",x1.id0);
-	//printf("TOTAL ANGLE: %f phi0:%f (PHI0: %f) phi1:%f (PHI1: %f)\n",totalAngle,phi0, PHIij.rotation, phi1, PHIjk.rotation);
-	printf("Tij: %f, Tjk: %f\n",Tij(0),Tjk(0));
-	printf("MAXAREA: %f\n",M(0));
 	
 	
 	if(PHIjk.rotation >= PHIij.rotation){
@@ -1018,318 +522,6 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	force_k = q*(Tjk(1) * PHIjk.drotation_dxj);
 	force_l = q*((Tjk(1) * PHIjk.drotation_dxl + Tjk(2) * psi.drotation_dxl + Tjk(3) * lambda.drotation_dxl) - (Tij(1) * PHIij.drotation_dxl + Tij(2) * psi.drotation_dxl + Tij(3) * lambda.drotation_dxl));
 	
-	printf("ALL: (Tjk(1) %f  * PHIjk.drotation_dxi %f %f %f + Tjk(2) %f * psi.drotation_dxi %f %f %f + Tjk(3) %f * lambda.drotation_dxi %f %f %f) - q*(Tij(1) %f * PHIij.drotation_dxi %f %f %f+ Tij(2) %f * psi.drotation_dxi %f %f %f + Tij(3) %f * lambda.drotation_dxi %f %f %f)\n", Tjk(1) , PHIjk.drotation_dxi(0), PHIjk.drotation_dxi(1), PHIjk.drotation_dxi(2) , Tjk(2) , psi.drotation_dxi(0), psi.drotation_dxi(1), psi.drotation_dxi(2) , Tjk(3) , lambda.drotation_dxi(0), lambda.drotation_dxi(1), lambda.drotation_dxi(2) , Tij(1) , PHIij.drotation_dxi(0), PHIij.drotation_dxi(1), PHIij.drotation_dxi(2) , Tij(2) , psi.drotation_dxi(0), psi.drotation_dxi(1), psi.drotation_dxi(2) , Tij(3) , lambda.drotation_dxi(0), lambda.drotation_dxi(1), lambda.drotation_dxi(2));
-	
-	//printf("PHIij dxi : (%f %f %f) \t PHIij dxj : (%f %f %f) \t PHIij dxl : (%f %f %f)\n",PHIij.drotation_dxi(0),PHIij.drotation_dxi(1),PHIij.drotation_dxi(2),PHIij.drotation_dxj(0),PHIij.drotation_dxj(1),PHIij.drotation_dxj(2),PHIij.drotation_dxl(0),PHIij.drotation_dxl(1),PHIij.drotation_dxl(2));
-	//printf("PHIjk dxi : (%f %f %f) \t PHIjk dxj : (%f %f %f) \t PHIjk dxl : (%f %f %f)\n",PHIjk.drotation_dxi(0),PHIjk.drotation_dxi(1),PHIjk.drotation_dxi(2),PHIjk.drotation_dxj(0),PHIjk.drotation_dxj(1),PHIjk.drotation_dxj(2),PHIjk.drotation_dxl(0),PHIjk.drotation_dxl(1),PHIjk.drotation_dxl(2));
-	//printf("psi dxi   : (%f %f %f) \t psi dxj   : (%f %f %f) \t psi dxl   : (%f %f %f)\n",psi.drotation_dxi(0),psi.drotation_dxi(1),psi.drotation_dxi(2),psi.drotation_dxj(0),psi.drotation_dxj(1),psi.drotation_dxj(2),psi.drotation_dxl(0),psi.drotation_dxl(1),psi.drotation_dxl(2));
-	//printf("lambda dxi: (%f %f %f) \t lambda dxj: (%f %f %f) \t lambda dxl: (%f %f %f)\n",lambda.drotation_dxi(0),lambda.drotation_dxi(1),lambda.drotation_dxi(2),lambda.drotation_dxj(0),lambda.drotation_dxj(1),lambda.drotation_dxj(2),lambda.drotation_dxl(0),lambda.drotation_dxl(1),lambda.drotation_dxl(2));
-	
-	
-	
-
-	
-	printf("Q: %f\n",q);
-	
-	/*
-	//dAijk_dxi
-	indexi = x0.index0;
-	indexj = x0.index1;
-	indexk = x1.index1;
-	indexl = l;
-	if(indexi >= 0 && indexj >= 0 && indexk >= 0){
-		ai = atoms[indexi];
-		aj = atoms[indexj];
-		ak = atoms[indexk];
-		al = atoms[indexl];
-		ri = radii[indexi];
-		rj = radii[indexj];
-		rk = radii[indexk];
-		rl = radii[indexl];
-		
-		
-		x=ai;
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD2;
-			xn=x;
-			xn(j) = x(j) - FD2;
-			
-			nip = t.calculateInterfaceNormal(al, xp, dip);
-			nin = t.calculateInterfaceNormal(al, xn, din);
-			nj = t.calculateInterfaceNormal(al, aj, dj);
-			nk = t.calculateInterfaceNormal(al, ak, dk);
-			
-			lambdaip = t.calculateLambda(dip, rl, ri, nip);
-			lambdain = t.calculateLambda(din, rl, ri, nin);
-			lambdaj = t.calculateLambda(dj, rl, rj, nj);
-			lambdak = t.calculateLambda(dk, rl, rk, nk);
-			
-			psij = t.calculatePsi(integrationOrigin, nj);
-			
-			PHIp = t.calculatePHI(integrationOrigin, nj, nip, lambdaj, lambdaip);
-			PHIn = t.calculatePHI(integrationOrigin, nj, nin, lambdaj, lambdain);
-			
-			
-	
-			
-			if(q0>0){
-				Ap = -q* lookUp(PHIp.in.rotation, psij.rotation, lambdaj.rotation, q0, form)(0);
-				An = -q* lookUp(PHIn.in.rotation, psij.rotation, lambdaj.rotation, q0, form)(0);
-			}
-			else{
-				Ap = -q * lookUp(PHIp.out.rotation, psij.rotation, lambdaj.rotation, q0, form)(0);
-				An = -q * lookUp(PHIn.out.rotation, psij.rotation, lambdaj.rotation, q0, form)(0);
-			}
-			
-			
-			fd_dA_dxi(j) = (Ap-An) / (2*FD2);
-			
-		}
-		printf("DRV: dA_dxi: %f %f %f fd_dA_dxi: %f %f %f\n",force_i(0),force_i(1),force_i(2),fd_dA_dxi(0),fd_dA_dxi(1),fd_dA_dxi(2));
-		
-		
-		
-	}	
-	
-	
-	
-	
-	
-	//dAijk_dxj
-	indexi = x0.index0;
-	indexj = x0.index1;
-	indexk = x1.index1;
-	indexl = l;
-	if(indexi >= 0 && indexj >= 0 && indexk >= 0){
-		ai = atoms[indexi];
-		aj = atoms[indexj];
-		ak = atoms[indexk];
-		al = atoms[indexl];
-		ri = radii[indexi];
-		rj = radii[indexj];
-		rk = radii[indexk];
-		rl = radii[indexl];
-		
-		
-		x=aj;
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD2;
-			xn=x;
-			xn(j) = x(j) - FD2;
-			
-			njp = t.calculateInterfaceNormal(al, xp, djp);
-			njn = t.calculateInterfaceNormal(al, xn, djn);
-			ni = t.calculateInterfaceNormal(al, ai, di);
-			nk = t.calculateInterfaceNormal(al, ak, dk);
-			
-			lambdajp = t.calculateLambda(djp, rl, rj, njp);
-			lambdajn = t.calculateLambda(djn, rl, rj, njn);
-			lambdai = t.calculateLambda(di, rl, ri, ni);
-			lambdak = t.calculateLambda(dk, rl, rk, nk);
-			
-			psijp = t.calculatePsi(integrationOrigin, njp);
-			psijn = t.calculatePsi(integrationOrigin, njn);
-			
-			PHIp = t.calculatePHI(integrationOrigin, njp, ni, lambdajp, lambdai);
-			PHIn = t.calculatePHI(integrationOrigin, njn, ni, lambdajn, lambdai);
-			
-			PHI2p = t.calculatePHI(integrationOrigin, njp, nk, lambdajp, lambdak);
-			PHI2n = t.calculatePHI(integrationOrigin, njn, nk, lambdajn, lambdak);
-			
-			printf("PH: (%f %f %f) (%f %f %f) %f %f\n", njp(0), njp(1), njp(2), nk(0), nk(1), nk(2), lambdajp.rotation, lambdak.rotation);
-			
-			printf("PHI2: %f %f %f %f\n",PHI2p.in.rotation, PHI2p.out.rotation, PHI2n.in.rotation, PHI2n.out.rotation);
-			printf("PHI: %f %f %f %f\n",PHIp.in.rotation, PHIp.out.rotation, PHIn.in.rotation, PHIn.out.rotation);
-			
-			if(q1 > 0){
-				Ap = q * lookUp(PHI2p.out.rotation,psijp.rotation,lambdajp.rotation, q1, form)(0);
-				An = q * lookUp(PHI2n.out.rotation,psijn.rotation,lambdajn.rotation, q1, form)(0);
-			}
-			else{
-				Ap = q * lookUp(PHI2p.in.rotation,psijp.rotation,lambdajp.rotation, q1, form)(0);
-				An = q * lookUp(PHI2n.in.rotation,psijn.rotation,lambdajn.rotation, q1, form)(0);
-			}
-			
-			if(q0 > 0){
-				Ap -= q * lookUp(PHIp.in.rotation, psijp.rotation, lambdajp.rotation, q0, form)(0);
-				An -= q * lookUp(PHIn.in.rotation, psijn.rotation, lambdajn.rotation, q0, form)(0);
-			}
-			else{
-				Ap -= q * lookUp(PHIp.out.rotation, psijp.rotation, lambdajp.rotation, q0, form)(0);
-				An -= q * lookUp(PHIn.out.rotation, psijn.rotation, lambdajn.rotation, q0, form)(0);
-			}
-			
-			
-			
-			
-			fd_dA_dxj(j) = (Ap-An) / (2*FD2);
-			
-		}
-		printf("DRV: dA_dxj: %f %f %f fd_dA_dxj: %f %f %f\n",force_j(0),force_j(1),force_j(2),fd_dA_dxj(0),fd_dA_dxj(1),fd_dA_dxj(2));
-		
-	}	
-	
-	
-	
-	//dAijk_dxk
-	indexi = x0.index0;
-	indexj = x0.index1;
-	indexk = x1.index1;
-	indexl = l;
-	if(indexi >= 0 && indexj >= 0 && indexk >= 0){
-		ai = atoms[indexi];
-		aj = atoms[indexj];
-		ak = atoms[indexk];
-		al = atoms[indexl];
-		ri = radii[indexi];
-		rj = radii[indexj];
-		rk = radii[indexk];
-		rl = radii[indexl];
-		
-		
-		x=ak;
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD2;
-			xn=x;
-			xn(j) = x(j) - FD2;
-			
-			nkp = t.calculateInterfaceNormal(al, xp, dkp);
-			nkn = t.calculateInterfaceNormal(al, xn, dkn);
-			nj = t.calculateInterfaceNormal(al, aj, dj);
-			ni = t.calculateInterfaceNormal(al, ai, di);
-			
-			lambdakp = t.calculateLambda(dkp, rl, rk, nkp);
-			lambdakn = t.calculateLambda(dkn, rl, rk, nkn);
-			lambdaj = t.calculateLambda(dj, rl, rj, nj);
-			lambdai = t.calculateLambda(di, rl, ri, ni);
-			
-			psij = t.calculatePsi(integrationOrigin, nj);
-			
-			PHI = t.calculatePHI(integrationOrigin, nj, ni, lambdaj, lambdai);
-			
-			PHI2p = t.calculatePHI(integrationOrigin, nj, nkp, lambdaj, lambdakp);
-			PHI2n = t.calculatePHI(integrationOrigin, nj, nkn, lambdaj, lambdakn);
-			
-			if(q1 > 0){
-				Ap = q * lookUp(PHI2p.out.rotation,psij.rotation,lambdaj.rotation, q1, form)(0);
-				An = q * lookUp(PHI2n.out.rotation,psij.rotation,lambdaj.rotation, q1, form)(0);
-			}
-			else{
-				Ap = q * lookUp(PHI2p.in.rotation,psij.rotation,lambdaj.rotation, q1, form)(0);
-				An = q * lookUp(PHI2n.in.rotation,psij.rotation,lambdaj.rotation, q1, form)(0);
-			}
-			
-			
-			fd_dA_dxk(j) = (Ap-An) / (2*FD2);
-			
-			
-			
-		}
-		printf("DRV: dA_dxk: %f %f %f fd_dA_dxk: %f %f %f\n",force_k(0),force_k(1),force_k(2),fd_dA_dxk(0),fd_dA_dxk(1),fd_dA_dxk(2));
-		
-	}		
-	
-	
-	
-	
-	
-	//dAijk_dxl
-	indexi = x0.index0;
-	indexj = x0.index1;
-	indexk = x1.index1;
-	indexl = l;
-	if(indexi >= 0 && indexj >= 0 && indexk >= 0){
-		ai = atoms[indexi];
-		aj = atoms[indexj];
-		ak = atoms[indexk];
-		al = atoms[indexl];
-		ri = radii[indexi];
-		rj = radii[indexj];
-		rk = radii[indexk];
-		rl = radii[indexl];
-		
-		
-		x=al;
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD2;
-			xn=x;
-			xn(j) = x(j) - FD2;
-			
-			njp = t.calculateInterfaceNormal(xp, aj, djp);
-			njn = t.calculateInterfaceNormal(xn, aj, djn);
-			nip = t.calculateInterfaceNormal(xp, ai, dip);
-			nin = t.calculateInterfaceNormal(xn, ai, din);
-			nkp = t.calculateInterfaceNormal(xp, ak, dkp);
-			nkn = t.calculateInterfaceNormal(xn, ak, dkn);
-			
-			lambdajp = t.calculateLambda(djp, rl, rj, njp);
-			lambdajn = t.calculateLambda(djn, rl, rj, njn);
-			lambdaip = t.calculateLambda(dip, rl, ri, nip);
-			lambdain = t.calculateLambda(din, rl, ri, nin);
-			lambdakp = t.calculateLambda(dkp, rl, rk, nkp);
-			lambdakn = t.calculateLambda(dkn, rl, rk, nkn);
-			
-			psijp = t.calculatePsi(integrationOrigin, njp);
-			psijn = t.calculatePsi(integrationOrigin, njn);
-			
-			PHIp = t.calculatePHI(integrationOrigin, njp, nip, lambdajp, lambdaip);
-			PHIn = t.calculatePHI(integrationOrigin, njn, nin, lambdajn, lambdain);
-			
-			PHI2p = t.calculatePHI(integrationOrigin, njp, nkp, lambdajp, lambdakp);
-			PHI2n = t.calculatePHI(integrationOrigin, njn, nkn, lambdajn, lambdakn);
-			
-			if(q1 > 0){
-				Ap = q * lookUp(PHI2p.out.rotation,psijp.rotation,lambdajp.rotation, q1, form)(0);
-				An = q * lookUp(PHI2n.out.rotation,psijn.rotation,lambdajn.rotation, q1, form)(0);
-			}
-			else{
-				Ap = q * lookUp(PHI2p.in.rotation,psijp.rotation,lambdajp.rotation, q1, form)(0);
-				An = q * lookUp(PHI2n.in.rotation,psijn.rotation,lambdajn.rotation, q1, form)(0);
-			}
-			
-			if(q0 > 0){
-				Ap -= q * lookUp(PHIp.in.rotation, psijp.rotation, lambdajp.rotation, q0, form)(0);
-				An -= q * lookUp(PHIn.in.rotation, psijn.rotation, lambdajn.rotation, q0, form)(0);
-			}
-			else{
-				Ap -= q * lookUp(PHIp.out.rotation, psijp.rotation, lambdajp.rotation, q0, form)(0);
-				An -= q * lookUp(PHIn.out.rotation, psijn.rotation, lambdajn.rotation, q0, form)(0);
-			}
-			
-			fd_dA_dxl(j) = (Ap-An) / (2*FD2);
-			
-			
-			
-			
-		}
-		printf("DRV: dA_dxl: %f %f %f fd_dA_dxl: %f %f %f\n",force_l(0),force_l(1),force_l(2),fd_dA_dxl(0),fd_dA_dxl(1),fd_dA_dxl(2));
-		
-	}
-	
-	*/
-		
-		/*
-	if(indexi >= 0 && indexj >= 0 && indexk >= 0){
-
-	for(int j=0; j<3; ++j)
-		if(abs(force_i(j)-fd_dA_dxi(j)) > FDT3) exit(-1);
-	for(int j=0; j<3; ++j)
-		if(abs(force_j(j)-fd_dA_dxj(j)) > FDT3) exit(-1);
-	for(int j=0; j<3; ++j)
-		if(abs(force_k(j)-fd_dA_dxk(j)) > FDT3) exit(-1);
-	for(int j=0; j<3; ++j)
-		if(abs(force_l(j)-fd_dA_dxl(j)) > FDT3) exit(-1);
-	}
-*/
-	
-	
-	
-	
-	double ta = area;
 	
 	if(PHIjk.rotation < PHIij.rotation){
 		area = 2*M(0) - area;
@@ -1337,350 +529,9 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 		force_j = 2*(M(2)*psi.drotation_dxi + M(3)*lambda.drotation_dxi) - force_j;
 		force_k = -force_k;
 		force_l = 2*(M(2)*psi.drotation_dxl + M(3)*lambda.drotation_dxl) - force_l;
-		
-		printf("COMPLEMENTING %d %d %d\n",x0.index0, x0.index1, x1.index1);
 	}
 	
 	
-	
-	Vector fd_dM_dxi(3);
-	Vector fd_dM_dxj(3);
-	Vector fd_dM_dxk(3);
-	Vector fd_dM_dxl(3);
-	
-	if(PHIjk.rotation < PHIij.rotation){
-	
-	
-	//dM_dxi
-	indexi = x0.index0;
-	indexj = x0.index1;
-	indexk = x1.index1;
-	indexl = l;
-	if(indexi >= 0 && indexj >= 0 && indexk >= 0){
-		ai = atoms[indexi];
-		aj = atoms[indexj];
-		ak = atoms[indexk];
-		al = atoms[indexl];
-		ri = radii[indexi];
-		rj = radii[indexj];
-		rk = radii[indexk];
-		rl = radii[indexl];
-		
-		
-		x=ai;
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD2;
-			xn=x;
-			xn(j) = x(j) - FD2;
-			
-			nip = t.calculateInterfaceNormal(al, xp, dip);
-			nin = t.calculateInterfaceNormal(al, xn, din);
-			nj = t.calculateInterfaceNormal(al, aj, dj);
-			nk = t.calculateInterfaceNormal(al, ak, dk);
-			
-			lambdaip = t.calculateLambda(dip, rl, ri, nip);
-			lambdain = t.calculateLambda(din, rl, ri, nin);
-			lambdaj = t.calculateLambda(dj, rl, rj, nj);
-			lambdak = t.calculateLambda(dk, rl, rk, nk);
-			
-			psij = t.calculatePsi(integrationOrigin, nj);
-			
-			
-			
-			PHIp = t.calculatePHI(integrationOrigin, nj, nip, lambdaj, lambdaip);
-			PHIn = t.calculatePHI(integrationOrigin, nj, nin, lambdaj, lambdain);
-			
-			
-	
-			
-			if(q0>0){
-				Ap = -q* lookUp(PHIp.in.rotation, psij.rotation, lambdaj.rotation, q0, form)(0);
-				An = -q* lookUp(PHIn.in.rotation, psij.rotation, lambdaj.rotation, q0, form)(0);
-			}
-			else{
-				Ap = -q * lookUp(PHIp.out.rotation, psij.rotation, lambdaj.rotation, q0, form)(0);
-				An = -q * lookUp(PHIn.out.rotation, psij.rotation, lambdaj.rotation, q0, form)(0);
-			}
-			
-			
-			Ap2 = lookUp(M_PI, psij.rotation, lambdaj.rotation, q0, form)(0);
-			An2 = lookUp(M_PI, psij.rotation, lambdaj.rotation, q0, form)(0);
-			
-			
-			fd_dM_dxi(j) = ((2*Ap2 - Ap) - (2*An2 - An)) / (2*FD2);
-			
-		}
-		printf("DRV: dM_dxi: %f %f %f fd_dM_dxi: %f %f %f\n",force_i(0),force_i(1),force_i(2),fd_dM_dxi(0),fd_dM_dxi(1),fd_dM_dxi(2));
-		
-		
-		
-	}	
-	
-		
-	
-	//dM_dxj
-	indexi = x0.index0;
-	indexj = x0.index1;
-	indexk = x1.index1;
-	indexl = l;
-	if(indexi >= 0 && indexj >= 0 && indexk >= 0){
-		ai = atoms[indexi];
-		aj = atoms[indexj];
-		ak = atoms[indexk];
-		al = atoms[indexl];
-		ri = radii[indexi];
-		rj = radii[indexj];
-		rk = radii[indexk];
-		rl = radii[indexl];
-		
-		
-		x=aj;
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD2;
-			xn=x;
-			xn(j) = x(j) - FD2;
-			
-			njp = t.calculateInterfaceNormal(al, xp, djp);
-			njn = t.calculateInterfaceNormal(al, xn, djn);
-			ni = t.calculateInterfaceNormal(al, ai, di);
-			nk = t.calculateInterfaceNormal(al, ak, dk);
-			
-			lambdajp = t.calculateLambda(djp, rl, rj, njp);
-			lambdajn = t.calculateLambda(djn, rl, rj, njn);
-			lambdai = t.calculateLambda(di, rl, ri, ni);
-			lambdak = t.calculateLambda(dk, rl, rk, nk);
-			
-			psijp = t.calculatePsi(integrationOrigin, njp);
-			psijn = t.calculatePsi(integrationOrigin, njn);
-			
-			PHIp = t.calculatePHI(integrationOrigin, njp, ni, lambdajp, lambdai);
-			PHIn = t.calculatePHI(integrationOrigin, njn, ni, lambdajn, lambdai);
-			
-			PHI2p = t.calculatePHI(integrationOrigin, njp, nk, lambdajp, lambdak);
-			PHI2n = t.calculatePHI(integrationOrigin, njn, nk, lambdajn, lambdak);
-			
-			
-			if(q1 > 0){
-				Ap = q * lookUp(PHI2p.out.rotation,psijp.rotation,lambdajp.rotation, q1, form)(0);
-				An = q * lookUp(PHI2n.out.rotation,psijn.rotation,lambdajn.rotation, q1, form)(0);
-			}
-			else{
-				Ap = q * lookUp(PHI2p.in.rotation,psijp.rotation,lambdajp.rotation, q1, form)(0);
-				An = q * lookUp(PHI2n.in.rotation,psijn.rotation,lambdajn.rotation, q1, form)(0);
-			}
-			
-			if(q0 > 0){
-				Ap -= q * lookUp(PHIp.in.rotation, psijp.rotation, lambdajp.rotation, q0, form)(0);
-				An -= q * lookUp(PHIn.in.rotation, psijn.rotation, lambdajn.rotation, q0, form)(0);
-			}
-			else{
-				Ap -= q * lookUp(PHIp.out.rotation, psijp.rotation, lambdajp.rotation, q0, form)(0);
-				An -= q * lookUp(PHIn.out.rotation, psijn.rotation, lambdajn.rotation, q0, form)(0);
-			}
-			
-			
-			
-			Ap2 = lookUp(M_PI, psijp.rotation, lambdajp.rotation, q0, form)(0);
-			An2 = lookUp(M_PI, psijn.rotation, lambdajn.rotation, q0, form)(0);
-			
-			
-			fd_dM_dxj(j) = ((2*Ap2 - Ap) - (2*An2 - An)) / (2*FD2);
-			
-		}
-		printf("DRV: dM_dxj: %f %f %f fd_dM_dxj: %f %f %f\n",force_j(0),force_j(1),force_j(2),fd_dM_dxj(0),fd_dM_dxj(1),fd_dM_dxj(2));
-		
-	}	
-	
-	
-	
-	//dM_dxk
-	indexi = x0.index0;
-	indexj = x0.index1;
-	indexk = x1.index1;
-	indexl = l;
-	if(indexi >= 0 && indexj >= 0 && indexk >= 0){
-		ai = atoms[indexi];
-		aj = atoms[indexj];
-		ak = atoms[indexk];
-		al = atoms[indexl];
-		ri = radii[indexi];
-		rj = radii[indexj];
-		rk = radii[indexk];
-		rl = radii[indexl];
-		
-		
-		x=ak;
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD2;
-			xn=x;
-			xn(j) = x(j) - FD2;
-			
-			nkp = t.calculateInterfaceNormal(al, xp, dkp);
-			nkn = t.calculateInterfaceNormal(al, xn, dkn);
-			nj = t.calculateInterfaceNormal(al, aj, dj);
-			ni = t.calculateInterfaceNormal(al, ai, di);
-			
-			lambdakp = t.calculateLambda(dkp, rl, rk, nkp);
-			lambdakn = t.calculateLambda(dkn, rl, rk, nkn);
-			lambdaj = t.calculateLambda(dj, rl, rj, nj);
-			lambdai = t.calculateLambda(di, rl, ri, ni);
-			
-			psij = t.calculatePsi(integrationOrigin, nj);
-			
-			PHI = t.calculatePHI(integrationOrigin, nj, ni, lambdaj, lambdai);
-			
-			PHI2p = t.calculatePHI(integrationOrigin, nj, nkp, lambdaj, lambdakp);
-			PHI2n = t.calculatePHI(integrationOrigin, nj, nkn, lambdaj, lambdakn);
-			
-			if(q1 > 0){
-				Ap = q * lookUp(PHI2p.out.rotation,psij.rotation,lambdaj.rotation, q1, form)(0);
-				An = q * lookUp(PHI2n.out.rotation,psij.rotation,lambdaj.rotation, q1, form)(0);
-			}
-			else{
-				Ap = q * lookUp(PHI2p.in.rotation,psij.rotation,lambdaj.rotation, q1, form)(0);
-				An = q * lookUp(PHI2n.in.rotation,psij.rotation,lambdaj.rotation, q1, form)(0);
-			}
-			
-			Ap2 = lookUp(M_PI, psij.rotation, lambdaj.rotation, q0, form)(0);
-			An2 = lookUp(M_PI, psij.rotation, lambdaj.rotation, q0, form)(0);
-			
-			
-			fd_dM_dxk(j) = ((2*Ap2 - Ap) - (2*An2 - An)) / (2*FD2);
-			
-			
-			
-		}
-		printf("DRV: dM_dxk: %f %f %f fd_dM_dxk: %f %f %f\n",force_k(0),force_k(1),force_k(2),fd_dM_dxk(0),fd_dM_dxk(1),fd_dM_dxk(2));
-		
-	}		
-	
-	
-	
-	
-	
-	//dM_dxl
-	indexi = x0.index0;
-	indexj = x0.index1;
-	indexk = x1.index1;
-	indexl = l;
-	if(indexi >= 0 && indexj >= 0 && indexk >= 0){
-		ai = atoms[indexi];
-		aj = atoms[indexj];
-		ak = atoms[indexk];
-		al = atoms[indexl];
-		ri = radii[indexi];
-		rj = radii[indexj];
-		rk = radii[indexk];
-		rl = radii[indexl];
-		
-		
-		x=al;
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD2;
-			xn=x;
-			xn(j) = x(j) - FD2;
-			
-			njp = t.calculateInterfaceNormal(xp, aj, djp);
-			njn = t.calculateInterfaceNormal(xn, aj, djn);
-			nip = t.calculateInterfaceNormal(xp, ai, dip);
-			nin = t.calculateInterfaceNormal(xn, ai, din);
-			nkp = t.calculateInterfaceNormal(xp, ak, dkp);
-			nkn = t.calculateInterfaceNormal(xn, ak, dkn);
-			
-			lambdajp = t.calculateLambda(djp, rl, rj, njp);
-			lambdajn = t.calculateLambda(djn, rl, rj, njn);
-			lambdaip = t.calculateLambda(dip, rl, ri, nip);
-			lambdain = t.calculateLambda(din, rl, ri, nin);
-			lambdakp = t.calculateLambda(dkp, rl, rk, nkp);
-			lambdakn = t.calculateLambda(dkn, rl, rk, nkn);
-			
-			psijp = t.calculatePsi(integrationOrigin, njp);
-			psijn = t.calculatePsi(integrationOrigin, njn);
-			
-			PHIp = t.calculatePHI(integrationOrigin, njp, nip, lambdajp, lambdaip);
-			PHIn = t.calculatePHI(integrationOrigin, njn, nin, lambdajn, lambdain);
-			
-			PHI2p = t.calculatePHI(integrationOrigin, njp, nkp, lambdajp, lambdakp);
-			PHI2n = t.calculatePHI(integrationOrigin, njn, nkn, lambdajn, lambdakn);
-			
-			if(q1 > 0){
-				Ap = q * lookUp(PHI2p.out.rotation,psijp.rotation,lambdajp.rotation, q1, form)(0);
-				An = q * lookUp(PHI2n.out.rotation,psijn.rotation,lambdajn.rotation, q1, form)(0);
-			}
-			else{
-				Ap = q * lookUp(PHI2p.in.rotation,psijp.rotation,lambdajp.rotation, q1, form)(0);
-				An = q * lookUp(PHI2n.in.rotation,psijn.rotation,lambdajn.rotation, q1, form)(0);
-			}
-			
-			if(q0 > 0){
-				Ap -= q * lookUp(PHIp.in.rotation, psijp.rotation, lambdajp.rotation, q0, form)(0);
-				An -= q * lookUp(PHIn.in.rotation, psijn.rotation, lambdajn.rotation, q0, form)(0);
-			}
-			else{
-				Ap -= q * lookUp(PHIp.out.rotation, psijp.rotation, lambdajp.rotation, q0, form)(0);
-				An -= q * lookUp(PHIn.out.rotation, psijn.rotation, lambdajn.rotation, q0, form)(0);
-			}
-			
-			Ap2 = lookUp(M_PI, psijp.rotation, lambdajp.rotation, q0, form)(0);
-			An2 = lookUp(M_PI, psijn.rotation, lambdajn.rotation, q0, form)(0);
-			
-			
-			fd_dM_dxl(j) = ((2*Ap2 - Ap) - (2*An2 - An)) / (2*FD2);
-			
-			
-			
-			
-		}
-		printf("DRV: dM_dxl: %f %f %f fd_dM_dxl: %f %f %f\n",force_l(0),force_l(1),force_l(2),fd_dM_dxl(0),fd_dM_dxl(1),fd_dM_dxl(2));
-		
-	}	
-		
-	if(indexi >= 0 && indexj >= 0 && indexk >= 0){
-
-	for(int j=0; j<3; ++j)
-		if(abs(force_i(j)-fd_dM_dxi(j)) > FDT3) exit(-1);
-	for(int j=0; j<3; ++j)
-		if(abs(force_j(j)-fd_dM_dxj(j)) > FDT3) exit(-1);
-	for(int j=0; j<3; ++j)
-		if(abs(force_k(j)-fd_dM_dxk(j)) > FDT3) exit(-1);
-	for(int j=0; j<3; ++j)
-		if(abs(force_l(j)-fd_dM_dxl(j)) > FDT3) exit(-1);
-	}
-
-	
-	
-	}
-	
-	
-
-	
-	
-	/*
-	if(psi.rotation < lambda.rotation){
-		if(x1.form==CONVEX){
-			q=1;
-			printf("psi<lambda convex\n");
-		}
-		else{
-			q=-1;
-			printf("psi<lambda concave\n");
-		}
-	}
-	else{
-		if(x1.form==CONVEX){
-			q=1;
-			printf("psi>=lambda convex\n");
-		}
-		else{
-			q=-1;
-			printf("psi>=lambda concave\n");
-		}
-	}
-	*/
 	if(x1.form==CONVEX) s_convex=1;
 	else s_convex=-1;
 	

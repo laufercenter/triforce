@@ -17,7 +17,6 @@ void Tessellation::build(bool split){
 	
 	for(int i=0; i<radii.size();i++){
 		double radius = radii[i];
-		printf("RADIUS[%d]: %f\n",i,radius);
 	}
 	
 	
@@ -27,17 +26,6 @@ void Tessellation::build(bool split){
 	for(int i=0; i<atoms.size(); ++i){
 		//int i=12;{
 		buildGaussBonnetPath(i, atoms, radii, sasasForMolecule, split);
-		
-		
-		
-		for(int i=0; i<sasasForMolecule[0].sasas.size(); ++i){
-			printf("SASA %d\n",i);
-			outputGaussBonnetPath(sasasForMolecule[0].sasas[i]);
-		}
-
-
-		
-		//outputCircularInterfaces(*circles[circles.size()-1]);
 
 	}
 	
@@ -136,7 +124,6 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 		determineCircularIntersections(circlesFrontHemisphere);
 		determineCircularIntersections(circlesBackHemisphere);
 		
-		printf("CIRC: %d, FRONT: %d, BACK: %d\n",circles.size(), circlesFrontHemisphere.size(), circlesBackHemisphere.size());
 		
 		buildIntersectionGraph(radius, frontTessellationOrigin, circlesFrontHemisphere, *newSasas, FRONTHEMISPHERE, string("gbonnet0.csv"));
 		buildIntersectionGraph(radius, backTessellationOrigin, circlesBackHemisphere, *newSasas, BACKHEMISPHERE, string("gbonnet1.csv"));
@@ -199,7 +186,6 @@ bool Tessellation::isZero(double v){
 }
 
 bool Tessellation::isInPositiveEpsilonRange(double v, double eps){
-	//printf("V: %f, EPS: %f, V+T: %f, EPS-V+T: %f\n",v,eps,v+THRESHOLD_NUMERICAL, eps-(v+THRESHOLD_NUMERICAL));
 	if(eps-(v+THRESHOLD_NUMERICAL) <= 0) return true;
 	else return false;
 }
@@ -273,82 +259,6 @@ Rotation Tessellation::calculateLambda(int index_i, double d_i, double r_l, doub
 		r.drotation_dxl = dlambda_dxl;
 		
 		
-		
-		
-		
-		//finite differences
-		double fd_dlambda_dg;
-		double fd_dg_dd;
-		Vector fd_dmu(3);
-		Vector x(3), xp(3), xn(3);
-		Vector np(3), nn(3);
-		Vector vp(3), vn(3);
-		double lenvn, lenvp;
-		double dp, dn;
-		Rotation lambdap, lambdan;
-		Vector fd_dlambda_dxi(3);
-		Vector fd_dd_dxi(3);
-		
-		//dlambda_dg
-		fd_dlambda_dg = (acos(g+FD)-acos(g-FD))/(2*FD);
-		printf("dlambda_dg: %f FD: %f\n",dlambda_dg, fd_dlambda_dg);
-		if(abs(dlambda_dg - fd_dlambda_dg) > FDT) exit(-1);
-		
-		//dg_dd
-		if(form==CONVEX){
-			fd_dg_dd = (((d_i+FD) * (d_i+FD) + r_l * r_l - r_i * r_i ) / (2 * (d_i+FD) * r_l) - ((d_i-FD) * (d_i-FD) + r_l * r_l - r_i * r_i ) / (2 * (d_i-FD) * r_l))/(2*FD);
-		}
-		else{
-			fd_dg_dd = (-((d_i+FD) * (d_i+FD) + r_l * r_l - r_i * r_i ) / (2 * (d_i+FD) * r_l) - -((d_i-FD) * (d_i-FD) + r_l * r_l - r_i * r_i ) / (2 * (d_i-FD) * r_l))/(2*FD);
-		}
-		printf("dg_dd: %f FD: %f\n",dg_dd,fd_dg_dd);
-		if(abs(dg_dd - fd_dg_dd) > FDT) exit(-1);
-		
-		//dd_dxi
-		x = atoms[index_i];
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD;
-			xn=x;
-			xn(j) = x(j) - FD;
-			
-			np = calculateInterfaceNormal(torigin, xp, dp);
-			nn = calculateInterfaceNormal(torigin, xn, dn);
-			
-			fd_dd_dxi(j) = (dp - dn) / (2*FD);
-		}
-		printf("dd_dxi: %f %f %f FD: %f %f %f\n",dd_dxi(0),dd_dxi(1),dd_dxi(2), fd_dd_dxi(0), fd_dd_dxi(1), fd_dd_dxi(2));
-		for(int i=0; i<3; ++i){
-			if(abs(dd_dxi(i) - fd_dd_dxi(i)) > FDT) exit(-1);
-		}
-			
-		
-		
-		
-		//dlambda_dxi
-		x = atoms[index_i];
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD;
-			xn=x;
-			xn(j) = x(j) - FD;
-
-			np = calculateInterfaceNormal(torigin, xp, dp);
-			nn = calculateInterfaceNormal(torigin, xn, dn);
-			lambdap = calculateLambda(dp, tradius, r_i, np);
-			lambdan = calculateLambda(dn, tradius, r_i, nn);
-			
-			fd_dlambda_dxi(j) = (lambdap.rotation - lambdan.rotation) / (2*FD);
-		}
-		printf("dlambda_dxi: %f %f %f FD: %f %f %f\n",dlambda_dxi(0),dlambda_dxi(1),dlambda_dxi(2), fd_dlambda_dxi(0), fd_dlambda_dxi(1), fd_dlambda_dxi(2));
-		for(int i=0; i<3; ++i){
-			if(abs(dlambda_dxi(i) - fd_dlambda_dxi(i)) > FDT) exit(-1);
-		}
-		
-			
-		
-		
-		
 	}
 	
 	
@@ -394,69 +304,6 @@ void Tessellation::determineProjection(Vector &origin, double r_l, CircularInter
 	
 	
 	
-	
-	
-	
-	Vector fd_dmu(3);
-	Vector x(3), xp(3), xn(3);
-	Vector np(3), nn(3);
-	Vector vp(3), vn(3);
-	double lenvn, lenvp;
-	int i,j;
-	
-	
-	
-	
-	//dmu_dx
-	x = atoms[circle.index];
-	
-	for(j=0; j<3; ++j){
-		xp=x;
-		xp(j) = x(j) + FD;
-		xn=x;
-		xn(j) = x(j) - FD;
-		
-		
-		vp= xp - origin;
-		lenvp = norm(vp,2);
-		np=vp/lenvp;
-		if(circle.form!=CONVEX)
-			np = -np;
-
-		vn= xn - origin;
-		lenvn = norm(vn,2);
-		nn=vn/lenvn;
-		if(circle.form!=CONVEX)
-			nn = -nn;
-		
-		fd_dmu = (np - nn)/(2*FD);
-		
-		for(i=0; i<3; ++i){
-			fd_dmu_dx(i,j) = fd_dmu(i);
-		}
-	}
-	
-	
-	for(j=0; j<3; ++j){
-		printf("dmu_dx: %f %f %f\n",dmu_dx(j,0),dmu_dx(j,1),dmu_dx(j,2));
-	}
-	for(j=0; j<3; ++j){
-		printf("fd_dmu_dx: %f %f %f\n",fd_dmu_dx(j,0),fd_dmu_dx(j,1),fd_dmu_dx(j,2));
-	}
-	
-	for(i=0; i<3; ++i)
-		for(j=0; j<3; ++j)
-			if(abs(dmu_dx(i,j)-fd_dmu_dx(i,j)) > FDT) exit(-1);
-	
-	
-	
-
-
-	
-	
-
-	//printf("DET: [%f %f %f] %f %f %f %f\n",circle.normal(0),circle.normal(1),circle.normal(2), r_i, r_k, g, circle.lambda);
-	//printf("%f %f %f %f %f\n",d_k, r_i, r_k, g, circle.lambda);
 }
 
 
@@ -492,12 +339,6 @@ IntersectionPair Tessellation::determineIntersectionPoints(double radius, Circul
 	r_k = K.sphereRadius;
 	r_j = J.sphereRadius;
 
-
-	//NSWarnLog(@"INT: %f [%f %f %f] %f %f, [%f %f %f] %f %f",r_i,K.vector.vector[0],K.vector.vector[1],K.vector.vector[2],K.g,r_k,J.vector.vector[0],J.vector.vector[1],J.vector.vector[2],J.g,r_j);
-
-
-	//a_k = sqrt(r_i * r_i - g_k * g_k);
-	//a_j = sqrt(r_i * r_i - g_j * g_j);
 
 	mu_k = K.normal;
 	mu_j = J.normal;
@@ -554,7 +395,6 @@ void Tessellation::makeCircularInterfaces(int l,Vector &origin, double r_l, vect
 	double d_i;
 	Vector mu_i;
 	
-	printf("MAKECIRCLE %d %f\n",l, r_l);
 
 	for(int j=0;j<atoms.size();j++){
 		if(l != j){
@@ -572,7 +412,6 @@ void Tessellation::makeCircularInterfaces(int l,Vector &origin, double r_l, vect
 				circle.index=j;
 				circles.push_back(circle);
 				
-				printf("ADDCIRCLE %d %f %f\n",j,r_i,d_i);
 				
 				
 			}
@@ -596,7 +435,6 @@ int Tessellation::filterCircularInterfaces(Vector tessellationOrigin, double rad
 	bool erased;
 	Vector n0,n1;
 	it = circles.begin();
-	printf("----------------\n");
 	while(it != circles.end()){
 		erased=false;
 	
@@ -615,7 +453,6 @@ int Tessellation::filterCircularInterfaces(Vector tessellationOrigin, double rad
 				n1 = circles[i].normal;
 				
 				angle = getAngle(n0,n1);
-				printf("FILTER: %d %d: %f %f %f\n",it->index, circles[i].index, it->lambda.rotation, circles[i].lambda.rotation, angle);
 				
 				if(it->form==CONVEX){
 					//convex circle IT is inside of convex circle i
@@ -689,7 +526,6 @@ void Tessellation::outputGaussBonnetPath(SASA &points){
 	SASANodeList::iterator it;
 	int i;
 	
-	printf("ORIGIN: %f %f %f\n",points.tessellationOrigin(0),points.tessellationOrigin(1),points.tessellationOrigin(2));
 	for(it=points.sasa.begin(), i=0; it!=points.sasa.end(); ++it, ++i)
 		printf("GBPATH[%d] %d - %d\n", i, it->id0, it->id1);
 }
@@ -771,7 +607,6 @@ void Tessellation::determineCircularIntersections(CircularInterfacesPerAtom &cir
 						circles[j].circularIntersections[k]=c;
 						circles[k].circularIntersections[j]=c;
 						
-						//printf("circle intersection %d-%d\n",k,j);
 					}
 			}
 		}
@@ -873,10 +708,6 @@ void Tessellation::measurementPoints(Vector &p0, Vector &p1, Vector &tessellatio
 	o = tessellationOrigin;
 	v = I.normal * I.g;
 	
-	printf("O: %f %f %f\n",o(0),o(1),o(2));
-	printf("V: %f %f %f\n",v(0),v(1),v(2));
-	printf("INORMAL: %f %f %f\n",I.normal(0),I.normal(1),I.normal(2));
-	printf("DOT: %f\n",dot(o,I.normal));
 	
 	
 	if(isWithinNumericalLimits(dot(o,I.normal),1.0) ){
@@ -886,7 +717,6 @@ void Tessellation::measurementPoints(Vector &p0, Vector &p1, Vector &tessellatio
 		p1(2) = 0;
 		
 		p0 = cross(p1,-o);
-		printf("FIRST\n");
 		
 	}
 	else 	if(isWithinNumericalLimits(dot(o,I.normal),-1.0) ){
@@ -897,7 +727,6 @@ void Tessellation::measurementPoints(Vector &p0, Vector &p1, Vector &tessellatio
 		
 		p0 = cross(p1,-o);
 
-		printf("SECOND\n");
 		
 	}
 	else{
@@ -917,7 +746,6 @@ void Tessellation::measurementPoints(Vector &p0, Vector &p1, Vector &tessellatio
 			//p1 = v-s2;
 		}
 		
-		printf("THIRD\n");
 		
 	}
 	
@@ -941,10 +769,6 @@ Interfaces Tessellation::angularInterfaces(Vector &x0, Vector &x1, Vector &tesse
 	measurementPoints(p0,p1,tessellationOrigin,I);
 	v = I.normal * I.g;
 	
-	printf("I: %d J: %d\n",I.id,J.id);
-	printf("V: %f %f %f\n",v(0),v(1),v(2));
-	printf("P0: %f %f %f\n",p0(0),p0(1),p0(2));
-	printf("P1: %f %f %f\n",p1(0),p1(1),p1(2));
 	
 	
 	
@@ -1015,9 +839,6 @@ PHIContainer Tessellation::retrieveInterfaces(Vector &tessellationOrigin, Circul
 	p.out.drotation_dxl = Null;
 	p.out.vector=intf1.vectorOut;
 	
-	printf("INTERFACES: %f %f\n",p.in.rotation, p.out.rotation);
-	printf("X0: %f %f %f\n",x0(0),x0(1),x0(2));
-	printf("X1: %f %f %f\n",x1(0),x1(1),x1(2));
 
 		
 	return p;
@@ -1052,14 +873,12 @@ double Tessellation::rotationalAngle(Vector &tessellationOrigin, CircularInterfa
 		n0(0) = 0;
 		n0(1) = 0;
 		n0(2) = 1;
-		printf("POSITIVE RANGE +1 %f\n",d);
 	}
 	else if(isWithinNumericalLimits(d,-1.0)){
 		n0 = Vector(3);
 		n0(0) = 0;
 		n0(1) = 0;
 		n0(2) = -1;
-		printf("NEGATIVE RANGE -1 %f\n",d);
 	}
 	else n0 = cross(tessellationOrigin,I.normal);
 	
@@ -1200,7 +1019,6 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 	dotChi_mui = dot(tessellationOrigin,mu_i);
 	s2 = 1;
 	if(isWithinNumericalLimits(dotChi_mui,1.0)){
-		//printf("POSITIVE RANGE +1 %f\n",dotChi_mui);
 		p(0) = 0;
 		p(1) = 1;
 		p(2) = 0;
@@ -1212,7 +1030,6 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 			s2 = -1;
 	}
 	else if(isWithinNumericalLimits(dotChi_mui,-1.0)){
-		//printf("POSITIVE RANGE -1 %f\n",dotChi_mui);
 		p(0) = 0;
 		p(1) = -1;
 		p(2) = 0;
@@ -1230,11 +1047,6 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 		
 	
 	
-	//printf("CROSS: %f,%f,%f\n",ni(0),ni(1),ni(2));
-	//printf("P: %f %f %f (%f)\n",p(0),p(1),p(2),dotChi_mui);
-	//printf("TESSELLATION: %f,%f,%f\n",tessellationOrigin(0),tessellationOrigin(1),tessellationOrigin(2));
-	
-	//nii = cross(mu_i,ni);
 	
 	dotmui_muj = dot(mu_i, mu_j);
 	if(isWithinNumericalLimits(dotmui_muj,1.0)){
@@ -1266,14 +1078,9 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 	dot_ni_nij2 = sdot(ni,nij);
 
 	
-	if(!isWithinNumericalLimits(dot_ni_nij,dot_ni_nijtest)){
-		printf("DOTFAIL: %f %f\n",dot_ni_nij, dot_ni_nijtest);
-	}
 	
 	
 	double dninij=norm_dot((ni),(nij));
-//	if(dninij > 1.0) dninij=2.0 - dninij;
-//	if(dninij < -1.0) dninij=-2.0 - dninij;
 	if(dninij > 1.0) dninij=1.0;
 	if(dninij < -1.0) dninij=-1.0;
 	
@@ -1281,40 +1088,16 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 	
 	s0 = -sgn(dot(nij,tessellationOrigin));
 	
-	//omega.rotation = -s0*(s1*(1-s0)*M_PI/2 - varpi);
 	
-	omega.rotation = s0*varpi;
-	/*
-	if(omega.rotation < -M_PI){
-		printf("omega.rotation < -M_PI\n");
-		omega.rotation = 2*M_PI + omega.rotation;
-	}
-
-	if(omega.rotation > M_PI){
-		printf("omega.rotation > M_PI\n");
-		omega.rotation = -2*M_PI + omega.rotation;
-	}
-	*/
-	omega.rotation = omega.rotation * s2;
+	omega.rotation = s2 * s0 * varpi;
 	
 	
-	//printf("s0: %f, s2: %f\n",s0,s2);
-	
-	//printf("LENGTH mui: %f muj: %f, ni: %f, nij: %f\n",norm(mu_i,2), norm(mu_j,2), norm(ni,2), norm(nij,2));
-	//printf("LENGTH2 mui: %f muj: %f, ni: %f, nij: %f\n",l(mu_i), l(mu_j), l(ni), l(nij));
 	
 	if(isnan(omega.rotation)) exit(-2);
 	
 	
 	if(derivatives){
 	
-		//if(dot_ni_nij2 > 1.0 - MINISCULE) dot_ni_nij2 = 1.0-MINISCULE;
-		//if(dot_ni_nij2 < -1.0 + MINISCULE) dot_ni_nij2 = -1.0+MINISCULE;
-		
-		
-	printf("dotninij: %f %f\n",dot_ni_nij, dot_ni_nij2);
-	
-	printf("ni: %f %f %f nij: %f %f %f, dot: %f\n",ni(0),ni(1),ni(2),nij(0),nij(1),nij(2),dot_ni_nij);
 		
 
 		
@@ -1340,45 +1123,6 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 		
 		
 		if(isWithinStrongNumericalLimits(abs(dot_ni_nij),1.0)){
-			printf("ZERO LEVEL\n");
-			
-			/*
-			dvarpi_dni = -(nij);
-			dvarpi_dnij = -(ni);
-			
-			double s3;
-			s3 = sgn(dot_ni_nij2);
-			
-		
-			Vector a2 = (ni.t() * dni_dmui * dmui_dxi).t();
-			Vector b2 = (nij.t() * dnij_dmui * dmui_dxi).t();
-			
-			printf("A2: (%f %f %f) B2: (%f %f %f)\n",a2(0),a2(1),a2(2),b2(0),b2(1),b2(2));
-			
-			
-			domega_dxi = s2* domega_dvarpi * ((ni.t() * dni_dmui * dmui_dxi).t() + (nij.t() * dnij_dmui * dmui_dxi).t() );
-			
-			if(dot(a2,b2)>0){
-				domega_dxi *=-s3*M_PI/2.0;
-			}
-			else{
-				domega_dxi *=-s3*M_PI;
-			}
-			
-			domega_dxj = s2* domega_dvarpi * (nij.t() * dnij_dmuj * dmuj_dxj).t();
-			domega_dxj *=-s3*M_PI/2.0;
-			
-			
-		Vector a = (ni.t() * dni_dmui * dmui_dxl).t();
-		Vector b = (nij.t() * (dnij_dmui * dmui_dxl + dnij_dmuj * dmuj_dxl) ).t();
-		
-		printf("A: (%f %f %f) B: (%f %f %f)\n",a(0),a(1),a(2),b(0),b(1),b(2));
-			
-			
-			domega_dxl = s2* domega_dvarpi * (  (ni.t() * dni_dmui * dmui_dxl).t() +  (nij.t() * (dnij_dmui * dmui_dxl + dnij_dmuj * dmuj_dxl) ).t() );
-			domega_dxl *= -s3*M_PI/2.0;
-			
-			*/
 			
 			dvarpi_dni = Vector(3).zeros();
 			dvarpi_dnij = Vector(3).zeros();
@@ -1411,377 +1155,6 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 		omega.drotation_dxj = domega_dxj;
 		omega.drotation_dxl = domega_dxl;
 		
-		
-		
-		//finite differences
-		Vector fd_dvarpi_dni(3);
-		Vector fd_dvarpi_dnij(3);
-		Vector fd_dvi_dmui_row(3);
-		Vector fd_dvij_dmui_row(3);
-		Vector fd_dvij_dmuj_row(3);
-		Matrix fd_dvi_dmui(3,3);
-		Matrix fd_dvij_dmui(3,3);
-		Matrix fd_dvij_dmuj(3,3);
-		Vector fd_domega_dxi(3);
-		Vector fd_domega_dxj(3);
-		Vector fd_domega_dxl(3);
-		Vector fd_dni_dvi_row(3);
-		Vector fd_dnij_dvij_row(3);
-		Matrix fd_dni_dvi(3,3);
-		Matrix fd_dnij_dvij(3,3);
-		
-		
-		Vector x(3), xp(3), xn(3);
-		Vector np(3), nn(3);
-		Vector np2(3), nn2(3);
-		Vector np3(3), nn3(3);
-		Vector vp(3), vn(3);
-		double lenvn, lenvp;
-		Vector nip,nin, nijp, nijn;
-		double omp,omn;
-		
-		//dvarpi_dni
-		x = normalise(ni);
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD;
-			xn=x;
-			xn(j) = x(j) - FD;
-			
-			if(abs(dot(xp, normalise(nij))) > 1.0 || abs(dot(xn,normalise(nij))) > 1.0){
-				xp=x;
-				xp(j) = x(j) + 2 * FD;
-				xn=x;
-			}
-			if(abs(dot(xp, normalise(nij))) > 1.0 || abs(dot(xn,normalise(nij))) > 1.0){
-				xp=x;
-				xn=x;
-				xn(j) = x(j) - 2 * FD;
-			}
-			
-			
-
-			fd_dvarpi_dni(j) = (acos(dot((xp),normalise(nij))) - acos(dot((xn),normalise(nij))))/(2*FD);
-			
-		}		
-		printf("dvarpi_dni: (%f %f %f) fd_dvarpi_dni: (%f %f %f)\n",dvarpi_dni(0),dvarpi_dni(1),dvarpi_dni(2),fd_dvarpi_dni(0),fd_dvarpi_dni(1),fd_dvarpi_dni(2));
-		for(int j=0; j<3; ++j){
-			//if(abs(dvarpi_dni(j) - fd_dvarpi_dni(j)) > FDT || isnan(dvarpi_dni(j)) || isnan(fd_dvarpi_dni(j))) exit(-1);
-			//if(isnan(dvarpi_dni(j)) ) exit(-1);
-		}
-		
-		
-		//dvarpi_dnij
-		x = normalise(nij);
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD;
-			xn=x;
-			xn(j) = x(j) - FD;
-			
-			if(abs(dot(normalise(ni),xp)) > 1.0 || abs(dot(normalise(ni),xn)) > 1.0){
-				xp=x;
-				xp(j) = x(j) + 2 * FD;
-				xn=x;
-			}
-			if(abs(dot(normalise(ni),xp)) > 1.0 || abs(dot(normalise(ni),xn)) > 1.0){
-				xp=x;
-				xn=x;
-				xn(j) = x(j) - 2 * FD;
-			}
-			
-			
-
-			fd_dvarpi_dnij(j) = (acos(dot(normalise(ni),xp)) - acos(dot(normalise(ni),xn)))/(2*FD);
-		}		
-		printf("dvarpi_dnij: (%f %f %f) fd_dvarpi_dnij: (%f %f %f)\n",dvarpi_dnij(0),dvarpi_dnij(1),dvarpi_dnij(2),fd_dvarpi_dnij(0),fd_dvarpi_dnij(1),fd_dvarpi_dnij(2));
-		for(int j=0; j<3; ++j){
-			//if(abs(dvarpi_dnij(j) - fd_dvarpi_dnij(j)) > FDT || isnan(dvarpi_dnij(j)) || isnan(fd_dvarpi_dnij(j))) exit(-1);
-			//if(isnan(dvarpi_dnij(j)) ) exit(-1);
-		}
-		
-		
-		//dvi_dmui
-		if(s2>0){
-			x = normalise(mu_i);
-			for(int j=0; j<3; ++j){
-				xp=x;
-				xp(j) = x(j) + FD;
-				xn=x;
-				xn(j) = x(j) - FD;
-				
-
-				fd_dvi_dmui_row = (cross(tessellationOrigin,xp) - cross(tessellationOrigin,xn))/(2*FD);
-				for(int i=0; i<3; ++i){
-					fd_dvi_dmui(i,j) = fd_dvi_dmui_row(i);
-				}
-				
-			}		
-			for(int j=0; j<3; ++j){
-				printf("dvi_dmui: %f %f %f \t fd_dvi_dmui: %f %f %f\n",dvi_dmui(j,0),dvi_dmui(j,1),dvi_dmui(j,2),fd_dvi_dmui(j,0),fd_dvi_dmui(j,1),fd_dvi_dmui(j,2));
-			}
-			
-			for(int i=0; i<3; ++i)
-				for(int j=0; j<3; ++j){
-					if(abs(dvi_dmui(i,j)-fd_dvi_dmui(i,j)) > FDT) exit(-1);
-				}
-		}
-		
-		
-		
-		//dvij_dmui
-		x = normalise(mu_i);
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD;
-			xn=x;
-			xn(j) = x(j) - FD;
-
-			fd_dvij_dmui_row = ((cross(xp, mu_j)) - (cross(xn, mu_j)))/(2*FD);
-			for(int i=0; i<3; ++i){
-				fd_dvij_dmui(i,j) = fd_dvij_dmui_row(i);
-			}
-			
-		}		
-		for(int j=0; j<3; ++j){
-			printf("dvij_dmui: %f %f %f \t fd_dvij_dmui: %f %f %f\n",dvij_dmui(j,0),dvij_dmui(j,1),dvij_dmui(j,2),fd_dvij_dmui(j,0),fd_dvij_dmui(j,1),fd_dvij_dmui(j,2));
-		}
-		
-		for(int i=0; i<3; ++i)
-			for(int j=0; j<3; ++j){
-				if(abs(dvij_dmui(i,j)-fd_dvij_dmui(i,j)) > FDT) exit(-1);
-			}
-		
-			
-		//dvij_dmuj
-		x = mu_j;
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD;
-			xn=x;
-			xn(j) = x(j) - FD;
-
-			fd_dvij_dmuj_row = (cross(mu_i, xp) - cross(mu_i, xn))/(2*FD);
-			for(int i=0; i<3; ++i){
-				fd_dvij_dmuj(i,j) = fd_dvij_dmuj_row(i);
-			}
-			
-		}		
-		for(int j=0; j<3; ++j){
-			printf("dvij_dmuj: %f %f %f \t fd_dvij_dmuj: %f %f %f\n",dvij_dmuj(j,0),dvij_dmuj(j,1),dvij_dmuj(j,2),fd_dvij_dmuj(j,0),fd_dvij_dmuj(j,1),fd_dvij_dmuj(j,2));
-		}
-		
-		for(int i=0; i<3; ++i)
-			for(int j=0; j<3; ++j){
-				if(abs(dvij_dmuj(i,j)-fd_dvij_dmuj(i,j)) > FDT) exit(-1);
-			}
-			
-			
-			
-			
-		//dni_dvi
-		x = vi;
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD;
-			xn=x;
-			xn(j) = x(j) - FD;
-			
-
-			fd_dni_dvi_row = (normalise(xp) - normalise(xn))/(2*FD);
-			
-			for(int i=0; i<3; ++i){
-				fd_dni_dvi(i,j) = fd_dni_dvi_row(i);
-			}
-			
-		}		
-		for(int j=0; j<3; ++j){
-			printf("dni_dvi: %f %f %f \t fd_dni_dvi: %f %f %f\n",dni_dvi(j,0),dni_dvi(j,1),dni_dvi(j,2),fd_dni_dvi(j,0),fd_dni_dvi(j,1),fd_dni_dvi(j,2));
-		}
-		
-		for(int i=0; i<3; ++i)
-			for(int j=0; j<3; ++j){
-				if(abs(dni_dvi(i,j)-fd_dni_dvi(i,j)) > FDT) exit(-1);
-			}
-		
-				
-	
-		//dnij_dvij
-		x = vij;
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD;
-			xn=x;
-			xn(j) = x(j) - FD;
-			
-
-			fd_dnij_dvij_row = (normalise(xp) - normalise(xn))/(2*FD);
-			
-			for(int i=0; i<3; ++i){
-				fd_dnij_dvij(i,j) = fd_dnij_dvij_row(i);
-			}
-			
-		}		
-		for(int j=0; j<3; ++j){
-			printf("dnij_dvij: %f %f %f \t fd_dnij_dvij: %f %f %f\n",dnij_dvij(j,0),dnij_dvij(j,1),dnij_dvij(j,2),fd_dnij_dvij(j,0),fd_dnij_dvij(j,1),fd_dnij_dvij(j,2));
-		}
-		
-		for(int i=0; i<3; ++i)
-			for(int j=0; j<3; ++j){
-				if(abs(dnij_dvij(i,j)-fd_dnij_dvij(i,j)) > FDT) exit(-1);
-			}
-	
-			
-			
-		
-		
-		
-		//domega_dxi
-		if(form_i!=SPLITTER){
-			x = atoms[index_i];
-			for(int j=0; j<3; ++j){
-				xp=x;
-				xp(j) = x(j) + 2*FD;
-				xn=x;
-				xn(j) = x(j) - 2*FD;
-				
-				
-				vp= xp - torigin;
-				lenvp = norm(vp,2);
-				np=vp/lenvp;
-				if(form_i!=CONVEX)
-					np=-np;
-
-				vn= xn - torigin;
-				lenvn = norm(vn,2);
-				nn=vn/lenvn;
-				if(form_i!=CONVEX)
-					nn=-nn;
-				
-				
-				omp = (calculateOmega(tessellationOrigin, np, mu_j).rotation);
-				omn = (calculateOmega(tessellationOrigin, nn, mu_j).rotation);
-				
-				printf("OM: %f %f\n",omp,omn);
-				
-
-				fd_domega_dxi(j) = sgn(omp-omn)*abs(abs(omp)-abs(omn))/(2*FD);
-				
-			}		
-		}
-		else fd_domega_dxi=Vector(3).zeros();
-		
-		printf("domega_dxi: (%f %f %f) fd_domega_dxi: (%f %f %f)\n",domega_dxi(0),domega_dxi(1),domega_dxi(2),fd_domega_dxi(0),fd_domega_dxi(1),fd_domega_dxi(2));
-		for(int j=0; j<3; ++j){
-			//if(abs(domega_dxi(j) - fd_domega_dxi(j)) > FDT || isnan(domega_dxi(j)) || isnan(fd_domega_dxi(j))) exit(-1);
-		}
-		
-		
-		//domega_dxj
-		if(form_j!=SPLITTER){
-			x = atoms[index_j];
-			for(int j=0; j<3; ++j){
-				xp=x;
-				xp(j) = x(j) + FD;
-				xn=x;
-				xn(j) = x(j) - FD;
-				
-				
-				vp= xp - torigin;
-				lenvp = norm(vp,2);
-				np=vp/lenvp;
-				if(form_j!=CONVEX)
-					np=-np;
-
-				vn= xn - torigin;
-				lenvn = norm(vn,2);
-				nn=vn/lenvn;
-				if(form_j!=CONVEX)
-					nn=-nn;
-				
-				
-				omp = (calculateOmega(tessellationOrigin, mu_i, np).rotation);
-				omn = (calculateOmega(tessellationOrigin, mu_i, nn).rotation);
-				
-				
-				printf("O: %f %f\n",omp,omn);
-				
-				fd_domega_dxj(j) = sgn(omp-omn)*abs((abs(omp)-abs(omn)))/(2*FD);
-			}		
-		}
-		else fd_domega_dxj=Vector(3).zeros();
-		
-		printf("domega_dxj: (%f %f %f) fd_domega_dxj: (%f %f %f)\n",domega_dxj(0),domega_dxj(1),domega_dxj(2),fd_domega_dxj(0),fd_domega_dxj(1),fd_domega_dxj(2));
-		for(int j=0; j<3; ++j){
-			//if(abs(domega_dxj(j) - fd_domega_dxj(j)) > FDT || isnan(domega_dxj(j)) || isnan(fd_domega_dxj(j))) exit(-1);
-		}
-		
-			
-			
-			
-		
-		//domega_dxl
-		x = torigin;
-		for(int j=0; j<3; ++j){
-			xp=x;
-			xp(j) = x(j) + FD;
-			xn=x;
-			xn(j) = x(j) - FD;
-			
-			
-			if(form_i!=SPLITTER){
-				vp= atoms[index_i] - xp;
-				lenvp = norm(vp,2);
-				np=vp/lenvp;
-				if(form_i!=CONVEX)
-					np=-np;
-				np3 = np;
-			}
-			else{
-				np = tessellationOrigin;
-				np3 = p;
-			}
-
-			if(form_i!=SPLITTER){
-				vn= atoms[index_i] - xn;
-				lenvn = norm(vn,2);
-				nn=vn/lenvn;
-				if(form_i!=CONVEX)
-					nn=-nn;
-				nn3 = nn;
-			}
-			else{
-				nn = tessellationOrigin;
-				nn3 = p;
-			}
-			
-			
-			if(form_j!=SPLITTER){
-				vp= atoms[index_j] - xp;
-				lenvp = norm(vp,2);
-				np2=vp/lenvp;
-				if(form_j!=CONVEX)
-					np2=-np2;
-			}else np2 = tessellationOrigin;
-
-			if(form_j!=SPLITTER){
-				vn= atoms[index_j] - xn;
-				lenvn = norm(vn,2);
-				nn2=vn/lenvn;
-				if(form_j!=CONVEX)
-					nn2=-nn2;
-			}else nn2 = tessellationOrigin;
-			
-			
-			omp = (calculateOmega(tessellationOrigin, np, np2).rotation);
-			omn = (calculateOmega(tessellationOrigin, nn, nn2).rotation);
-				
-			fd_domega_dxl(j) = sgn(omp-omn)*abs((abs(omp)-abs(omn)))/(2*FD);
-		}		
-		printf("domega_dxl: (%f %f %f) fd_domega_dxl: (%f %f %f)\n",domega_dxl(0),domega_dxl(1),domega_dxl(2),fd_domega_dxl(0),fd_domega_dxl(1),fd_domega_dxl(2));
-		for(int j=0; j<3; ++j){
-			//if(abs(domega_dxl(j) - fd_domega_dxl(j)) > FDT || isnan(domega_dxl(j)) || isnan(fd_domega_dxl(j))) exit(-1);
-		}
 	}
 
 	
@@ -1792,7 +1165,6 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 
 
 Rotation Tessellation::calculateEta(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J){
-	printf("CALCULATING ETA FOR: %d %d\n",I.index, J.index);
 	return calculateEta(tessellationOrigin, I.normal, J.normal, I.lambda, J.lambda, I.dmu_dx, J.dmu_dx, I.index, J.index, I.form, J.form, true);
 }
 
@@ -1842,7 +1214,6 @@ Rotation Tessellation::calculateEta(Vector &tessellationOrigin, Vector &mu_i, Ve
 		dot_IJ = dot(mu_i,mu_j);
 	rho = acos(dot_IJ);
 	
-	printf("etav: %f %f %f\n",lambda_i.rotation, lambda_j.rotation, rho);
 	
 	
 	if(isWithinNumericalLimits(rho,0)){
@@ -1854,12 +1225,10 @@ Rotation Tessellation::calculateEta(Vector &tessellationOrigin, Vector &mu_i, Ve
 		sig1 = cos(lambda_j.rotation)*csc(lambda_i.rotation)*csc(rho);
 		sig2 = sig0-sig1;
 		
-		printf("SIG: %f %f %f\n",sig0, sig1, sig2);
 		
 		eta.rotation = acos(sig2);
 	}
 	
-	printf("ETA: %f\n",eta.rotation);
 	if(isnan(eta.rotation)) exit(-2);
 	
 	if(derivatives){
@@ -1878,14 +1247,9 @@ Rotation Tessellation::calculateEta(Vector &tessellationOrigin, Vector &mu_i, Ve
 			dmui_dxl = -dmui_dxi;
 			dmuj_dxl = -dmuj_dxj;
 			
-			printf("MATRIX FORM %d\n",form_j);
-			dmuj_dxj.print("dmuj_dxj");
 			
 			drho_dxi = (drho_dmui.t() * dmui_dxi).t();
 			drho_dxj = (drho_dmuj.t() * dmuj_dxj).t();
-			printf("drho_dmui: %f %f %f drho_dmuj: %f %f %f\n",drho_dmui(0),drho_dmui(1),drho_dmui(2),drho_dmuj(0),drho_dmuj(1),drho_dmuj(2));
-			for(int i=0; i<3; ++i)
-				printf("dmui_dxl: %f %f %f \t\t dmuj_dxl: %f %f %f\n",dmui_dxl(i,0),dmui_dxl(i,1),dmui_dxl(i,2),dmuj_dxl(i,0),dmuj_dxl(i,1),dmuj_dxl(i,2));
 			
 			drho_dxl = ((drho_dmui.t() * dmui_dxl).t() + (drho_dmuj.t() * dmuj_dxl).t());
 			
@@ -1894,7 +1258,6 @@ Rotation Tessellation::calculateEta(Vector &tessellationOrigin, Vector &mu_i, Ve
 			deta_drhoij = csc(rho) * (sig0/cos(rho) - sig1*cos(rho)) / sqrt(1-sig2*sig2);
 			
 			
-			printf("DATA: %f, (%f %f %f), %f, (%f %f %f)\n",deta_dlambdai, lambda_i.drotation_dxi(0), lambda_i.drotation_dxi(1), lambda_i.drotation_dxi(2), deta_drhoij, drho_dxi(0), drho_dxi(1), drho_dxi(2));
 			
 			deta_dxi = deta_dlambdai * lambda_i.drotation_dxi + deta_drhoij * drho_dxi;
 			deta_dxj = deta_dlambdaj * lambda_j.drotation_dxi + deta_drhoij * drho_dxj;
@@ -1903,414 +1266,9 @@ Rotation Tessellation::calculateEta(Vector &tessellationOrigin, Vector &mu_i, Ve
 			eta.drotation_dxi = deta_dxi;
 			eta.drotation_dxj = deta_dxj;
 			eta.drotation_dxl = deta_dxl;
-			
-			
-			
-			
-			//finite differences
-			Vector fd_drho_dmui(3);
-			Vector fd_drho_dmuj(3);
-			Vector fd_drho_dxi(3);
-			Vector fd_drho_dxj(3);
-			Vector fd_drho_dxl(3);
-			double fd_deta_dlambdai;
-			double fd_deta_dlambdaj;
-			double fd_deta_drhoij;
-			Vector fd_deta_dxi(3);
-			Vector fd_deta_dxj(3);
-			Vector fd_deta_dxl(3);
-			double sig0p,sig1p,sig2p;
-			double sig0n,sig1n,sig2n;
-			Vector x(3), xp(3), xn(3);
-			Vector np(3), nn(3);
-			Vector np2(3), nn2(3);
-			Vector vp(3), vn(3);
-			double lenvn, lenvp;
-			
-			
-			//drho_dmui
-			x = mu_i;
-			for(int j=0; j<3; ++j){
-				xp=x;
-				xp(j) = x(j) + FD;
-				xn=x;
-				xn(j) = x(j) - FD;
-				fd_drho_dmui(j) = (getAngleBetweenNormals(xp, mu_j) -  getAngleBetweenNormals(xn, mu_j))/(2*FD);
-			}		
-			printf("drho_dmui: (%f %f %f) fd_drho_mui: (%f %f %f)\n",drho_dmui(0),drho_dmui(1),drho_dmui(2),fd_drho_dmui(0),fd_drho_dmui(1),fd_drho_dmui(2));
-			for(int j=0; j<3; ++j){
-				if(abs(drho_dmui(j) - fd_drho_dmui(j)) > FDT) exit(-1);
-			}
-			
-			
-			//drho_dmuj
-			x = mu_j;
-			for(int j=0; j<3; ++j){
-				xp=x;
-				xp(j) = x(j) + FD;
-				xn=x;
-				xn(j) = x(j) - FD;
-				fd_drho_dmuj(j) = (getAngleBetweenNormals(mu_i, xp) -  getAngleBetweenNormals(mu_i, xn))/(2*FD);
-			}		
-			printf("drho_dmuj: (%f %f %f) fd_drho_muj: (%f %f %f)\n",drho_dmuj(0),drho_dmuj(1),drho_dmuj(2),fd_drho_dmuj(0),fd_drho_dmuj(1),fd_drho_dmuj(2));
-			for(int j=0; j<3; ++j){
-				if(abs(drho_dmuj(j) - fd_drho_dmuj(j)) > FDT) exit(-1);
-			}
-			
-
-			
-			//drho_dxi
-			if(form_i!=SPLITTER){
-				x = atoms[index_i];
-				for(int j=0; j<3; ++j){
-					xp=x;
-					xp(j) = x(j) + FD;
-					xn=x;
-					xn(j) = x(j) - FD;
-					
-					
-					vp= xp - torigin;
-					lenvp = norm(vp,2);
-					np=vp/lenvp;
-					if(form_i!=CONVEX)
-						np=-np;
-
-					vn= xn - torigin;
-					lenvn = norm(vn,2);
-					nn=vn/lenvn;
-					if(form_i!=CONVEX)
-						nn=-nn;
-					
-					fd_drho_dxi(j) = (getAngleBetweenNormals(np, mu_j) -  getAngleBetweenNormals(nn, mu_j))/(2*FD);
-				}		
-			}
-			else{
-				for(int j=0; j<3; ++j)
-					fd_drho_dxi(j) = 0;
-			}
-			printf("drho_dxi: (%f %f %f) fd_drho_dxi: (%f %f %f)\n",drho_dxi(0),drho_dxi(1),drho_dxi(2),fd_drho_dxi(0),fd_drho_dxi(1),fd_drho_dxi(2));
-			for(int j=0; j<3; ++j){
-				if(abs(drho_dxi(j) - fd_drho_dxi(j)) > FDT) exit(-1);
-			}
-			
-			//drho_dxj
-			if(form_j!=SPLITTER){
-				x = atoms[index_j];
-				for(int j=0; j<3; ++j){
-					xp=x;
-					xp(j) = x(j) + FD;
-					xn=x;
-					xn(j) = x(j) - FD;
-					
-					
-					vp= xp - torigin;
-					lenvp = norm(vp,2);
-					np=vp/lenvp;
-					if(form_j!=CONVEX)
-						np=-np;
-
-					vn= xn - torigin;
-					lenvn = norm(vn,2);
-					nn=vn/lenvn;
-					if(form_j!=CONVEX)
-						nn=-nn;
-					
-					fd_drho_dxj(j) = (getAngleBetweenNormals(mu_i, np) -  getAngleBetweenNormals(mu_i, nn))/(2*FD);
-				}
-			}
-			else{
-				for(int j=0; j<3; ++j)
-					fd_drho_dxj(j) = 0;
-			}
-			
-			printf("drho_dxj: (%f %f %f) fd_drho_dxj: (%f %f %f)\n",drho_dxj(0),drho_dxj(1),drho_dxj(2),fd_drho_dxj(0),fd_drho_dxj(1),fd_drho_dxj(2));
-			for(int j=0; j<3; ++j){
-				if(abs(drho_dxj(j) - fd_drho_dxj(j)) > FDT) exit(-1);
-			}
-
-			
-			//drho_dxl
-			x = torigin;
-			for(int j=0; j<3; ++j){
-				xp=x;
-				xp(j) = x(j) + FD;
-				xn=x;
-				xn(j) = x(j) - FD;
-				
-				
-				if(form_i!=SPLITTER){
-					vp= atoms[index_i] - xp;
-					lenvp = norm(vp,2);
-					np=vp/lenvp;
-					if(form_i!=CONVEX)
-						np=-np;
-					
-				}
-				else np = tessellationOrigin;
-
-
-				if(form_i!=SPLITTER){
-					vn= atoms[index_i] - xn;
-					lenvn = norm(vn,2);
-					nn=vn/lenvn;
-					if(form_i!=CONVEX)
-						nn=-nn;
-					
-				}
-				else nn = tessellationOrigin;
-				
-				
-				if(form_j!=SPLITTER){
-					vp= atoms[index_j] - xp;
-					lenvp = norm(vp,2);
-					np2=vp/lenvp;
-					if(form_j!=CONVEX)
-						np2=-np2;
-					
-				}
-				else np2 = tessellationOrigin;
-
-				if(form_j!=SPLITTER){
-					vn= atoms[index_j] - xn;
-					lenvn = norm(vn,2);
-					nn2=vn/lenvn;
-					if(form_j!=CONVEX)
-						nn2=-nn2;
-				}
-				else nn2 = tessellationOrigin;
-				
-				
-				fd_drho_dxl(j) = (getAngleBetweenNormals(np, np2) -  getAngleBetweenNormals(nn, nn2))/(2*FD);
-			}
-			printf("drho_dxl: (%f %f %f) fd_drho_dxl: (%f %f %f)\n",drho_dxl(0),drho_dxl(1),drho_dxl(2),fd_drho_dxl(0),fd_drho_dxl(1),fd_drho_dxl(2));
-			for(int j=0; j<3; ++j){
-				if(abs(drho_dxl(j) - fd_drho_dxl(j)) > FDT) exit(-1);
-			}
-			
-			
-
-			//deta_dlambdai
-			sig0p = cot(lambda_i.rotation+FD) * cot(rho);
-			sig1p = cos(lambda_j.rotation)*csc(lambda_i.rotation+FD)*csc(rho);
-			sig2p = sig0p-sig1p;
-
-			sig0n = cot(lambda_i.rotation-FD) * cot(rho);
-			sig1n = cos(lambda_j.rotation)*csc(lambda_i.rotation-FD)*csc(rho);
-			sig2n = sig0n-sig1n;
-			
-
-			fd_deta_dlambdai = (acos(sig2p) - acos(sig2n)) / (2*FD);
-			printf("deta_dlambdai: %f FD: %f\n",deta_dlambdai, fd_deta_dlambdai);
-			if(abs(deta_dlambdai - fd_deta_dlambdai) > FDT) exit(-1);
-			
-			//deta_dlambdaj
-			sig0p = cot(lambda_i.rotation) * cot(rho);
-			sig1p = cos(lambda_j.rotation+FD)*csc(lambda_i.rotation)*csc(rho);
-			sig2p = sig0p-sig1p;
-
-			sig0n = cot(lambda_i.rotation) * cot(rho);
-			sig1n = cos(lambda_j.rotation-FD)*csc(lambda_i.rotation)*csc(rho);
-			sig2n = sig0n-sig1n;
-			
-			fd_deta_dlambdaj = (acos(sig2p) - acos(sig2n)) / (2*FD);
-			printf("deta_dlambdaj: %f FD: %f\n",deta_dlambdaj, fd_deta_dlambdaj);
-			if(abs(deta_dlambdaj - fd_deta_dlambdaj) > FDT) exit(-1);
-			
-			
-			//deta_drhoij
-			sig0p = cot(lambda_i.rotation) * cot(rho+FD);
-			sig1p = cos(lambda_j.rotation)*csc(lambda_i.rotation)*csc(rho+FD);
-			sig2p = sig0p-sig1p;
-
-			sig0n = cot(lambda_i.rotation) * cot(rho-FD);
-			sig1n = cos(lambda_j.rotation)*csc(lambda_i.rotation)*csc(rho-FD);
-			sig2n = sig0n-sig1n;
-			
-			fd_deta_drhoij = (acos(sig2p) - acos(sig2n)) / (2*FD);
-			printf("deta_drhoij: %f FD: %f\n",deta_drhoij, fd_deta_drhoij);
-			if(abs(deta_drhoij - fd_deta_drhoij) > FDT) exit(-1);
-			
-			
-			
-			
-
-			Vector ai(3), aj(3), al(3);
-			Vector nip,nin,nj;
-			Vector njp,njn,ni;
-			int indexi, indexl, indexj;
-			double ri, rl, rj;
-			Rotation lambdaip;
-			Rotation lambdain;
-			Rotation lambdaj;
-			double dip,din,dj;
-			Vector fd_dPHIij_dxi_in(3);
-			Vector fd_dPHIij_dxi_out(3);
-			PHIContainer PHIp, PHIn;
-			Rotation lambdajp;
-			Rotation lambdajn;
-			Rotation lambdai;
-			double djp,djn,di;
-			Vector fd_dPHIij_dxj_in(3);
-			Vector fd_dPHIij_dxj_out(3);
-			double rhop, rhon;
-			
-
-
-			
-			//deta_dxi
-			indexi = index_i;
-			indexj = index_j;
-			if(indexi >= 0 && indexj >= 0){
-				ai = atoms[indexi];
-				aj = atoms[indexj];
-				al = torigin;
-				ri = radii[indexi];
-				rj = radii[indexj];
-				rl = tradius;
-				
-				printf("ai: %f %f %f aj: %f %f %f\n",ai(0),ai(1),ai(2), aj(0),aj(1),aj(2));
-				
-				
-				x=ai;
-				for(int j=0; j<3; ++j){
-					xp=x;
-					xp(j) = x(j) + FD;
-					xn=x;
-					xn(j) = x(j) - FD;
-					
-					nip = calculateInterfaceNormal(al, xp, dip);
-					nin = calculateInterfaceNormal(al, xn, din);
-					nj = calculateInterfaceNormal(al, aj, dj);
-					
-					lambdaip = calculateLambda(dip, rl, ri, nip);
-					lambdain = calculateLambda(din, rl, ri, nin);
-					lambdaj = calculateLambda(dj, rl, rj, nj);
-					
-					rhop = calculateRho(nip, nj);
-					rhon = calculateRho(nin, nj);
-					
-					sig0p = cot(lambdaip.rotation) * cot(rhop);
-					sig1p = cos(lambdaj.rotation)*csc(lambdaip.rotation)*csc(rhop);
-					sig2p = sig0p-sig1p;
-
-					sig0n = cot(lambdain.rotation) * cot(rhon);
-					sig1n = cos(lambdaj.rotation)*csc(lambdain.rotation)*csc(rhon);
-					sig2n = sig0n-sig1n;
-				
-					fd_deta_dxi(j) = (acos(sig2p) - acos(sig2n)) / (2*FD);
-					
-				}
-				
-				printf("deta_dxi: %f %f %f FD: %f %f %f\n",deta_dxi(0),deta_dxi(1),deta_dxi(2), fd_deta_dxi(0), fd_deta_dxi(1), fd_deta_dxi(2));
-				for(int i=0; i<3; ++i){
-					if(abs(deta_dxi(i) - fd_deta_dxi(i)) > FDT) exit(-1);
-				}
-				
-			}
-		
-			
-			//deta_dxj
-			indexi = index_i;
-			indexj = index_j;
-			if(indexi >= 0 && indexj >= 0){
-				ai = atoms[indexi];
-				aj = atoms[indexj];
-				al = torigin;
-				ri = radii[indexi];
-				rj = radii[indexj];
-				rl = tradius;
-				
-				printf("ai: %f %f %f aj: %f %f %f\n",ai(0),ai(1),ai(2), aj(0),aj(1),aj(2));
-				
-				x=aj;
-				for(int j=0; j<3; ++j){
-					xp=x;
-					xp(j) = x(j) + FD;
-					xn=x;
-					xn(j) = x(j) - FD;
-					
-					njp = calculateInterfaceNormal(al, xp, djp);
-					njn = calculateInterfaceNormal(al, xn, djn);
-					ni = calculateInterfaceNormal(al, ai, di);
-					
-					lambdajp = calculateLambda(djp, rl, rj, njp);
-					lambdajn = calculateLambda(djn, rl, rj, njn);
-					lambdai = calculateLambda(di, rl, ri, ni);
-					
-					rhop = calculateRho(ni, njp);
-					rhon = calculateRho(ni, njn);
-					
-					sig0p = cot(lambdai.rotation) * cot(rhop);
-					sig1p = cos(lambdajp.rotation)*csc(lambdai.rotation)*csc(rhop);
-					sig2p = sig0p-sig1p;
-
-					sig0n = cot(lambdai.rotation) * cot(rhon);
-					sig1n = cos(lambdajn.rotation)*csc(lambdai.rotation)*csc(rhon);
-					sig2n = sig0n-sig1n;
-				
-					fd_deta_dxj(j) = (acos(sig2p) - acos(sig2n)) / (2*FD);
-					
-				}
-				
-				printf("deta_dxj: %f %f %f FD: %f %f %f\n",deta_dxj(0),deta_dxj(1),deta_dxj(2), fd_deta_dxj(0), fd_deta_dxj(1), fd_deta_dxj(2));
-				for(int i=0; i<3; ++i){
-					if(abs(deta_dxj(i) - fd_deta_dxj(i)) > FDT) exit(-1);
-				}
-				
-			}
-		
-			
-			//deta_dxl
-			indexi = index_i;
-			indexj = index_j;
-			if(indexi >= 0 && indexj >= 0){
-				ai = atoms[indexi];
-				aj = atoms[indexj];
-				al = torigin;
-				ri = radii[indexi];
-				rj = radii[indexj];
-				rl = tradius;
-				
-				x=al;
-				for(int j=0; j<3; ++j){
-					xp=x;
-					xp(j) = x(j) + FD;
-					xn=x;
-					xn(j) = x(j) - FD;
-					
-					nip = calculateInterfaceNormal(xp, ai, dip);
-					nin = calculateInterfaceNormal(xn, ai, din);
-					njp = calculateInterfaceNormal(xp, aj, djp);
-					njn = calculateInterfaceNormal(xn, aj, djn);
-					
-					lambdaip = calculateLambda(dip, rl, ri, nip);
-					lambdain = calculateLambda(din, rl, ri, nin);
-					lambdajp = calculateLambda(djp, rl, rj, njp);
-					lambdajn = calculateLambda(djn, rl, rj, njn);
-					
-					rhop = calculateRho(nip, njp);
-					rhon = calculateRho(nin, njn);
-					
-					sig0p = cot(lambdaip.rotation) * cot(rhop);
-					sig1p = cos(lambdajp.rotation)*csc(lambdaip.rotation)*csc(rhop);
-					sig2p = sig0p-sig1p;
-
-					sig0n = cot(lambdain.rotation) * cot(rhon);
-					sig1n = cos(lambdajn.rotation)*csc(lambdain.rotation)*csc(rhon);
-					sig2n = sig0n-sig1n;
-				
-					fd_deta_dxl(j) = (acos(sig2p) - acos(sig2n)) / (2*FD);
-					
-				}
-				
-				printf("deta_dxl: %f %f %f FD: %f %f %f\n",deta_dxl(0),deta_dxl(1),deta_dxl(2), fd_deta_dxl(0), fd_deta_dxl(1), fd_deta_dxl(2));
-				for(int i=0; i<3; ++i){
-					if(abs(deta_dxl(i) - fd_deta_dxl(i)) > FDT) exit(-1);
-				}
-				
-			}
-		
 		}
+			
+	
 	}
 	
 	
@@ -2320,19 +1278,10 @@ Rotation Tessellation::calculateEta(Vector &tessellationOrigin, Vector &mu_i, Ve
 PHIContainer Tessellation::calculatePHI(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J, double dij, double radius){
 	PHIContainer p,p2;	
 	p =  calculatePHI(tessellationOrigin, I.normal, J.normal, I.lambda, J.lambda, I.dmu_dx, J.dmu_dx, I.index, J.index, I.form, J.form, true);
-	p2 = retrieveInterfaces(tessellationOrigin, I, J, dij, radius);
 	
 	p.in.vector = p2.in.vector;
 	p.out.vector = p2.out.vector;
 	
-	printf("ROTATIONAL INFO: in p:%f, p2:%f  out: p:%f p2:%f\n",p.in.rotation, p2.in.rotation, p.out.rotation, p2.out.rotation);
-	
-	if(!isWithinNumericalLimits(p.in.rotation,p2.in.rotation) || !isWithinNumericalLimits(p.out.rotation,p2.out.rotation)){
-	printf("I and J: c(%f,%f,%f),c(%f,%f,%f)\n",I.normal(0),I.normal(1),I.normal(2),J.normal(0),J.normal(1),J.normal(2));
-		
-		printf("ROTATIONAL ERROR: in p:%f, p2:%f  out: p:%f p2:%f\n",p.in.rotation, p2.in.rotation, p.out.rotation, p2.out.rotation);
-		//exit(-1);
-	}
 	
 	return p;
 	
@@ -2354,12 +1303,10 @@ PHIContainer Tessellation::calculatePHI(Vector &tessellationOrigin, Vector &mu_i
 	double S1;
 	
 	
-	//eta = M_PI/2 - acos(-(1/tan(lambda_j))*(1/tan(rho))+cos(lambda_k)*(1/sin(lambda_j))*(1/sin(rho)));
 	
 	eta = calculateEta(tessellationOrigin, mu_i, mu_j, lambda_i, lambda_j, dmui_dxi, dmuj_dxj, index_i, index_j, form_i, form_j, derivatives);
 	omega = calculateOmega(tessellationOrigin, mu_i, mu_j, dmui_dxi, dmuj_dxj, index_i, index_j, form_i, form_j, derivatives);
 	
-	//printf("OMEGA: %f ETA: %f\n",omega.rotation, eta.rotation);
 
 	S1 = sgn(M_PI-p.out.rotation);
 
@@ -2386,8 +1333,6 @@ PHIContainer Tessellation::calculatePHI(Vector &tessellationOrigin, Vector &mu_i
 	
 	if(derivatives){
 		
-		//if(p.out.rotation>=M_PI) p.out.rotation = (eta.rotation + omega.rotation) - 2*M_PI;
-		//else if(p.out.rotation<=-M_PI) p.out.rotation = (eta.rotation + omega.rotation) + 2*M_PI;
 		p.out.drotation_dxi = eta.drotation_dxi + omega.drotation_dxi;
 		p.out.drotation_dxj = eta.drotation_dxj + omega.drotation_dxj;
 		p.out.drotation_dxl = eta.drotation_dxl + omega.drotation_dxl;
@@ -2396,146 +1341,6 @@ PHIContainer Tessellation::calculatePHI(Vector &tessellationOrigin, Vector &mu_i
 		p.in.drotation_dxi = -eta.drotation_dxi + omega.drotation_dxi;
 		p.in.drotation_dxj = -eta.drotation_dxj + omega.drotation_dxj;
 		p.in.drotation_dxl = -eta.drotation_dxl + omega.drotation_dxl;
-		
-		if(form_i == SPLITTER){
-			if(!isWithinNumericalLimits(dot(p.in.drotation_dxi, p.out.drotation_dxj),0.0)){
-				printf("SPLITTER CHECK: I in (%f %f %f) out (%f %f %f)\n", p.in.drotation_dxi(0), p.in.drotation_dxi(1), p.in.drotation_dxi(2), p.out.drotation_dxi(0), p.out.drotation_dxi(1), p.out.drotation_dxi(2));
-				exit(-4);
-			}
-		}
-		
-		if(form_j == SPLITTER){
-			if(!isWithinNumericalLimits(dot(p.in.drotation_dxj, p.out.drotation_dxj),0.0)){
-				printf("SPLITTER CHECK: J in (%f %f %f) out (%f %f %f)\n", p.in.drotation_dxj(0), p.in.drotation_dxj(1), p.in.drotation_dxj(2), p.out.drotation_dxj(0), p.out.drotation_dxj(1), p.out.drotation_dxj(2));
-				exit(-4);
-			}
-		}
-		
-
-		
-		
-
-		Vector ai(3), aj(3), al(3), x(3), xp(3), xn(3);
-		Vector nip,nin,nj;
-		Vector njp,njn,ni;
-		int indexi, indexl, indexj;
-		double ri, rl, rj;
-		Rotation lambdaip;
-		Rotation lambdain;
-		Rotation lambdaj;
-		double dip,din,dj;
-		Vector fd_dPHIij_dxi_in(3);
-		Vector fd_dPHIij_dxi_out(3);
-		PHIContainer PHIp, PHIn;
-		Rotation lambdajp;
-		Rotation lambdajn;
-		Rotation lambdai;
-		double djp,djn,di;
-		Vector fd_dPHIij_dxj_in(3);
-		Vector fd_dPHIij_dxj_out(3);
-		
-
-
-		
-		//dphi_dxi
-		indexi = index_i;
-		indexj = index_j;
-		if(indexi >= 0 && indexj >= 0){
-			ai = atoms[indexi];
-			aj = atoms[indexj];
-			al = torigin;
-			ri = radii[indexi];
-			rj = radii[indexj];
-			rl = tradius;
-			
-			
-			nip = calculateInterfaceNormal(al, ai, dip);
-			nj = calculateInterfaceNormal(al, aj, dj);
-			
-			lambdaip = calculateLambda(dip, rl, ri, nip);
-			lambdaj = calculateLambda(dj, rl, rj, nj);
-			
-			PHIp = calculatePHI(tessellationOrigin, nip, nj, lambdaip, lambdaj);
-			
-			printf("PRECOMPARE: %f %f / %f %f\n",p.in.rotation, PHIp.in.rotation, p.out.rotation, PHIp.out.rotation);
-			
-			
-			
-			x=ai;
-			for(int j=0; j<3; ++j){
-				xp=x;
-				xp(j) = x(j) + FD;
-				xn=x;
-				xn(j) = x(j) - FD;
-				
-				nip = calculateInterfaceNormal(al, xp, dip);
-				nin = calculateInterfaceNormal(al, xn, din);
-				nj = calculateInterfaceNormal(al, aj, dj);
-				
-				lambdaip = calculateLambda(dip, rl, ri, nip);
-				lambdain = calculateLambda(din, rl, ri, nin);
-				lambdaj = calculateLambda(dj, rl, rj, nj);
-				
-				PHIp = calculatePHI(tessellationOrigin, nip, nj, lambdaip, lambdaj);
-				PHIn = calculatePHI(tessellationOrigin, nin, nj, lambdain, lambdaj);
-				
-				fd_dPHIij_dxi_out(j) = (PHIp.out.rotation - PHIn.out.rotation) / (2*FD);
-				fd_dPHIij_dxi_in(j) = (PHIp.in.rotation - PHIn.in.rotation) / (2*FD);
-			}
-			printf("dPHIij_dxi_in: (%f %f %f) FD: (%f, %f, %f) dPHIij_dxi_out: (%f %f %f) FD: (%f %f %f)\n",p.in.drotation_dxi(0),p.in.drotation_dxi(1),p.in.drotation_dxi(2), fd_dPHIij_dxi_in(0), fd_dPHIij_dxi_in(1), fd_dPHIij_dxi_in(2), p.out.drotation_dxi(0),p.out.drotation_dxi(1),p.out.drotation_dxi(2), fd_dPHIij_dxi_out(0), fd_dPHIij_dxi_out(1), fd_dPHIij_dxi_out(2));
-			for(int i=0; i<3; ++i){
-				//if(abs(p.in.drotation_dxi(i) - fd_dPHIij_dxi_in(i)) > FDT) exit(-1);
-				//if(abs(p.out.drotation_dxi(i) - fd_dPHIij_dxi_out(i)) > FDT) exit(-1);
-			}
-			
-		}
-	
-		
-		
-		
-		
-		//dphi_dxj
-		indexi = index_i;
-		indexj = index_j;
-		if(indexi >= 0 && indexj >= 0){
-			ai = atoms[indexi];
-			aj = atoms[indexj];
-			al = torigin;
-			ri = radii[indexi];
-			rj = radii[indexj];
-			rl = tradius;
-			
-			
-			x=aj;
-			for(int j=0; j<3; ++j){
-				xp=x;
-				xp(j) = x(j) + FD;
-				xn=x;
-				xn(j) = x(j) - FD;
-				
-				njp = calculateInterfaceNormal(al, xp, djp);
-				njn = calculateInterfaceNormal(al, xn, djn);
-				ni = calculateInterfaceNormal(al, ai, di);
-				
-				lambdajp = calculateLambda(djp, rl, rj, njp);
-				lambdajn = calculateLambda(djn, rl, rj, njn);
-				lambdai = calculateLambda(di, rl, ri, ni);
-				
-				PHIp = calculatePHI(tessellationOrigin, ni, njp, lambdai, lambdajp);
-				PHIn = calculatePHI(tessellationOrigin, ni, njn, lambdai, lambdajn);
-				
-				fd_dPHIij_dxj_out(j) = (PHIp.out.rotation - PHIn.out.rotation) / (2*FD);
-				fd_dPHIij_dxj_in(j) = (PHIp.in.rotation - PHIn.in.rotation) / (2*FD);
-			}
-			printf("dPHIij_dxj_in: (%f %f %f) FD: (%f, %f, %f) dPHIij_dxj_out: (%f %f %f) FD: (%f %f %f)\n",p.in.drotation_dxj(0),p.in.drotation_dxj(1),p.in.drotation_dxj(2), fd_dPHIij_dxj_in(0), fd_dPHIij_dxj_in(1), fd_dPHIij_dxj_in(2), p.out.drotation_dxj(0),p.out.drotation_dxj(1),p.out.drotation_dxj(2), fd_dPHIij_dxj_out(0), fd_dPHIij_dxj_out(1), fd_dPHIij_dxj_out(2));
-			for(int i=0; i<3; ++i){
-				//if(abs(p.in.drotation_dxj(i) - fd_dPHIij_dxj_in(i)) > FDT) exit(-1);
-				//if(abs(p.out.drotation_dxj(i) - fd_dPHIij_dxj_out(i)) > FDT) exit(-1);
-			}
-		}
-			
-		
-		
 		
 		
 	}
@@ -2549,7 +1354,6 @@ PHIContainer Tessellation::calculatePHI(Vector &tessellationOrigin, Vector &mu_i
 	
 	
 	if(q<0){
-		printf("EXCHANGE\n");
 		p3=p;
 		p.in=p3.out;
 		p.out=p3.in;
@@ -2621,50 +1425,7 @@ Rotation Tessellation::calculatePsi(Vector &tessellationOrigin, Vector &mu_i, Ma
 	r.rotation = getAngle(tessellationOrigin,mu_i);
 	r.rotation2 = r.rotation;
 	
-	/*
-	if((r.rotation < M_PI/4 || r.rotation > 3*M_PI/4)){
-		if(isWithinNumericalLimits(r.rotation,0)){
-			ey.zeros();
-			ey(1) = 1;
-			n_i = cross(tessellationOrigin, ey);
-			nn_i = cross(n_i, tessellationOrigin);
-		}
-		else{
-			n_i = cross(tessellationOrigin, mu_i);
-			nn_i = cross(n_i, tessellationOrigin);
-		
-		}
-		
-		//dotmui_nni = norm_dot(nn_i , mu_i);
-		dotmui_nni = dot(nn_i , mu_i);
-		
-		q0=1;
-		q1=1;
-		q2=0;
-		q3=-1;
-		
-		
-		acos_dotmui_nni = acos(dotmui_nni);
-		
-		if(acos_dotmui_nni <= M_PI/2) q0=-1;
-		if(r.rotation >= M_PI/2) q1=-1;
-		if(r.rotation >= M_PI/4 && acos_dotmui_nni >= M_PI/2){
-			q2 = 1;
-			q3 = 1;
-			
-		}
-		
-		
-		
-		psi2 = q3*(q2*M_PI - (q0*(q1*acos_dotmui_nni - M_PI/2)));
-		
-		r.rotation2 = psi2;	
-		
-	}
-*/
-	
-	
-	
+
 	
 	
 	if(derivatives){
@@ -2672,100 +1433,19 @@ Rotation Tessellation::calculatePsi(Vector &tessellationOrigin, Vector &mu_i, Ma
 		if(form != SPLITTER){
 			
 			
-			if(false && (r.rotation < M_PI/4 || r.rotation > 3*M_PI/4)){
-				if(isWithinNumericalLimits(r.rotation,0)){
-					ey.zeros();
-					ey(1) = 1;
-					n_i = cross(tessellationOrigin, ey);
-					nn_i = cross(n_i, tessellationOrigin);
-					printf("ZERO\n");
-				}
-				else{
-					n_i = cross(tessellationOrigin, mu_i);
-					nn_i = cross(n_i, tessellationOrigin);
-					printf("NORMAL\n");
+	
 				
-				}
-				
-				//dotmui_nni = norm_dot(nn_i , mu_i);
-				dotmui_nni = dot(nn_i , mu_i);
-				
-				q0=1;
-				q1=1;
-				q2=0;
-				q3=-1;
-				
-				
-				acos_dotmui_nni = acos(dotmui_nni);
-				
-				if(acos_dotmui_nni <= M_PI/2) q0=-1;
-				if(r.rotation >= M_PI/2) q1=-1;
-				if(r.rotation >= M_PI/4 && acos_dotmui_nni >= M_PI/2){
-					q2 = 1;
-					q3 = 1;
-					
-				}
-				
-				printf("acos %f\n",acos_dotmui_nni);
-				printf("q: %f %f %f %f\n",q0,q1,q2,q3);
-				
-				
-				
-				psi2 = q3*(q2*M_PI - (q0*(q1*acos_dotmui_nni - M_PI/2)));
-				
-				r.rotation2 = psi2;
-				
-				printf("psi2: %f %f\n",r.rotation, psi2);
-				printf("to: %f %f %f\n",tessellationOrigin(0),tessellationOrigin(1),tessellationOrigin(2));
-				//if(!isWithinNumericalLimits(r.rotation,psi2)) exit(-1);
-				
-				
-				
-				dni_dmui = -matrixCross(I,tessellationOrigin);
-				dnni_dni = matrixCross(I, tessellationOrigin);
-				dpsi_dnni = -2*q0*q1*q3*mu_i / sqrt(1-dotmui_nni*dotmui_nni);
-				dpsi_dmui = -2*q0*q1*q3*nn_i / sqrt(1-dotmui_nni*dotmui_nni);
-
-				dni_dxi = dni_dmui * dmu_dx;
-				dnni_dxi = dnni_dni * dni_dxi;
-				dpsi_dxi = 0.5*((dpsi_dnni.t() * dnni_dxi).t() + (dpsi_dmui.t() * dmu_dx).t());
-				
-				dpsi_dxl = -dpsi_dxi;
-				
-				
-				
+			if(isWithinNumericalLimits(mu_i(0),1.0) || isWithinNumericalLimits(mu_i(0),-1.0)){
+				dpsi_dmui = Vector(3).zeros();
+				dpsi_dxi = Vector(3).zeros();
+				dpsi_dxl = Vector(3).zeros();
 			}
 			else{
-
-				/*
-				if(isWithinNumericalLimits(mu_i(0),1.0)){
-					printf("ZERO LEVELII\n");
-					mu_i(0) = 1.0-MINISCULE;
-				}
-				if(isWithinNumericalLimits(mu_i(0),-1.0)){
-					printf("ZERO LEVELIII\n");
-					mu_i(0) = -1.0+MINISCULE;
-				}
-				*/
 				
-				
-				if(isWithinNumericalLimits(mu_i(0),1.0) || isWithinNumericalLimits(mu_i(0),-1.0)){
-					printf("ZERO LEVELIII\n");
-					dpsi_dmui = Vector(3).zeros();
-					dpsi_dxi = Vector(3).zeros();
-					dpsi_dxl = Vector(3).zeros();
-				}
-				else{
-					
-					dpsi_dmui = -tessellationOrigin/(sqrt(1-mu_i(0)*mu_i(0)));
-					dpsi_dxi = (dpsi_dmui.t() * dmu_dx).t();
-					dpsi_dxl = -dpsi_dxi;
-				}
+				dpsi_dmui = -tessellationOrigin/(sqrt(1-mu_i(0)*mu_i(0)));
+				dpsi_dxi = (dpsi_dmui.t() * dmu_dx).t();
+				dpsi_dxl = -dpsi_dxi;
 			}
-			
-			
-			
-			
 			
 			
 			r.drotation_dxi = dpsi_dxi;
@@ -2781,108 +1461,6 @@ Rotation Tessellation::calculatePsi(Vector &tessellationOrigin, Vector &mu_i, Ma
 		
 	
 
-		//finite differences
-		Vector fd_dpsi_dmui(3);
-		Vector fd_dpsi_dxi(3);
-		Vector fd_dpsi_dxl(3);
-		Vector x(3), xp(3), xn(3);
-		Vector np(3), nn(3);
-		Vector vp(3), vn(3);
-		double lenvn, lenvp;
-		Vector nip, nnip, nin, nnin;
-		double a0,a1;
-		
-		
-		if(form != SPLITTER){
-			//dpsi_dmui
-			
-
-				x = mu_i;
-				for(int j=0; j<3; ++j){
-					xp=x;
-					xp(j) = x(j) + FD;
-					xn=x;
-					xn(j) = x(j) - FD;
-					if(abs(dot(tessellationOrigin, xp)) > 1.0 || abs(dot(tessellationOrigin, xn)) > 1.0){
-						xp=x;
-						xp(j) = x(j) + 2 * FD;
-						xn=x;
-					}
-					if(abs(dot(tessellationOrigin, xp)) > 1.0 || abs(dot(tessellationOrigin, xn)) > 1.0){
-						xp=x;
-						xn=x;
-						xn(j) = x(j) - 2 * FD;
-					}
-					
-					fd_dpsi_dmui(j) = (getAngleBetweenNormals(tessellationOrigin, xp) -  getAngleBetweenNormals(tessellationOrigin, xn))/(2*FD);
-				}		
-				printf("dpsi_dmui: (%f %f %f) fd_dpsi_mui: (%f %f %f)\n",dpsi_dmui(0),dpsi_dmui(1),dpsi_dmui(2),fd_dpsi_dmui(0),fd_dpsi_dmui(1),fd_dpsi_dmui(2));
-				for(int j=0; j<3; ++j){
-					//if(abs(dpsi_dmui(j) - fd_dpsi_dmui(j)) > FDT || isnan(dpsi_dmui(j)) || isnan(fd_dpsi_dmui(j)) ) exit(-1);
-				}
-		
-		
-		
-			//dpsi_dxi
-				x = atoms[index];
-				for(int j=0; j<3; ++j){
-					xp=x;
-					xp(j) = x(j) + FD;
-					xn=x;
-					xn(j) = x(j) - FD;
-					
-					
-					vp= xp - torigin;
-					lenvp = norm(vp,2);
-					np=vp/lenvp;
-					if(form!=CONVEX)
-						np=-np;
-
-					vn= xn - torigin;
-					lenvn = norm(vn,2);
-					nn=vn/lenvn;
-					if(form!=CONVEX)
-						nn=-nn;
-					
-					a0 = calculatePsi(tessellationOrigin, np).rotation;
-					a1 = calculatePsi(tessellationOrigin, nn).rotation;
-					fd_dpsi_dxi(j) =  (a0-a1)/(2*FD);
-				}		
-				
-				printf("dpsi_dxi: (%f %f %f) fd_dpsi_dxi: (%f %f %f)\n",dpsi_dxi(0),dpsi_dxi(1),dpsi_dxi(2),fd_dpsi_dxi(0),fd_dpsi_dxi(1),fd_dpsi_dxi(2));
-				for(int j=0; j<3; ++j){
-				//	if(abs(dpsi_dxi(j) - fd_dpsi_dxi(j)) > FDT) exit(-1);
-				}
-		
-			//dpsi_dxl
-				x = torigin;
-				for(int j=0; j<3; ++j){
-					xp=x;
-					xp(j) = x(j) + FD;
-					xn=x;
-					xn(j) = x(j) - FD;
-					
-					
-					vp= atoms[index] - xp;
-					lenvp = norm(vp,2);
-					np=vp/lenvp;
-					if(form!=CONVEX)
-						np=-np;
-					
-
-					vn= atoms[index] - xn;
-					lenvn = norm(vn,2);
-					nn=vn/lenvn;
-					if(form!=CONVEX)
-						nn=-nn;
-					
-					fd_dpsi_dxl(j) = (getAngleBetweenNormals(tessellationOrigin, np) -  getAngleBetweenNormals(tessellationOrigin, nn))/(2*FD);
-				}		
-				printf("dpsi_dxl: (%f %f %f) fd_dpsi_dxl: (%f %f %f)\n",dpsi_dxl(0),dpsi_dxl(1),dpsi_dxl(2),fd_dpsi_dxl(0),fd_dpsi_dxl(1),fd_dpsi_dxl(2));
-				for(int j=0; j<3; ++j){
-				//	if(abs(dpsi_dxl(j) - fd_dpsi_dxl(j)) > FDT) exit(-1);
-				}
-		}
 		
 	
 		
@@ -2903,7 +1481,6 @@ Rotation Tessellation::calculatePsi(Vector &tessellationOrigin, Vector &mu_i, Ma
 IntersectionBranches::iterator Tessellation::increaseBranchInterator(IntersectionBranches::iterator it, CircularInterfacesPerAtom &circles){
 	IntersectionBranches* p;
 	p = it->second.body;
-	printf("FORM: %d id: %d\n",circles[it->second.id-1].form,it->second.id);
 	if(circles[it->second.id-1].form == CONVEX){
 		++it;
 		if(it == p->end()) it=p->begin();
@@ -2921,7 +1498,6 @@ IntersectionBranches::iterator Tessellation::increaseBranchInterator(Intersectio
 IntersectionBranches::iterator Tessellation::decreaseBranchInterator(IntersectionBranches::iterator it, CircularInterfacesPerAtom &circles){
 	IntersectionBranches* p;
 	p = it->second.body;
-	printf("FORM: %d id: %d\n",circles[it->second.id-1].form,it->second.id);
 	
 	if(circles[it->second.id-1].form == CONVEX){
 		if(it == p->begin()) it=p->end();
@@ -2941,7 +1517,6 @@ IntersectionBranches::iterator Tessellation::decreaseBranchInterator(Intersectio
 IntersectionBranches::iterator Tessellation::increaseBranchInterator(multimap<double, IntersectionBranch>::iterator it, int ignore, CircularInterfacesPerAtom &circles){
 	IntersectionBranches* p;
 	p = it->second.body;
-	printf("FORM: %d id: %d\n",circles[it->second.id-1].form,it->second.id);
 	
 	if(circles[it->second.id-1].form == CONVEX){
 		++it;
@@ -2962,7 +1537,6 @@ IntersectionBranches::iterator Tessellation::increaseBranchInterator(multimap<do
 IntersectionBranches::iterator Tessellation::decreaseBranchInterator(IntersectionBranches::iterator it, int ignore, CircularInterfacesPerAtom &circles){
 	IntersectionBranches* p;
 	p = it->second.body;
-	printf("FORM: %d id: %d\n",circles[it->second.id-1].form,it->second.id);
 	
 	if(circles[it->second.id-1].form == CONVEX){
 		if(it == p->begin()) it=p->end();
@@ -2974,7 +1548,6 @@ IntersectionBranches::iterator Tessellation::decreaseBranchInterator(Intersectio
 		if(it == p->end()) it=p->begin();
 	}
 	
-	//printf("chk %d against %d\n",it->second.it->second.id, ignore);
 	if(it->second.it->second.id == ignore) it = decreaseBranchInterator(it, ignore, circles);
 	
 	
@@ -3069,11 +1642,9 @@ void Tessellation::deleteIntersectionPoint(IntersectionBranches::iterator &it,In
 	//if all branches have been deleted, the circular interface is completely interior and can be safely disregarded
 	if(body->size()==0){
 		circles[id-1].valid = false;
-		printf("INVALIDATING %d\n",id);		
 	}
 	if(body_mirror->size()==0){
 		circles[id_mirror-1].valid = false;
-		printf("INVALIDATING %d\n",id_mirror);		
 	}
 	
 }
@@ -3125,7 +1696,6 @@ void Tessellation::createIntersectionBranch(IntersectionAddress &address, PHICon
 	x.second.flagged = false;
 	it0 = J.intersectionBranches.insert(x);
 	
-	//printf("address %d-%d side %d IN\n",address.id0, address.id1, address.id1);
 	
 	x.first = PHII.out.rotation;
 	x.second.node=&intersectionGraph[address];
@@ -3137,7 +1707,6 @@ void Tessellation::createIntersectionBranch(IntersectionAddress &address, PHICon
 	it1 = I.intersectionBranches.insert(x);
 	it0->second.it=it1;
 
-	//printf("address %d-%d side OUT\n",address.id0, address.id1, address.id0);
 	
 	
 	intersectionGraph[address].rotation0=PHII.out;
@@ -3169,13 +1738,11 @@ bool Tessellation::addToEraseList(map<IntersectionBranches::iterator, bool, Iter
 	IntersectionBranches::iterator it_mirror;
 	it_mirror = it->second.it;
 	
-	printf("[%d-%d] id!=limit: %d mirror_id!=limit: %d flagged: %d mirror_flagged: %d masterfind: %d eraselistfind: %d\n",it->second.node->id0,it->second.node->id1,it->second.id != limit,  it_mirror->second.id != limit , !it->second.flagged ,  !it_mirror->second.flagged , masterEraseList.find(it_mirror)==masterEraseList.end()  , eraseList.find(it_mirror)==eraseList.end());
 	
 	if(it->second.id != limit && it_mirror->second.id != limit && !it->second.flagged &&  !it_mirror->second.flagged && masterEraseList.find(it_mirror)==masterEraseList.end()  && eraseList.find(it_mirror)==eraseList.end()){
 			eraseList[it]=true;
 			it->second.flagged=true;
 			it_mirror->second.flagged=true;
-			printf("adding %d-%d\n",it->second.node->id0,it->second.node->id1);
 	}
 	else return false;
 	
@@ -3190,10 +1757,8 @@ bool Tessellation::addToEraseListCascade(map<IntersectionBranches::iterator, boo
 	
 	it_mirror = it->second.it;
 	
-	printf("TRYING TO ADD %d %d\n",it->second.node->id0,it->second.node->id1);
 	if(it->second.id != limit && it_mirror->second.id != limit){
 
-		printf("spreading %d-%d limit(%d)\n",it->second.node->id0,it->second.node->id1,limit);
 	
 		it2 = increaseBranchInterator(it, circles);
 		res = addToEraseList(masterEraseList, eraseList, it2, limit) || res;
@@ -3209,26 +1774,21 @@ bool Tessellation::addToEraseListCascade(map<IntersectionBranches::iterator, boo
 		res = addToEraseList(masterEraseList, eraseList, it2, limit) || res;
 	}
 	else{
-		printf("trying to spread %d-%d limit(%d)\n",it->second.node->id0,it->second.node->id1,limit);
 		
 		if(it->second.direction == IN){
-			printf("IN\n");
 			it2 = decreaseBranchInterator(it, circles);
 			res = addToEraseList(masterEraseList, eraseList, it2, limit) || res;
 		}
 		else{
-			printf("OUT\n");
 			it2 = increaseBranchInterator(it, circles);
 			res = addToEraseList(masterEraseList, eraseList, it2, limit) || res;
 		}
 		
 		if(it_mirror->second.direction == IN){
-			printf("MIRROR IN\n");
 			it2 = decreaseBranchInterator(it_mirror, circles);
 			res = addToEraseList(masterEraseList, eraseList, it2, limit) || res;
 		}
 		else{
-			printf("MIRROR OUT\n");
 			it2 = increaseBranchInterator(it_mirror, circles);
 			res = addToEraseList(masterEraseList, eraseList, it2, limit) || res;
 		}
@@ -3278,10 +1838,8 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 	for(i=0; i < circles.size(); ++i){
 		
 		I = &circles[i];
-		printf("PROCESSING %d id: %d\n",i,I->id);
 		processed[i]=true;
 		
-		if(I->form!=CONVEX) printf("I FORM CONCAVE\n");
 		
 		
 		
@@ -3296,13 +1854,11 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 		for(it_j=I->circularIntersections.begin(); it_j != I->circularIntersections.end(); ++it_j){
 			j=(*it_j).first;
 			J = &circles[j];
-			printf("VALIDNESS: [%d]: %d\n",J->id,J->valid);
 		}
 		
 		for(it_j=I->circularIntersections.begin(); it_j != I->circularIntersections.end(); ++it_j){
 			j=(*it_j).first;
 			J = &circles[j];
-			printf("CHECKING CIRCLE %d id: %d\n",j,J->id);
 			if(J->valid){
 				
 				
@@ -3311,9 +1867,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 				
 				it_p = processed.find(j);
 				if(it_p != processed.end()){
-					//printf("processing intersection with %d\n",j);
 					
-					if(J->form!=CONVEX) printf(" J FORM CONCAVE\n");
 					
 					addressIJ.id0 = I->id;
 					addressIJ.id1 = J->id;
@@ -3336,15 +1890,6 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 			}
 		}
 		
-		for(int m=0; m<circles.size(); ++m){
-			printf("circle %d\n",m);
-			for(it_main = circles[m].intersectionBranches.begin(); it_main != circles[m].intersectionBranches.end(); ++it_main){
-				if(it_main->second.direction==OUT)
-					printf("[%d] (%d,%d) d: %f - (%f,%f) (OUT)\n",it_main->second.id, it_main->second.node->id0, it_main->second.node->id1, it_main->first, it_main->second.node->rotation0.rotation, it_main->second.node->rotation1.rotation);
-				else
-					printf("[%d] (%d,%d) d: %f - (%f,%f) (IN)\n",it_main->second.id, it_main->second.node->id0, it_main->second.node->id1, it_main->first, it_main->second.node->rotation0.rotation, it_main->second.node->rotation1.rotation);
-			}
-		}
 		
 			
 			
@@ -3360,7 +1905,6 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 			//if(!it_main->second.visited)
 			{
 				it = it_main;
-				printf("investigating starts\n");
 				
 				//first, decide if it is an internal or external intersection point.
 				//internal points have an IN anchestor and an OUT successor.
@@ -3368,19 +1912,11 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 				
 				it_mirror = it->second.it;
 				
-				printBranch("it",it);
-				printBranch("it_mirror",it_mirror);
 				
 				it_next = increaseBranchInterator(it, circles);
-				printBranch("it_next",it_next);
-				
 				it_prev = decreaseBranchInterator(it, circles);
-				printBranch("it_prev",it_prev);
-				
 				it_mirror_next = increaseBranchInterator(it_mirror, circles);
-				printBranch("it_mirror_next",it_mirror_next);
 				it_mirror_prev = decreaseBranchInterator(it_mirror, circles);
-				printBranch("it_mirror_prev",it_mirror_prev);
 				
 				
 				//if the mirror was previously empty, then we just added 2 branches. Hence, if it has two branches, it's considered empty.
@@ -3391,16 +1927,11 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 				
 				if(!empty){
 					it_mirror_next_ignore = increaseBranchInterator(it_mirror, it->second.id, circles);
-				printBranch("it_mirror_next_ignore",it_mirror_next_ignore);
 					it_mirror_prev_ignore = decreaseBranchInterator(it_mirror, it->second.id, circles);
-				printBranch("it_mirror_prev_ignore",it_mirror_prev_ignore);
 				}
 				else{
-					//printf("EMPTY\n");
 					it_mirror_next_ignore = increaseBranchInterator(it_mirror, circles);
-				printBranch("it_mirror_next_ignore",it_mirror_next_ignore);
 					it_mirror_prev_ignore = decreaseBranchInterator(it_mirror, circles);
-				printBranch("it_mirror_prev_ignore",it_mirror_prev_ignore);
 				}
 				
 				
@@ -3408,33 +1939,21 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 				
 				
 				
-				printf("it_mirror_prev ig forward %d\n",it_mirror_prev_ignore->second.forward);
-				printf("it_mirror_prev ig backward %d\n",it_mirror_prev_ignore->second.backward);
-				printf("it_mirror_next ig forward %d\n",it_mirror_next_ignore->second.forward);
-				printf("it_mirror_next ig backward %d\n",it_mirror_next_ignore->second.backward);
 				
 				if(empty){
-					printf("EMPTY\n");
 					q = 1;
 					if(it->second.direction == IN) q*=-1;
-					printf("Q: %d\n",q);
-					//if(circles[it->second.id-1].form != CONVEX) q*=-1;
-					//printf("Q: %d\n",q);
-					//if(circles[it_mirror->second.id-1].form != CONVEX) q*=-1;
-					//printf("Q: %d\n",q);
 					
 					
 					
 					
 					if(q>0){
-						printf("POSITIVE Q\n");
 						it->second.forward = INTERNAL;
 						it->second.backward = EXTERNAL;
 						it_mirror->second.forward = EXTERNAL;
 						it_mirror->second.backward = INTERNAL;
 					}
 					else{
-						printf("NEGATIVE Q\n");
 						it->second.forward = EXTERNAL;
 						it->second.backward = INTERNAL;
 						it_mirror->second.forward = INTERNAL;
@@ -3444,10 +1963,8 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 				}
 				else{
 					if(it->second.direction == IN){
-						printf("IN\n");
 						
 						if(it_mirror_prev_ignore->second.forward == EXTERNAL && it_mirror_next_ignore->second.backward == EXTERNAL){
-							printf("EXTERNAL\n");
 							connectIntersectionPoints(*it_mirror_prev->second.node, *it_mirror->second.node, intersectionGraph);
 							connectIntersectionPoints(*it_mirror->second.node, *it_next->second.node, intersectionGraph);
 							it->second.backward=INTERNAL;
@@ -3456,27 +1973,21 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 							it_mirror->second.forward=INTERNAL;
 							
 							if(it_mirror_next->second.it->second.id != it->second.id){
-								printf("ERASING [0] %d %d\n",it_mirror_next->second.node->id0,it_mirror_next->second.node->id1);
 								eraseList[it_mirror_next]=true;
 							}
 							if(it_prev->second.it->second.id != it_mirror->second.id){
-								printf("ERASING [1] %d %d\n",it_prev->second.node->id0,it_prev->second.node->id1);
 								eraseList[it_prev]=true;
 							}
 							
 						}
 						else{
-							printf("INTERNAL\n");
-							printf("ERASING [2] %d %d\n",it->second.node->id0,it->second.node->id1);
 							eraseList[it]=true;
 						}
 					}
 					
 					if(it->second.direction == OUT){
-						printf("OUT\n");
 						
 						if(it_mirror_next_ignore->second.backward == EXTERNAL && it_mirror_prev_ignore->second.forward == EXTERNAL){
-							printf("EXTERNAL\n");
 							connectIntersectionPoints(*it_mirror->second.node, *it_mirror_next->second.node, intersectionGraph);
 							connectIntersectionPoints(*it_prev->second.node, *it->second.node, intersectionGraph);
 							it->second.backward=EXTERNAL;
@@ -3485,104 +1996,28 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 							it_mirror->second.forward=EXTERNAL;
 							
 							if(it_mirror_prev->second.it->second.id != it->second.id){
-								printf("ERASING [0] %d %d\n",it_mirror_prev->second.node->id0,it_mirror_prev->second.node->id1);
 								eraseList[it_mirror_prev]=true;
 							}
 							if(it_next->second.it->second.id != it_mirror->second.id){
-								printf("ERASING [1] %d %d\n",it_next->second.node->id0,it_next->second.node->id1);
 								eraseList[it_next]=true;
 							}
 							
 						}
 						else{
-							printf("INTERNAL\n");
-							printf("ERASING [2] %d %d\n",it->second.node->id0,it->second.node->id1);
 							eraseList[it]=true;
 						}
 					}
 					
 					
-					/*
-					
-					//external
-					if(it_mirror_prev_ignore->second.direction == IN){
-						if(it->second.direction == IN){
-							printf("EXTERNAL IN\n");
-							
-							if(it_mirror_prev->second.direction==IN && it_next->second.direction==OUT){
-								connectIntersectionPoints(*it_mirror_prev->second.node, *it_mirror->second.node, intersectionGraph);
-								connectIntersectionPoints(*it_mirror->second.node, *it_next->second.node, intersectionGraph);
-								
-								if(!empty && I->form!=CONVEX && it_mirror_next->second.it->second.id != it->second.id){
-									//deleteIntersectionPoint(it_mirror_next, intersectionGraph);
-									eraseList[it_mirror_next]=true;
-									printf("DELETE %d-%d (NEXT)\n",it_mirror_next->second.node->id0,it_mirror_next->second.node->id1);
-
-								}
-								
-							}
-							else printf("REJECT\n");
-							
-						}
-						else{
-							printf("EXTERNAL OUT\n");
-							if(it_prev->second.direction==IN && it_mirror_next->second.direction==OUT){
-								connectIntersectionPoints(*it_mirror->second.node, *it_mirror_next->second.node, intersectionGraph);
-								connectIntersectionPoints(*it_prev->second.node, *it->second.node, intersectionGraph);
-								
-								if(!empty && I->form==CONVEX && it_mirror_prev->second.it->second.id != it->second.id){
-									//deleteIntersectionPoint(it_mirror_prev, intersectionGraph);
-									eraseList[it_mirror_prev]=true;
-									printf("DELETE %d-%d (PREV)\n",it_mirror_prev->second.node->id0,it_mirror_prev->second.node->id1);
-									
-								}
-							
-							}
-							else printf("REJECT\n");
-							
-						}
-					}
-					//internal
-					else{
-							
-							if(it->second.direction == IN){
-								if(!empty && it_mirror_next->second.it->second.id != it->second.id){
-									//deleteIntersectionPoint(it_mirror_next, intersectionGraph);
-									eraseList[it_mirror_next]=true;
-									
-									printf("DELETE CONV IN  %d-%d (NEXT)\n",it_mirror_next->second.node->id0,it_mirror_next->second.node->id1);
-								}
-							}
-							else{
-								if(!empty && it_mirror_prev->second.it->second.id != it->second.id){
-									//deleteIntersectionPoint(it_mirror_prev, intersectionGraph);
-									eraseList[it_mirror_prev]=true;
-									
-									printf("DELETE CONV OUT %d-%d (PREV)\n",it_mirror_prev->second.node->id0,it_mirror_prev->second.node->id1);
-									
-								}
-							}
-							
-						
-						
-						eraseList[it]=true;
-						//deleteIntersectionPoint(it, intersectionGraph);
-						printf("DELETE POINT\n");
-					}
-					*/
 					
 					
 				}
 				
-				printf("-------------------------------------------------\n");
-				printIntersectionGraph(intersectionGraph);
-				printf("-------------------------------------------------\n");
 				
 			}
 			
 		}
 		
-		printf("CASCADE\n");
 		
 		
 		for(it_e=eraseList.begin(); it_e != eraseList.end(); ++it_e){
@@ -3591,27 +2026,19 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 		}
 		
 		do{
-			printf("-------MASTER LIST--------\n");
 			for(it_e=eraseList.begin(); it_e != eraseList.end(); ++it_e){
 				it = it_e->first;
-				printf("%d-%d\n",it->second.node->id0,it->second.node->id1);
 			}
-			printf("-------------------------------");
-			printf("-------SEARCH LIST--------\n");
 			for(it_e=eraseList2.begin(); it_e != eraseList2.end(); ++it_e){
 				it = it_e->first;
-				printf("%d-%d\n",it->second.node->id0,it->second.node->id1);
 			}
-			printf("-------------------------------");
 			
-			printf("ERASING %d\n",eraseList2.size());
 			addedToEraseList = false;
 			eraseList3.clear();
 			
 			int b2=0;
 			for(it_e=eraseList2.begin(); it_e != eraseList2.end(); ++it_e){
 				it = it_e->first;
-				printf("B: %d\n",b2);
 				++b2;
 				addedToEraseList = addToEraseListCascade(eraseList, eraseList3, it, I->id, circles) || addedToEraseList; //order of the or operands is important
 				
@@ -3630,19 +2057,13 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 		
 		for(it_e=eraseList.begin(); it_e != eraseList.end(); ++it_e){
 			it = it_e->first;
-			printf("REMOVING IP: %d\n",&*it);
-			printf("--: %d-%d\n",it->second.node->id0,it->second.node->id1);
 			deleteIntersectionPoint(it,intersectionGraph,circles);
 		}
 		
 		
-		printf("-------------------------------------------------\n");
-		printIntersectionGraph(intersectionGraph);
-		printf("-------------------------------------------------\n");
 		
 		
 	}
-	printf("GENERATING SASAS\n");
 	
 	int s = 0;
 	
@@ -3654,7 +2075,6 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 			x.id0 = start.id0;
 			x.id1 = start.id1;
 			
-			printf("STARTING WITH: %d - %d\n",x.id0,x.id1);
 			
 			
 			valid=true;
@@ -3662,7 +2082,6 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 			do{
 				
 				if(intersectionGraph[x].visited || (intersectionGraph[x].pointsTo0==0 && intersectionGraph[x].pointsTo1==0)){
-					printf("BREAK\n");
 					valid = false;
 					break;
 					
@@ -3680,7 +2099,6 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 				sasaNode.id1 = x.id1;
 				sasaNode.index0 = circles[cid0].index;
 				sasaNode.index1 = circles[cid1].index;;
-				printf("ACTIVATING INDEX: %d AND %d (%d,%d)\n",sasaNode.index0, sasaNode.index1, x.id0, x.id1);
 				sasaNode.rotation0 = intersectionGraph[x].rotation0;
 				sasaNode.rotation1 = intersectionGraph[x].rotation1;
 				sasaNode.lambda = circles[cid0].lambda;
@@ -3691,8 +2109,6 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 				sasaNode.form0 = circles[cid0].form;
 				sasaNode.form1 = circles[cid1].form;
 				
-				double ank = getAngle(circles[cid0].normal, circles[cid1].normal);
-				//printf("VERIFICATION.. g0: %f g1: %f cosrho: %f PHI0: %f PHI1: %f rotational part: %f n0(%f, %f, %f) n1(%f, %f, %f)\n",circles[cid0].g/radius,circles[cid1].g/radius, cos(ank), sasaNode.angle0,  sasaNode.angle1, rotationalAngle(tessellationOrigin, circles[cid0],circles[cid1]),circles[cid0].normal(0),circles[cid0].normal(1),circles[cid0].normal(2),circles[cid1].normal(0),circles[cid1].normal(1),circles[cid1].normal(2)); 
 				
 				
 				
@@ -3706,15 +2122,12 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 				
 				
 				
-					
-				printf("NEXT: %d - %d\n",x.id0,x.id1);
 				
 				
 			}
 			while(!(intersectionGraph[x].id0 == start.id0 && intersectionGraph[x].id1 == start.id1));
 			
 			if(valid){
-				printf("ADDING SASA\n");
 				potentialSasa.tessellationOrigin = tessellationOrigin;
 				potentialSasa.hemisphere = hemisphere;
 				sasas.push_back(potentialSasa);
@@ -3724,7 +2137,6 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 	
 
 
-	outputGaussBonnetData(filename, radius, circles, sasas, intersectionGraph);
 
 	
 	

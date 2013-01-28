@@ -202,7 +202,7 @@ double IntegratorNumerical::integrate(Molecule *molecule){
 			}
 		}
 		
-		printf("SASA: %d, SESA: %d\n",sasaCount,sesaCount);
+//		printf("SASA: %d, SESA: %d\n",sasaCount,sesaCount);
 		
 		a = 4*M_PI*(double)sasaCount / ((double)(sasaCount+sesaCount));
 		

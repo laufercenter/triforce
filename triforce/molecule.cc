@@ -173,14 +173,14 @@ string Molecule::string2UpperCase(string s){
 
 
 void Molecule::print(){
-	fprintf(stderr,"Molecule:\n");
+	fprintf(stdout,"Molecule:\n");
 	for(int i=0;i<atomicPointers.size();++i){
-		fprintf(stderr,"[%d]: (%f, %f, %f), eps: %f, sig: %f, pointers: (%d,%d,%d)\n",i,atoms[i](0),atoms[i](1),atoms[i](2),epsilons[i],sigmas[i],
+		fprintf(stdout,"[%d]: (%f, %f, %f), eps: %f, sig: %f, pointers: (%d,%d,%d)\n",i,atoms[i](0),atoms[i](1),atoms[i](2),epsilons[i],sigmas[i],
 		       atomicPointers[i].x,atomicPointers[i].y,atomicPointers[i].z);
 	}
-	fprintf(stderr,"Areas and forces:\n");
+	fprintf(stdout,"Areas and forces:\n");
 	for(int i=0;i<areas.size();++i){
-		fprintf(stderr,"[%d]: %f (%f, %f, %f) pointers: (%d, %d, %d)\n",i,*(areas[i]), *(forces[i][0]), *(forces[i][1]), *(forces[i][2]), forces[i][0], forces[i][1], forces[i][2]);
+		fprintf(stdout,"[%d]: %f (%f, %f, %f) pointers: (%d, %d, %d)\n",i,*(areas[i]), *(forces[i][0]), *(forces[i][1]), *(forces[i][2]), forces[i][0], forces[i][1], forces[i][2]);
 		//printf("[%d]: pointers: (%d, %d, %d, %d)\n",i,areas[i], forces[i][0], forces[i][1], forces[i][2]);
 	}
 	

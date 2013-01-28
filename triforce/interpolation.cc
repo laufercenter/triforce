@@ -142,7 +142,7 @@ double Interpolation::multiPointTaylor(Vector &x, double &phi){
 	phi = data->getAuxiliaryCell(sp[closestSP](0),sp[closestSP](1),sp[closestSP](2));
 	
 	
-	
+	/*
 	for(int i=0;i<sp.size();i++){
 		double t = taylorExtension(sp[i],x);
 		
@@ -151,7 +151,7 @@ double Interpolation::multiPointTaylor(Vector &x, double &phi){
 			//exit(-1);
 		}
 	}
-	
+	*/
 	
 	//printf("---- %f\n",v);
 	
