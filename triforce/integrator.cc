@@ -145,17 +145,79 @@ void IntegratorTriforce::addForce(int i, Vector force){
 	else printf("DISREGARDING SPLITTER FORCE %f %f %f\n",force(0),force(1),force(2));
 }
 
+
+
+bool IntegratorTriforce::isWithinNumericalLimits(double x, double l){
+	if(abs(x-l)<=THRESHOLD_NUMERICAL) return true;
+	else return false;
+}
+
+
+Vector  IntegratorTriforce::recoverCircularInterface(Vector p, double psi_b, double lambda_b, double PHI_b0){
+	Vector c(2);
+	if(isWithinNumericalLimits(psi_b,0)) psi_b=0.0001;
+	printf("l: %f %f %f %f  %f %f\n",lambda_b, psi_b, PHI_b0, cos(PHI_b0), p(0), p(1));
+	double denominator = (lambda_b*lambda_b + psi_b*psi_b - 2*lambda_b*psi_b*cos(PHI_b0));
+	
+	c(0) = (psi_b * (p(0) * psi_b - lambda_b * (p(0) * cos(PHI_b0) + p(1) * sin(PHI_b0)))) / denominator;
+	c(1) = (psi_b * (p(1) * psi_b - p(1) * lambda_b * cos(PHI_b0) + p(0) * lambda_b * sin(PHI_b0))) / denominator;
+	printf("c: %f %f %f\n",c(0),c(1), denominator);
+	
+	return c;
+	
+}
+
+
+Vector  IntegratorTriforce::recoverCircularInterface(double psi_a, double lambda_a, double PHI_a1, double psi_b, double lambda_b, double PHI_b0){
+	Vector c(2);
+	
+	double denominator = (lambda_b*lambda_b + psi_b*psi_b - 2*lambda_b*psi_b*cos(PHI_b0));
+	
+	c(0) = -(psi_b*(lambda_a*psi_b*sin(PHI_a1)-lambda_a*lambda_b*sin(PHI_a1-PHI_b0)+lambda_b*psi_a*sin(PHI_b0))) / denominator;
+	c(1) = (psi_b*(psi_a*psi_b+lambda_a*psi_b*cos(PHI_a1)-lambda_b*(lambda_a*cos(PHI_a1-PHI_b0)+psi_a*cos(PHI_b0)))) / denominator;
+	
+	return c;
+	
+
+}
+
+Vector  IntegratorTriforce::intersectionPoint(Vector c, double psi, double lambda, double PHI){
+	Vector r(2);
+	double d;
+	d = norm(c,2);
+	
+		
+	if(isWithinNumericalLimits(d,0)) {
+		c(0) = 0;
+		c(1) = 1;
+	}
+	else{
+		c = c/d;
+	}
+	
+	r(0) = c(0) - (c(0) * lambda * cos(PHI)) + (c(1)*lambda*sin(PHI));
+	r(1) = c(1) - (c(1) * lambda * cos(PHI)) - (c(0)*lambda*sin(PHI));
+	
+	return r;
+	
+}
+
 double IntegratorTriforce::integrateSASA(int l, SASA &sasa, double radius){
 	SASANodeList::iterator it;
-	SASANode x0, x1;
+	SASANodeList::iterator it2;
+	SASANode x0, x1, x2;
 	double area=0;
 	Area integral;
 	double r_square;
 	double actphi;
 	double phi;
 	double sign_prephi;
+	Vector c(2),c2(2);
+	double totalAngle,a;
+	Vector p0, p1, p2, p01, p12, n01(2);
+	double s;
 	
-	
+	totalAngle=0;
 	r_square = radius*radius;
 	phi = 0;
 	sign_prephi = 1;
@@ -177,13 +239,52 @@ double IntegratorTriforce::integrateSASA(int l, SASA &sasa, double radius){
 		addForce(x1.index1, integral.force_k * r_square);
 		addForce(l, integral.force_l * r_square);
 		
+		/*
+		it2=it;
+		++it2;
+		if(it2==sasa.sasa.end()) it2 = sasa.sasa.begin();
+		x2 = *it2;
+		
+		printf("X: (%d %d) (%d %d) (%d %d)\n",x0.index0, x0.index1, x1.index0, x1.index1, x2.index0, x2.index1);
+		
+		c(0) = 0;
+		c(1) = x1.psi.rotation;
+		if(isWithinNumericalLimits(x1.psi.rotation,0))
+			c(1) = 0.0001;
+		
+		p0 = intersectionPoint(c, x1.psi.rotation, x1.lambda.rotation, x0.rotation1.rotation);
+		printf("p0: %f %f\n",p0(0),p0(1));
+		p1 = intersectionPoint(c, x1.psi.rotation, x1.lambda.rotation, x1.rotation0.rotation);
+		printf("p1: %f %f\n",p1(0),p1(1));
+		c2 = recoverCircularInterface(p1, x2.psi.rotation, x2.lambda.rotation, x1.rotation1.rotation);
+		p2 = intersectionPoint(c2, x2.psi.rotation, x2.lambda.rotation, x2.rotation0.rotation);
+		printf("p2: %f %f\n",p2(0),p2(1));
+		
+		p01 = p1 - p0;
+		p12 = p2 - p1;
+		n01(0) = p01(1);
+		n01(1) = -p01(0);
+		
+		a = norm_dot(c,p12);
+		printf("A1: %f\n",a);
+		a = acos(a);
+		printf("A: %f\n",a);
+		s = sgn(dot(p12, n01));
+		
+		if(s < 0) a = -a;
+		totalAngle += a;
+		*/
+
 		
 		
 		x0=x1;
 		
 	}
 	
-		
+	//printf("TANGLE: %f %f\n",totalAngle, area);
+	
+	//s = sgn(totalAngle);
+	//area = abs(area)*s;
 	
 	printf("+++++ SAA END +++++\n\n");
 	
@@ -414,6 +515,8 @@ mat33 IntegratorTriforce::rotz(double theta){
 	return m;
 		
 }
+
+
 
 
 Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Vector integrationOrigin, double &phi){

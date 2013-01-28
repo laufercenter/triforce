@@ -96,6 +96,12 @@ private:
 	bool isInPositiveEpsilonRange(double v, double eps);
 	double V2phi(Vector &integrationOrigin, Vector cv, Vector &v);
 	mat33 rotz(double theta);
+
+	Vector recoverCircularInterface(Vector p, double psi_b, double lambda_b, double PHI_b0);
+	Vector recoverCircularInterface(double psi_a, double lambda_a, double PHI_a1, double psi_b, double lambda_b, double PHI_b0);
+	Vector intersectionPoint(Vector c, double psi, double lambda, double PHI);
+	bool isWithinNumericalLimits(double x, double l);
+	
 	
 };
 
