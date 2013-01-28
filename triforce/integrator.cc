@@ -73,6 +73,7 @@ double IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 	
 	sasas = tessellation->sasas();
 	area = 0;
+	
 	//iterate over all atoms
 	for(int i=0;i<sasas.size();++i){
 		radius = sasas[i].radius;
@@ -114,11 +115,11 @@ double IntegratorTriforce::integrateAtomicSASA(int l, SASAsForAtom sasasForAtom,
 	
 	
 	
-	if(area0 < 0 && abs(area0) < THRESHOLD_NEGATIVE) area0 = 0;
-	if(area0 < 0) area0 = 2*M_PI+area0;
+	//if(area0 < 0 && abs(area0) < THRESHOLD_NEGATIVE) area0 = 0;
+	if(area0 <= 0) area0 = 2*M_PI+area0;
 
-	if(area1 < 0 && abs(area1) < THRESHOLD_NEGATIVE) area1 = 0;
-	if(area1 < 0) area1 = 2*M_PI+area1;
+	//if(area1 < 0 && abs(area1) < THRESHOLD_NEGATIVE) area1 = 0;
+	if(area1 <= 0) area1 = 2*M_PI+area1;
 	
 	
 	
@@ -292,7 +293,6 @@ Vector IntegratorTriforce::lookUp(double PHI, double psi, double lambda, double 
 	
 	
 	
-	
 	for(i=0;i<4;++i){
 		//printf("start lookup %d (%f %f %f)\n",i,PHI,psi,lambda);
 		res(i) = -data[i]->interpolate(aPHI, apsi, alambda, phi);
@@ -438,6 +438,25 @@ mat33 IntegratorTriforce::rotz(double theta){
 }
 
 
+double IntegratorTriforce::logisticSmoother(double x){
+	return 1.0/(1.0+exp(-((x*2*LOGISTIC_SMOOTHER_PARAMETER)-LOGISTIC_SMOOTHER_PARAMETER)));
+}
+
+
+Vector IntegratorTriforce::smoother(Vector x, double lambda){
+	double r,r2;
+	
+	r = lambda/(M_PI/2.0);
+	if(r<=LAMBDA_LOGISTIC_LIMIT){
+		r2 = r/LAMBDA_LOGISTIC_LIMIT;
+		for(int i=0; i<3; i++){
+			x(i) = x(i) * logisticSmoother(r2);
+		}
+	}
+	
+	return x;
+}
+
 
 
 Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Vector integrationOrigin, double &phi){
@@ -517,6 +536,7 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	
 	q= s_convex * s_direction;
 	
+	
 	force_i = -q*(Tij(1) * PHIij.drotation_dxj);
 	force_j = q*(Tjk(1) * PHIjk.drotation_dxi + Tjk(2) * psi.drotation_dxi + Tjk(3) * lambda.drotation_dxi) - q*(Tij(1) * PHIij.drotation_dxi + Tij(2) * psi.drotation_dxi + Tij(3) * lambda.drotation_dxi);
 	force_k = q*(Tjk(1) * PHIjk.drotation_dxj);
@@ -543,8 +563,11 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	a.force_k = q* force_k;
 	a.force_l = q* force_l;
 	
-	
-
+	//here, we apply a logistic function to smooth the derivative for small lambdas
+	a.force_i = smoother(a.force_i, lambda.rotation);
+	a.force_j = smoother(a.force_j, lambda.rotation);
+	a.force_k = smoother(a.force_k, lambda.rotation);
+	a.force_l = smoother(a.force_l, lambda.rotation);
 
 	
 	return a;
