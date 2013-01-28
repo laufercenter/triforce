@@ -34,6 +34,8 @@ using namespace std;
 using namespace arma;
 
 #define THRESHOLD_NEGATIVE  0.5
+#define LAMBDA_LOGISTIC_LIMIT 0.15
+#define LOGISTIC_SMOOTHER_PARAMETER 10
 
 typedef struct
 {
@@ -101,6 +103,8 @@ private:
 	Vector recoverCircularInterface(double psi_a, double lambda_a, double PHI_a1, double psi_b, double lambda_b, double PHI_b0);
 	Vector intersectionPoint(Vector c, double psi, double lambda, double PHI);
 	bool isWithinNumericalLimits(double x, double l);
+	double logisticSmoother(double x);
+	Vector smoother(Vector x, double lambda);
 	
 	
 };

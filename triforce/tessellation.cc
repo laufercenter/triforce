@@ -566,15 +566,27 @@ void Tessellation::insertArtificialIntersectionPoints(CircularInterface &I, Inte
 	a.rotation1=f;
 	a.rotation0=f_reverse;
 	a.visited=false;
+	a.rotation0.drotation_dxi=Vector(3).zeros();
+	a.rotation0.drotation_dxj=Vector(3).zeros();
+	a.rotation0.drotation_dxl=Vector(3).zeros();
+	a.rotation1.drotation_dxi=Vector(3).zeros();
+	a.rotation1.drotation_dxj=Vector(3).zeros();
+	a.rotation1.drotation_dxl=Vector(3).zeros();
 
 	b.id0 = addressB.id0 = -I.id;
 	b.id1 = addressB.id1 = I.id;
 	b.pointsTo0 = a.prev0 = I.id;
 	b.pointsTo1 = a.prev1 = -I.id;
 	b.vector = x1;
-	b.rotation1=f_reverse;
-	b.rotation0=f;
+	b.rotation1=f;
+	b.rotation0=f_reverse;
 	b.visited=false;
+	b.rotation0.drotation_dxi=Vector(3).zeros();
+	b.rotation0.drotation_dxj=Vector(3).zeros();
+	b.rotation0.drotation_dxl=Vector(3).zeros();
+	b.rotation1.drotation_dxi=Vector(3).zeros();
+	b.rotation1.drotation_dxj=Vector(3).zeros();
+	b.rotation1.drotation_dxl=Vector(3).zeros();
 	
 	intersectionGraph[addressA]=a;
 	intersectionGraph[addressB]=b;
@@ -1307,6 +1319,10 @@ PHIContainer Tessellation::calculatePHI(Vector &tessellationOrigin, Vector &mu_i
 	eta = calculateEta(tessellationOrigin, mu_i, mu_j, lambda_i, lambda_j, dmui_dxi, dmuj_dxj, index_i, index_j, form_i, form_j, derivatives);
 	omega = calculateOmega(tessellationOrigin, mu_i, mu_j, dmui_dxi, dmuj_dxj, index_i, index_j, form_i, form_j, derivatives);
 	
+	
+	printf("ETASIZE: %d\n",eta.drotation_dxi.size());
+	printf("OMEGASIZE: %d\n",omega.drotation_dxi.size());
+	
 
 	S1 = sgn(M_PI-p.out.rotation);
 
@@ -1851,10 +1867,6 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 		}
 		
 		
-		for(it_j=I->circularIntersections.begin(); it_j != I->circularIntersections.end(); ++it_j){
-			j=(*it_j).first;
-			J = &circles[j];
-		}
 		
 		for(it_j=I->circularIntersections.begin(); it_j != I->circularIntersections.end(); ++it_j){
 			j=(*it_j).first;
