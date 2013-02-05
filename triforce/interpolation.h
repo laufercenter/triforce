@@ -30,6 +30,11 @@ using namespace std;
 using namespace arma;
 
 
+enum TaylorTermination{
+	TAYLOR_LINEAR,
+	TAYLOR_QUADRATIC,
+	TAYLOR_CUBIC
+};
 
 
 
@@ -37,7 +42,7 @@ using namespace arma;
 class Interpolation{
 	
 public:
-	Interpolation(Data3D *data);
+	Interpolation(Data3D *data, TaylorTermination degree);
 	double interpolate(Vector &x);
 	double interpolate(Vector &x, double &phi);
 	double interpolate(double PHI, double psi, double lambda);
@@ -46,6 +51,7 @@ public:
 	
 private:
 	Data3D *data;
+	TaylorTermination degree;
 
 	double taylorExtension(VectorInt &r, Vector &x);
 	double taylorExtension(int i_PHI, int i_psi, int i_lambda, Vector &x);

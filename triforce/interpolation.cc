@@ -9,8 +9,9 @@ using namespace arma;
 
 
 
-Interpolation::Interpolation(Data3D *data){
+Interpolation::Interpolation(Data3D *data, TaylorTermination degree){
 	this->data=data;
+	this->degree=degree;
 }
 
 double Interpolation::taylorExtension(VectorInt &r, Vector &x){
@@ -25,17 +26,31 @@ double Interpolation::taylorExtension(int i_PHI, int i_psi, int i_lambda, Vector
 	double v;
 	Vector d;
 	Vector htmp;
+	bool quadratic=false;
+	bool cubic=false;
+	double quadratic_term=0;
+	double cubic_term=0;
+	if(degree==TAYLOR_QUADRATIC || degree==TAYLOR_CUBIC) quadratic=true;
+	if(degree==TAYLOR_CUBIC) cubic=true;
+	
 	p = data->getHeaderVector(i_PHI,i_psi, i_lambda);
 	f = data->getDataCell(i_PHI,i_psi, i_lambda);
 	
-	g = data->getGradient(i_PHI,i_psi, i_lambda);
-	h = data->getHessian(i_PHI,i_psi, i_lambda);
+	if(quadratic)
+		g = data->getGradient(i_PHI,i_psi, i_lambda);
+	if(cubic)
+		h = data->getHessian(i_PHI,i_psi, i_lambda);
 	
+	if(quadratic){
+		d =(x-p);
+		quadratic_term = dot(g,d);
+	}
 	
-	d =(x-p);
-	htmp = h * d;
-	//v = f + dot(g,d) + 0.5*dot(d,htmp);
-	v = f + dot(g,d);
+	if(cubic){
+		htmp = h * d;
+		cubic_term = 0.5*dot(d,htmp);
+	}
+	v = f + quadratic_term + cubic_term;
 	
 	//printf("taylor extension (%d %d %d): %f\n",i_PHI,i_psi,i_lambda, v);
 	

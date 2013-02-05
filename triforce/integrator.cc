@@ -115,11 +115,11 @@ double IntegratorTriforce::integrateAtomicSASA(int l, SASAsForAtom sasasForAtom,
 	
 	
 	
-	//if(area0 < 0 && abs(area0) < THRESHOLD_NEGATIVE) area0 = 0;
-	if(area0 <= 0) area0 = 2*M_PI+area0;
+	if(area0 < 0 && abs(area0) < THRESHOLD_NEGATIVE) area0 = 0;
+	if(area0 < 0) area0 = 2*M_PI+area0;
 
-	//if(area1 < 0 && abs(area1) < THRESHOLD_NEGATIVE) area1 = 0;
-	if(area1 <= 0) area1 = 2*M_PI+area1;
+	if(area1 < 0 && abs(area1) < THRESHOLD_NEGATIVE) area1 = 0;
+	if(area1 < 0) area1 = 2*M_PI+area1;
 	
 	
 	
@@ -132,6 +132,12 @@ double IntegratorTriforce::integrateAtomicSASA(int l, SASAsForAtom sasasForAtom,
 
 void IntegratorTriforce::addForce(int i, Vector force){
 	int j;
+/*	if(i == 0) fprintf(stderr,"FORCE: %f %f %f\n", force(0), force(1), force(2));
+	if(force(1) > 20){
+		fprintf(stderr,"FORCE: THRESHOLD EXCEEDED");
+		exit(-1);
+	}
+	*/
 	if(i>=0){
 		for(j=0; j<3; ++j){
 			*(forces[i][j]) += force(j);
@@ -221,14 +227,31 @@ double IntegratorTriforce::integrateSASA(int l, SASA &sasa, double radius){
 		phi += sign_prephi * actphi;
 		sign_prephi = sgn(actphi);
 		
-
+		
+		//if(l==0)
+			//fprintf(stderr,"AREA: (%d %d) (%d %d) %f\n", x0.id0, x0.id1, x1.id0, x1.id1, integral.area*radius*radius);
+		
+		
 		area += integral.area;
+		
+		/*
+		integral.force_i = areaSmoother(integral.force_i, integral.area, radius);
+		integral.force_j = areaSmoother(integral.force_j, integral.area, radius);
+		integral.force_k = areaSmoother(integral.force_k, integral.area, radius);
+		integral.force_l = areaSmoother(integral.force_l, integral.area, radius);
+		*/
+		
 		
 		
 		addForce(x0.index0, integral.force_i * r_square);
 		addForce(x0.index1, integral.force_j * r_square);
 		addForce(x1.index1, integral.force_k * r_square);
 		addForce(l, integral.force_l * r_square);
+		
+		
+		//fprintf(stderr,"FORCE j: (%f %f %f)\n",integral.force_j(0) * r_square,integral.force_j(1) * r_square,integral.force_j(2) * r_square);
+		//fprintf(stderr,"FORCE l: (%f %f %f)\n",integral.force_l(0) * r_square,integral.force_l(1) * r_square,integral.force_l(2) * r_square);
+		
 		
 		/*
 		it2=it;
@@ -438,23 +461,40 @@ mat33 IntegratorTriforce::rotz(double theta){
 }
 
 
-double IntegratorTriforce::logisticSmoother(double x){
+double IntegratorTriforce::logisticSmoother(double lambda){
+	double x;
+	x = 2*lambda/(M_PI * LAMBDA_LOGISTIC_LIMIT);
+	double p0=0.2;
+	
 	return 1.0/(1.0+exp(-((x*2*LOGISTIC_SMOOTHER_PARAMETER)-LOGISTIC_SMOOTHER_PARAMETER)));
+	//return (exp(x*x)-exp(0)) / (exp(1)-exp(0));
+	//return (log(x+p0)-log(p0)) / (log(1+p0)-log(p0));
 }
 
 
-Vector IntegratorTriforce::smoother(Vector x, double lambda){
-	double r,r2;
-	
-	r = lambda/(M_PI/2.0);
-	if(r<=LAMBDA_LOGISTIC_LIMIT){
-		r2 = r/LAMBDA_LOGISTIC_LIMIT;
-		for(int i=0; i<3; i++){
-			x(i) = x(i) * logisticSmoother(r2);
-		}
-	}
-	
-	return x;
+
+double IntegratorTriforce::sech(double x){
+	return 1.0/(0.5 * (exp(x)+exp(-x)));
+}
+
+
+
+
+
+double IntegratorTriforce::dlogisticSmoother(double lambda){
+	double s,x;
+	s = sech(LOGISTIC_SMOOTHER_PARAMETER * (0.5 - 2*lambda/(LAMBDA_LOGISTIC_LIMIT*M_PI)));
+	return LOGISTIC_SMOOTHER_PARAMETER * s*s/(LAMBDA_LOGISTIC_LIMIT*M_PI);
+	//x = 2*lambda/(M_PI * LAMBDA_LOGISTIC_LIMIT);
+	//return 2*exp(x*x)*x;
+	//double p0=0.2;
+	//return 1.0/((p0+x)*(log(p0+1)-log(p0)));
+}
+
+
+
+Vector IntegratorTriforce::areaSmoother(Vector &x, double area, double radius){
+	return x*area/(2*M_PI*radius*radius);
 }
 
 
@@ -477,8 +517,8 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	CircularInterfaceForm formj;
 	CircularInterfaceForm formk;
 	area = 0;
-	double s_convex, s_complementation, s_direction;
-	
+	double s_convex, s_complementation, s_direction, s_psilambda;
+	double ls,dls;
 	psi = x1.psi;
 	lambda = x1.lambda;
 	form = x1.form;
@@ -524,6 +564,15 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	Tjk = lookUp(PHIjk.rotation, psi.rotation, lambda.rotation, phi1, form);
 	
 	
+	/*
+	if(x1.form == CONVEX && psi.rotation < lambda.rotation){
+		Tij*=-1;
+		Tjk*=-1;
+	}
+	*/
+	
+	//if(l==0) fprintf(stderr,"T: %f %f %f %f (%f %f)\n",PHIij.rotation, PHIjk.rotation, psi.rotation, lambda.rotation, Tij(0), Tjk(0));
+	
 	if(PHIjk.rotation >= PHIij.rotation){
 		s_direction=1;
 	}
@@ -534,6 +583,10 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	
 	area = s_direction*Tjk(0) - s_direction*Tij(0);
 	
+	
+	//if(l==0) fprintf(stderr,"T1: %f\n",area);
+	
+	
 	q= s_convex * s_direction;
 	
 	
@@ -543,32 +596,67 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	force_l = q*((Tjk(1) * PHIjk.drotation_dxl + Tjk(2) * psi.drotation_dxl + Tjk(3) * lambda.drotation_dxl) - (Tij(1) * PHIij.drotation_dxl + Tij(2) * psi.drotation_dxl + Tij(3) * lambda.drotation_dxl));
 	
 	
+	int ti=12;
+	if(x0.index0==ti || x0.index1==ti || x1.index0==ti || x1.index1==ti || l==ti){
+	
+		fprintf(stderr, "INDEXES: (%d) %d %d %d %d\n",l,x0.index0, x0.index1, x1.index0, x1.index1);
+		fprintf(stderr, "BEFORE FORCES: %f %f %f\n",*(forces[ti][0]),*(forces[ti][1]),*(forces[ti][2]));
+		fprintf(stderr, "Tij: %f %f %f %f\n",Tij(0),Tij(1),Tij(2),Tij(3));
+		fprintf(stderr, "Tjk: %f %f %f %f\n",Tjk(0),Tjk(1),Tjk(2),Tjk(3));
+		fprintf(stderr, "M: %f %f %f %f\n",M(0),M(1),M(2),M(3));
+		
+		fprintf(stderr, "PHIij dxi : (%f %f %f) \t PHIij dxj : (%f %f %f) \t PHIij dxl : (%f %f %f)\n",PHIij.drotation_dxi(0),PHIij.drotation_dxi(1),PHIij.drotation_dxi(2),PHIij.drotation_dxj(0),PHIij.drotation_dxj(1),PHIij.drotation_dxj(2),PHIij.drotation_dxl(0),PHIij.drotation_dxl(1),PHIij.drotation_dxl(2));
+		fprintf(stderr, "PHIjk dxi : (%f %f %f) \t PHIjk dxj : (%f %f %f) \t PHIjk dxl : (%f %f %f)\n",PHIjk.drotation_dxi(0),PHIjk.drotation_dxi(1),PHIjk.drotation_dxi(2),PHIjk.drotation_dxj(0),PHIjk.drotation_dxj(1),PHIjk.drotation_dxj(2),PHIjk.drotation_dxl(0),PHIjk.drotation_dxl(1),PHIjk.drotation_dxl(2));
+		fprintf(stderr, "psi dxi   : (%f %f %f) \t psi dxj   : (%f %f %f) \t psi dxl   : (%f %f %f)\n",psi.drotation_dxi(0),psi.drotation_dxi(1),psi.drotation_dxi(2),psi.drotation_dxj(0),psi.drotation_dxj(1),psi.drotation_dxj(2),psi.drotation_dxl(0),psi.drotation_dxl(1),psi.drotation_dxl(2));
+		fprintf(stderr, "lambda dxi: (%f %f %f) \t lambda dxj: (%f %f %f) \t lambda dxl: (%f %f %f)\n",lambda.drotation_dxi(0),lambda.drotation_dxi(1),lambda.drotation_dxi(2),lambda.drotation_dxj(0),lambda.drotation_dxj(1),lambda.drotation_dxj(2),lambda.drotation_dxl(0),lambda.drotation_dxl(1),lambda.drotation_dxl(2));
+	}
+	
+	q=s_convex;
+	
 	if(PHIjk.rotation < PHIij.rotation){
 		area = 2*M(0) - area;
 		force_i = -force_i;
-		force_j = 2*(M(2)*psi.drotation_dxi + M(3)*lambda.drotation_dxi) - force_j;
+		force_j = q* (2*(M(2)*psi.drotation_dxi + M(3)*lambda.drotation_dxi)) - force_j;
 		force_k = -force_k;
-		force_l = 2*(M(2)*psi.drotation_dxl + M(3)*lambda.drotation_dxl) - force_l;
+		force_l = q*(2*(M(2)*psi.drotation_dxl + M(3)*lambda.drotation_dxl)) - force_l;
 	}
 	
+	//if(l==0) fprintf(stderr,"T2: %f\n",area);
+
 	
 	if(x1.form==CONVEX) s_convex=1;
 	else s_convex=-1;
 	
 	q = s_convex;
 	
-	a.area=s_convex * area;
+	
+	a.area=q * area;
 	a.force_i = q* force_i;
 	a.force_j = q* force_j;
 	a.force_k = q* force_k;
 	a.force_l = q* force_l;
 	
+	
+	
+	
+	
+	//if(l==0) fprintf(stderr,"T3: %f\n",a.area);
+	
+	
 	//here, we apply a logistic function to smooth the derivative for small lambdas
-	a.force_i = smoother(a.force_i, lambda.rotation);
-	a.force_j = smoother(a.force_j, lambda.rotation);
-	a.force_k = smoother(a.force_k, lambda.rotation);
-	a.force_l = smoother(a.force_l, lambda.rotation);
-
+	/*
+	if(lambda.rotation/(M_PI/2.0) <= LAMBDA_LOGISTIC_LIMIT){
+		ls = logisticSmoother(lambda.rotation);
+		dls = dlogisticSmoother(lambda.rotation);
+		
+		a.area = a.area * ls;
+		a.force_i = a.force_i * ls;
+		a.force_j = a.force_j * ls + a.area * dls * lambda.drotation_dxi;
+		a.force_k = a.force_k * ls;
+		a.force_l = a.force_l * ls + a.area * dls * lambda.drotation_dxl;
+	}
+	*/
+	
 	
 	return a;
 

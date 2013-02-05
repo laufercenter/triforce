@@ -15,13 +15,14 @@ using namespace boost;
 Data3D::Data3D(){
 }
 
-Data3D::Data3D(int parameter0Dim, int parameter1Dim, int parameter2Dim){
+Data3D::Data3D(int parameter0Dim, int parameter1Dim, int parameter2Dim, int derivativeLevel, bool containsAuxiliaryData){
 	int maxdim=0;
 	this->parameter0Dim = parameter0Dim;
 	this->parameter1Dim = parameter1Dim;
 	this->parameter2Dim = parameter2Dim;
 	
-	
+	this->derivativeLevel = derivativeLevel;
+	this->containsAuxiliaryData = containsAuxiliaryData;
 		
 		
 	headerParameter0 = new Table1dDouble(boost::extents[parameter0Dim]);
