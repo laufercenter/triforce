@@ -461,14 +461,8 @@ mat33 IntegratorTriforce::rotz(double theta){
 }
 
 
-double IntegratorTriforce::logisticSmoother(double lambda){
-	double x;
-	x = 2*lambda/(M_PI * LAMBDA_LOGISTIC_LIMIT);
-	double p0=0.2;
-	
+double IntegratorTriforce::logisticSmoother(double x){
 	return 1.0/(1.0+exp(-((x*2*LOGISTIC_SMOOTHER_PARAMETER)-LOGISTIC_SMOOTHER_PARAMETER)));
-	//return (exp(x*x)-exp(0)) / (exp(1)-exp(0));
-	//return (log(x+p0)-log(p0)) / (log(1+p0)-log(p0));
 }
 
 
@@ -481,14 +475,9 @@ double IntegratorTriforce::sech(double x){
 
 
 
-double IntegratorTriforce::dlogisticSmoother(double lambda){
-	double s,x;
-	s = sech(LOGISTIC_SMOOTHER_PARAMETER * (0.5 - 2*lambda/(LAMBDA_LOGISTIC_LIMIT*M_PI)));
-	return LOGISTIC_SMOOTHER_PARAMETER * s*s/(LAMBDA_LOGISTIC_LIMIT*M_PI);
-	//x = 2*lambda/(M_PI * LAMBDA_LOGISTIC_LIMIT);
-	//return 2*exp(x*x)*x;
-	//double p0=0.2;
-	//return 1.0/((p0+x)*(log(p0+1)-log(p0)));
+double IntegratorTriforce::dlogisticSmoother(double x){
+	return LOGISTIC_SMOOTHER_PARAMETER / (1+cosh(LOGISTIC_SMOOTHER_PARAMETER - 2*LOGISTIC_SMOOTHER_PARAMETER*x));
+
 }
 
 
@@ -644,18 +633,51 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	
 	
 	//here, we apply a logistic function to smooth the derivative for small lambdas
-	/*
-	if(lambda.rotation/(M_PI/2.0) <= LAMBDA_LOGISTIC_LIMIT){
-		ls = logisticSmoother(lambda.rotation);
-		dls = dlogisticSmoother(lambda.rotation);
+
+	int index_j,index_l;
+	Vector v_j,mu_j,mu_l;
+	double d_j,r_j,r_l, t_j, dd;
+	
+	index_j=x0.index1;
+	index_l=l;
+	
+	if(index_j>=0){
+	
+		v_j = atoms[index_j] - atoms[index_l];
+		d_j = norm(v_j,2);
+		mu_j = v_j/d_j;
+		r_j = radii[index_j];
 		
-		a.area = a.area * ls;
-		a.force_i = a.force_i * ls;
-		a.force_j = a.force_j * ls + a.area * dls * lambda.drotation_dxi;
-		a.force_k = a.force_k * ls;
-		a.force_l = a.force_l * ls + a.area * dls * lambda.drotation_dxl;
+		mu_l = -mu_j;
+		r_l = radii[index_l];
+		
+		
+		t_j = 1.0-d_j/(r_j+r_l);
+		
+		
+		if(t_j <= LOGISTIC_LIMIT){
+			
+			area=a.area;
+			
+			
+			
+			ls = logisticSmoother(t_j/LOGISTIC_LIMIT);
+			dls = dlogisticSmoother(t_j/LOGISTIC_LIMIT);
+			
+			dd = -LOGISTIC_LIMIT/(r_j+r_l);
+			
+			fprintf(stderr,"TJ: %f %f %f\n",t_j,ls, dls);
+			
+			
+			
+			a.area = a.area * ls;
+			a.force_i = a.force_i * ls;
+			a.force_j = a.force_j * ls + area * dls * dd * mu_j;
+			a.force_k = a.force_k * ls;
+			a.force_l = a.force_l * ls + area * dls * dd * mu_l;
+		}
 	}
-	*/
+	
 	
 	
 	return a;
