@@ -53,7 +53,7 @@ class Data3D{
 	
 public:
 	Data3D();
-	Data3D(int parameter0Dim, int parameter1Dim, int parameter2Dim);
+	Data3D(int parameter0Dim, int parameter1Dim, int parameter2Dim, int derivativeLevel, bool containsAuxiliaryData);
 	void setHeaderParameter0Cell(int x, double value);
 	void setHeaderParameter1Cell(int x, double value);
 	void setHeaderParameter2Cell(int x, double value);
@@ -100,6 +100,8 @@ public:
 	Table3dVector *gradient;
 	Table3dMatrix *hessian;
 	Table3dDouble *auxiliary;
+	int derivativeLevel;
+	bool containsAuxiliaryData;
 	
 	
 	

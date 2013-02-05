@@ -50,7 +50,7 @@ using namespace arma;
 #define FD 0.000001
 #define FDT 10.0025
 
-#define MINISCULE 0.0000000001
+#define MINISCULE 0.00001
 
 
 
@@ -350,6 +350,7 @@ private:
 	vector<double> radii;
 	Vector torigin;
 	double tradius;
+	int ti;
 	//#atoms #circularregions
 	//#atoms #sasas #circularregions
 	SASAsForMolecule sasasForMolecule;
@@ -365,7 +366,7 @@ private:
 	bool isInPositiveEpsilonRange(double v, double eps);
 	void determineProjection(Vector &origin, double radius, CircularInterface &circle);
 	IntersectionPair determineIntersectionPoints(double radius, CircularInterface &K, CircularInterface &J);
-	void makeCircularInterfaces(int i,Vector &origin, double radius, vector<vec> &atoms, vector<double> &radii, vector<CircularInterface> &circles);
+	bool makeCircularInterfaces(int i,Vector &origin, double radius, vector<vec> &atoms, vector<double> &radii, vector<CircularInterface> &circles);
 	int filterCircularInterfaces(Vector tessellationOrigin, double radius, vector<CircularInterface> &circles);
 	void outputGaussBonnetPath(SASA &points);
 	void reindexCircularInterfaces(CircularInterfacesPerAtom &circles);
@@ -387,7 +388,7 @@ private:
 	void createIntersectionNode(int id0, int id1, IntersectionGraph &intersectionGraph);
 	void createIntersectionBranch(IntersectionAddress &address, PHIContainer &PHII, PHIContainer &PHIJ, CircularInterface &I, CircularInterface &J, IntersectionGraph &intersectionGraph);
 	void printBranch(const char* s, multimap<double, IntersectionBranch>::iterator &it);
-	void printIntersectionGraph(IntersectionGraph &g);
+	void printIntersectionGraph(IntersectionGraph &g, CircularInterfacesPerAtom &circles);
 	void buildIntersectionGraph(double radius, Vector &tessellationOrigin, CircularInterfacesPerAtom &circles, SASAs &sasas, Hemisphere hemisphere, string filename);
 	void outputGaussBonnetData(string filename, double radius, CircularInterfacesPerAtom &circles, SASAs &sasas, IntersectionGraph &intersectionGraph);
 	void deleteIntersectionPoint(IntersectionBranches::iterator &it,IntersectionGraph &intersectionGraph, CircularInterfacesPerAtom &circles);

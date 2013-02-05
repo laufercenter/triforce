@@ -26,6 +26,13 @@ void Tessellation::build(bool split){
 	for(int i=0; i<atoms.size(); ++i){
 		//int i=12;{
 		buildGaussBonnetPath(i, atoms, radii, sasasForMolecule, split);
+		/*
+		fprintf(stderr,"--GBATOM-- %d\n",i);
+			for(int j=0; j<sasasForMolecule[i].sasas.size(); ++j){
+				fprintf(stderr,"SASA %d (%d)\n",j,sasasForMolecule[i].sasas[j].hemisphere);
+				outputGaussBonnetPath(sasasForMolecule[i].sasas[j]);
+			}
+		*/
 
 	}
 	
@@ -74,12 +81,14 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 	Vector backTessellationOrigin(3);
 	Vector origin;
 	double radius;
+	bool isInsideAnotherSphere;
 	
 	
 	origin = atoms[i];
 	torigin = origin;
 	radius = radii[i];
 	tradius = radius;
+	ti = i;
 	
 	
 	frontTessellationOrigin(0) = 1;
@@ -99,7 +108,10 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 	
 
 
-	makeCircularInterfaces(i,origin, radius, atoms, radii, circles);
+	isInsideAnotherSphere = makeCircularInterfaces(i,origin, radius, atoms, radii, circles);
+	
+	if(isInsideAnotherSphere) return;
+	
 	for(j=0;j<circles.size();j++){
 		determineProjection(origin, radius, circles[j]);
 	}
@@ -139,6 +151,9 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 		
 		buildIntersectionGraph(radius, frontTessellationOrigin, circles, *newSasas, FRONTHEMISPHERE, string("gbonnet0.csv"));
 	}
+	
+	
+
 	
 }
 
@@ -237,8 +252,11 @@ Rotation Tessellation::calculateLambda(int index_i, double d_i, double r_l, doub
 	
 	if(derivatives){
 	
-	
+		if(g > 1.0-MINISCULE) g = 1.0-MINISCULE;
+		if(g < -1.0+MINISCULE) g = -1.0+MINISCULE;
+
 		dlambda_dg = -1/sqrt(1-g*g);
+		
 		
 		if(form==CONVEX){
 			dg_dd = -g/d_i + 1/r_l;
@@ -252,6 +270,8 @@ Rotation Tessellation::calculateLambda(int index_i, double d_i, double r_l, doub
 		dd_dxi = q*mu_i;
 		
 		dlambda_dxi = dlambda_dg * dg_dd * dd_dxi;
+		//smoothing
+		//if(norm(dlambda_dxi,2)>1.0) dlambda_dxi = normalise(dlambda_dxi);
 		dlambda_dxl = -dlambda_dxi;
 		
 		r.drotation_dxi = dlambda_dxi;
@@ -389,7 +409,7 @@ Vector Tessellation::calculateInterfaceNormal(const Vector &v_l, const Vector &v
 }
 
 
-void Tessellation::makeCircularInterfaces(int l,Vector &origin, double r_l, vector<vec> &atoms, vector<double> &radii, vector<CircularInterface> &circles){
+bool Tessellation::makeCircularInterfaces(int l,Vector &origin, double r_l, vector<vec> &atoms, vector<double> &radii, vector<CircularInterface> &circles){
 	CircularInterface circle;
 	double r_i;
 	double d_i;
@@ -411,12 +431,16 @@ void Tessellation::makeCircularInterfaces(int l,Vector &origin, double r_l, vect
 				circle.intersect = false;
 				circle.index=j;
 				circles.push_back(circle);
-				
-				
-				
 			}
+			//in this case, the atom is completely inside another atom and has no SASA
+			else if(d_i+r_l <= r_i){
+				circles.clear();
+				return true;
+			}
+			
 		}
 	}
+	return false;
 }
 
 
@@ -478,7 +502,7 @@ int Tessellation::filterCircularInterfaces(Vector tessellationOrigin, double rad
 					//concave circle IT has a free area. This area is covered by convex circle i
 					if(circles[i].form == CONVEX){
 						if(it->lambda.rotation + angle < circles[i].lambda.rotation){
-							depleteCircularInterfaces(tessellationOrigin, radius, circles);
+							circles.clear();
 							return -1;
 						}
 						
@@ -492,7 +516,7 @@ int Tessellation::filterCircularInterfaces(Vector tessellationOrigin, double rad
 						}
 						//concave circle IT has a free area. This area is covered by concave circle i
 						else if(angle > it->lambda.rotation + circles[i].lambda.rotation){
-							depleteCircularInterfaces(tessellationOrigin, radius, circles);
+							circles.clear();
 							return -1;
 							
 						}
@@ -510,8 +534,8 @@ int Tessellation::filterCircularInterfaces(Vector tessellationOrigin, double rad
 	
 	
 	//if just the splitter is left, the hemisphere is completely free. In that case, the splitter is unnecessary
-	if(circles.size()==1 && circles[0].form==SPLITTER)
-		circles.clear();
+	//if(circles.size()==1 && circles[0].form==SPLITTER)
+	//	circles.clear();
 	
 	return 0;
 
@@ -527,7 +551,7 @@ void Tessellation::outputGaussBonnetPath(SASA &points){
 	int i;
 	
 	for(it=points.sasa.begin(), i=0; it!=points.sasa.end(); ++it, ++i)
-		printf("GBPATH[%d] %d - %d\n", i, it->id0, it->id1);
+		fprintf(stderr,"GBPATH[%d] %d - %d indexes: %d - %d form: %d %d\n", i, it->id0, it->id1, it->index0, it->index1, it->form0, it->form1);
 }
 
 
@@ -550,21 +574,31 @@ void Tessellation::insertArtificialIntersectionPoints(CircularInterface &I, Inte
 	IntersectionAddress addressA,addressB;
 	Vector x0,x1;
 	Rotation f,f_reverse;
-	
+	int q=1;
 	
 	
 	
 	//this will create two points on the border of the circular region on opposite sides.
-	f.rotation = M_PI/2;
-	f_reverse.rotation = -M_PI/2;
+	//if(tessellationOrigin(0)<0) q=-q;
+	//if(I.form==CONVEX) q=-q;
+
+	
+	if(q<0){
+		f.rotation = M_PI/2;
+		f_reverse.rotation = -M_PI/2;
+	}
+	else{
+		f.rotation = -M_PI/2;
+		f_reverse.rotation = M_PI/2;
+	}
 	
 	a.id0 = addressA.id0 = I.id;
 	a.id1 = addressA.id1 = -I.id;
 	a.pointsTo0 = a.prev0 = -I.id;
 	a.pointsTo1 = a.prev1 = I.id;
 	a.vector = x0;
+	a.rotation0=f;
 	a.rotation1=f;
-	a.rotation0=f_reverse;
 	a.visited=false;
 	a.rotation0.drotation_dxi=Vector(3).zeros();
 	a.rotation0.drotation_dxj=Vector(3).zeros();
@@ -575,11 +609,11 @@ void Tessellation::insertArtificialIntersectionPoints(CircularInterface &I, Inte
 
 	b.id0 = addressB.id0 = -I.id;
 	b.id1 = addressB.id1 = I.id;
-	b.pointsTo0 = a.prev0 = I.id;
-	b.pointsTo1 = a.prev1 = -I.id;
+	b.pointsTo0 = b.prev0 = I.id;
+	b.pointsTo1 = b.prev1 = -I.id;
 	b.vector = x1;
-	b.rotation1=f;
 	b.rotation0=f_reverse;
+	b.rotation1=f_reverse;
 	b.visited=false;
 	b.rotation0.drotation_dxi=Vector(3).zeros();
 	b.rotation0.drotation_dxj=Vector(3).zeros();
@@ -587,6 +621,7 @@ void Tessellation::insertArtificialIntersectionPoints(CircularInterface &I, Inte
 	b.rotation1.drotation_dxi=Vector(3).zeros();
 	b.rotation1.drotation_dxj=Vector(3).zeros();
 	b.rotation1.drotation_dxl=Vector(3).zeros();
+	
 	
 	intersectionGraph[addressA]=a;
 	intersectionGraph[addressB]=b;
@@ -611,7 +646,7 @@ void Tessellation::determineCircularIntersections(CircularInterfacesPerAtom &cir
 		for(j=k+1;j<circles.size();j++){
 			if(k!=j){
 				//determine if there will be intersections
-				angle = getAngleBetweenNormals(circles[k].normal,circles[j].normal);
+				angle = getAngle(circles[k].normal,circles[j].normal);
 				if(angle < circles[k].lambda.rotation + circles[j].lambda.rotation)
 					if(angle + circles[k].lambda.rotation > circles[j].lambda.rotation && angle + circles[j].lambda.rotation > circles[k].lambda.rotation){
 						c.d=angle;
@@ -1105,7 +1140,10 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 	
 	
 	
-	if(isnan(omega.rotation)) exit(-2);
+	if(isnan(omega.rotation)){
+		fprintf(stderr,"omega evaluated to nan\n");
+		exit(-2);
+	}
 	
 	
 	if(derivatives){
@@ -1146,17 +1184,21 @@ Rotation Tessellation::calculateOmega(Vector &tessellationOrigin, Vector &mu_i, 
 			
 		}
 		else{
-		
+	
+			if(dot_ni_nij > 1.0-MINISCULE) dot_ni_nij = 1.0-MINISCULE;
+			if(dot_ni_nij < -1.0+MINISCULE) dot_ni_nij = -1.0+MINISCULE;
+
 		
 		
 			dvarpi_dni = -(nij) / (sqrt(1-dot_ni_nij*dot_ni_nij));
 			dvarpi_dnij = -(ni) / (sqrt(1-dot_ni_nij*dot_ni_nij));
 			
 			
+			//if(norm(dvarpi_dni,2) > 1.0) dvarpi_dni = normalise(dvarpi_dni);
+			//if(norm(dvarpi_dnij,2) > 1.0) dvarpi_dnij = normalise(dvarpi_dnij);
 
 			
 			domega_dxi = s2* domega_dvarpi * ((dvarpi_dni.t() * dni_dvi * dvi_dmui * dmui_dxi).t() + (dvarpi_dnij.t() * dnij_dvij * dvij_dmui * dmui_dxi).t() );
-
 			
 			domega_dxj = s2* domega_dvarpi * (dvarpi_dnij.t() * dnij_dvij * dvij_dmuj * dmuj_dxj).t();
 
@@ -1220,10 +1262,8 @@ Rotation Tessellation::calculateEta(Vector &tessellationOrigin, Vector &mu_i, Ve
 	
 	
 	
-	if(derivatives)
-		dot_IJ = norm_dot(mu_i,mu_j);
-	else
-		dot_IJ = dot(mu_i,mu_j);
+	dot_IJ = norm_dot(mu_i,mu_j);
+	
 	rho = acos(dot_IJ);
 	
 	
@@ -1241,7 +1281,12 @@ Rotation Tessellation::calculateEta(Vector &tessellationOrigin, Vector &mu_i, Ve
 		eta.rotation = acos(sig2);
 	}
 	
-	if(isnan(eta.rotation)) exit(-2);
+	if(isnan(eta.rotation)){
+		fprintf(stderr,"eta evaluated to nan\n");
+		fprintf(stderr,"sig: %f %f %f\n",sig0,sig1,sig2);
+		fprintf(stderr,"angles: %f %f %f\n",lambda_i.rotation, lambda_j.rotation, rho);
+		exit(-2);
+	}
 	
 	if(derivatives){
 	
@@ -1252,6 +1297,10 @@ Rotation Tessellation::calculateEta(Vector &tessellationOrigin, Vector &mu_i, Ve
 			deta_dxl = Vector(3).zeros();
 		}
 		else{
+			
+			if(dot_IJ > 1.0-MINISCULE) dot_IJ = 1.0-MINISCULE;
+			if(dot_IJ < -1.0+MINISCULE) dot_IJ = -1.0+MINISCULE;
+			
 		
 			drho_dmui = -mu_j/(sqrt(1-dot_IJ*dot_IJ));
 			drho_dmuj = -mu_i/(sqrt(1-dot_IJ*dot_IJ));
@@ -1264,6 +1313,10 @@ Rotation Tessellation::calculateEta(Vector &tessellationOrigin, Vector &mu_i, Ve
 			drho_dxj = (drho_dmuj.t() * dmuj_dxj).t();
 			
 			drho_dxl = ((drho_dmui.t() * dmui_dxl).t() + (drho_dmuj.t() * dmuj_dxl).t());
+			
+			if(sig2 > 1.0-MINISCULE) sig2 = 1.0-MINISCULE;
+			if(sig2 < -1.0+MINISCULE) sig2 = -1.0+MINISCULE;
+			
 			
 			deta_dlambdai = csc(lambda_i.rotation) * (sig0/cos(lambda_i.rotation) - sig1*cos(lambda_i.rotation)) / sqrt(1-sig2*sig2);
 			deta_dlambdaj =  -sin(lambda_j.rotation)*csc(lambda_i.rotation)*csc(rho) / sqrt(1-sig2*sig2);
@@ -1314,14 +1367,11 @@ PHIContainer Tessellation::calculatePHI(Vector &tessellationOrigin, Vector &mu_i
 	int q;
 	double S1;
 	
-	
-	
+
 	eta = calculateEta(tessellationOrigin, mu_i, mu_j, lambda_i, lambda_j, dmui_dxi, dmuj_dxj, index_i, index_j, form_i, form_j, derivatives);
 	omega = calculateOmega(tessellationOrigin, mu_i, mu_j, dmui_dxi, dmuj_dxj, index_i, index_j, form_i, form_j, derivatives);
 	
 	
-	printf("ETASIZE: %d\n",eta.drotation_dxi.size());
-	printf("OMEGASIZE: %d\n",omega.drotation_dxi.size());
 	
 
 	S1 = sgn(M_PI-p.out.rotation);
@@ -1353,13 +1403,24 @@ PHIContainer Tessellation::calculatePHI(Vector &tessellationOrigin, Vector &mu_i
 		p.out.drotation_dxj = eta.drotation_dxj + omega.drotation_dxj;
 		p.out.drotation_dxl = eta.drotation_dxl + omega.drotation_dxl;
 		
+		//smoothing
+/*		if(norm(p.out.drotation_dxi,2)>1.0) p.out.drotation_dxi = normalise(p.out.drotation_dxi);
+		if(norm(p.out.drotation_dxj,2)>1.0) p.out.drotation_dxj = normalise(p.out.drotation_dxj);
+		if(norm(p.out.drotation_dxl,2)>1.0) p.out.drotation_dxl = normalise(p.out.drotation_dxl);
+*/
 		
 		p.in.drotation_dxi = -eta.drotation_dxi + omega.drotation_dxi;
 		p.in.drotation_dxj = -eta.drotation_dxj + omega.drotation_dxj;
 		p.in.drotation_dxl = -eta.drotation_dxl + omega.drotation_dxl;
-		
-		
+			
+		//smoothing
+/*		if(norm(p.in.drotation_dxi,2)>1.0) p.in.drotation_dxi = normalise(p.in.drotation_dxi);
+		if(norm(p.in.drotation_dxj,2)>1.0) p.in.drotation_dxj = normalise(p.in.drotation_dxj);
+		if(norm(p.in.drotation_dxl,2)>1.0) p.in.drotation_dxl = normalise(p.in.drotation_dxl);
+*/		
 	}
+	
+	
 	
 	
 	q = 1;
@@ -1458,8 +1519,18 @@ Rotation Tessellation::calculatePsi(Vector &tessellationOrigin, Vector &mu_i, Ma
 			}
 			else{
 				
+				if(mu_i(0) > 1.0-MINISCULE) mu_i(0) = 1.0-MINISCULE;
+				if(mu_i(0) < -1.0+MINISCULE) mu_i(0) = -1.0+MINISCULE;
+				
+				
+				
 				dpsi_dmui = -tessellationOrigin/(sqrt(1-mu_i(0)*mu_i(0)));
+				
+				
 				dpsi_dxi = (dpsi_dmui.t() * dmu_dx).t();
+				//smoothing
+				//if(norm(dpsi_dxi,2)>1.0) dpsi_dxi = normalise(dpsi_dxi);
+				
 				dpsi_dxl = -dpsi_dxi;
 			}
 			
@@ -1740,11 +1811,11 @@ void Tessellation::printBranch(const char* s, multimap<double, IntersectionBranc
 		printf("iterator %s: %d-%d (IN)\n",s,it->second.node->id0, it->second.node->id1);
 }
 
-void Tessellation::printIntersectionGraph(IntersectionGraph &g){
+void Tessellation::printIntersectionGraph(IntersectionGraph &g,CircularInterfacesPerAtom &circles){
 	IntersectionGraph::iterator it;
 	
 	for(it = g.begin(); it != g.end(); ++it){
-		printf("NODE[%d,%d]: (%d,%d) -> (%d,%d)\n", it->first.id0, it->first.id1, it->second.id0, it->second.id1, it->second.pointsTo0, it->second.pointsTo1);
+		fprintf(stderr,"NODE[%d,%d]: (%d,%d) -> (%d,%d)\n", circles[it->first.id0-1].index, circles[it->first.id1-1].index, circles[it->second.id0-1].index, circles[it->second.id1-1].index, circles[it->second.pointsTo0-1].index, circles[it->second.pointsTo1-1].index);
 	}
 }
 
@@ -1769,44 +1840,52 @@ bool Tessellation::addToEraseList(map<IntersectionBranches::iterator, bool, Iter
 bool Tessellation::addToEraseListCascade(map<IntersectionBranches::iterator, bool, IteratorComparator> &masterEraseList, map<IntersectionBranches::iterator, bool, IteratorComparator> &eraseList, IntersectionBranches::iterator &it, int limit, CircularInterfacesPerAtom &circles){
 	IntersectionBranches::iterator it2, it_mirror;
 	bool res;
-	res = false;
-	
+	bool a2l;
 	it_mirror = it->second.it;
+	res = false;
 	
 	if(it->second.id != limit && it_mirror->second.id != limit){
 
 	
 		it2 = increaseBranchInterator(it, circles);
-		res = addToEraseList(masterEraseList, eraseList, it2, limit) || res;
+		a2l = addToEraseList(masterEraseList, eraseList, it2, limit);
+		res = a2l || res;
 
 		it2 = decreaseBranchInterator(it, circles);
-		res = addToEraseList(masterEraseList, eraseList, it2, limit) || res;
+		a2l = addToEraseList(masterEraseList, eraseList, it2, limit);
+		res = a2l || res;
 		
 
 		it2 = increaseBranchInterator(it_mirror, circles);
-		res = addToEraseList(masterEraseList, eraseList, it2, limit) || res;
+		a2l = addToEraseList(masterEraseList, eraseList, it2, limit);
+		res = a2l || res;
 
 		it2 = decreaseBranchInterator(it_mirror, circles);
-		res = addToEraseList(masterEraseList, eraseList, it2, limit) || res;
+		a2l = addToEraseList(masterEraseList, eraseList, it2, limit);
+		res = a2l || res;
 	}
 	else{
 		
 		if(it->second.direction == IN){
 			it2 = decreaseBranchInterator(it, circles);
-			res = addToEraseList(masterEraseList, eraseList, it2, limit) || res;
+			a2l = addToEraseList(masterEraseList, eraseList, it2, limit);
+			res = a2l || res;
 		}
 		else{
 			it2 = increaseBranchInterator(it, circles);
-			res = addToEraseList(masterEraseList, eraseList, it2, limit) || res;
+			a2l = addToEraseList(masterEraseList, eraseList, it2, limit);
+			res = a2l || res;
 		}
 		
 		if(it_mirror->second.direction == IN){
 			it2 = decreaseBranchInterator(it_mirror, circles);
-			res = addToEraseList(masterEraseList, eraseList, it2, limit) || res;
+			a2l = addToEraseList(masterEraseList, eraseList, it2, limit);
+			res = a2l || res;
 		}
 		else{
 			it2 = increaseBranchInterator(it_mirror, circles);
-			res = addToEraseList(masterEraseList, eraseList, it2, limit) || res;
+			a2l = addToEraseList(masterEraseList, eraseList, it2, limit);
+			res = a2l || res;
 		}
 		
 	}
@@ -1846,9 +1925,10 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 	IntersectionBranches::iterator it, it_mirror, it_next, it_prev, it_mirror_next, it_mirror_prev, it_mirror_next_ignore, it_mirror_prev_ignore;
 	IntersectionAddress addressIJ, addressJI;
 	PHIContainer PHIJ, PHII;
+	bool hasStarted;
 	
 	
-	
+	hasStarted=false;
 	
 	//iterate through all circles and add them to the intersectiongraph, one by one
 	for(i=0; i < circles.size(); ++i){
@@ -1856,13 +1936,15 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 		I = &circles[i];
 		processed[i]=true;
 		
+		if(intersectionGraph.size()>1) hasStarted=true;
 		
+		//if(ti==8) fprintf(stderr,"INTERSECTIONGRAPHSIZE: %d\n",intersectionGraph.size());
 		
 		
 		//we have to sort this circle into the intersectiongraph
 		//go through all intersecting circles, check whether they have been processed, and if so, calculate the intersections
 		
-		if(I->circularIntersections.size()==0 && I->form!=SPLITTER){
+		if(I->circularIntersections.size()==0){
 			insertArtificialIntersectionPoints(*I,intersectionGraph,tessellationOrigin);			
 		}
 		
@@ -1931,7 +2013,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 				it_mirror_prev = decreaseBranchInterator(it_mirror, circles);
 				
 				
-				//if the mirror was previously empty, then we just added 2 branches. Hence, if it has two branches, it's considered empty.
+				//if the mirror was previously empty, then we just added 2 branches. As such, if it has two branches, it's considered empty.
 				if(it_mirror->second.body->size()<=2) empty=true;
 				else empty=false;
 				
@@ -2021,10 +2103,15 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 					}
 					
 					
-					
-					
 				}
 				
+				
+/*				if(ti==8){
+					fprintf(stderr,"-------------------------------------------------\n");
+					printIntersectionGraph(intersectionGraph,circles);
+					fprintf(stderr,"-------------------------------------------------\n");
+				}
+*/				
 				
 			}
 			
@@ -2052,7 +2139,8 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 			for(it_e=eraseList2.begin(); it_e != eraseList2.end(); ++it_e){
 				it = it_e->first;
 				++b2;
-				addedToEraseList = addToEraseListCascade(eraseList, eraseList3, it, I->id, circles) || addedToEraseList; //order of the or operands is important
+				bool a2l = addToEraseListCascade(eraseList, eraseList3, it, I->id, circles);
+				addedToEraseList =  a2l || addedToEraseList; //order of the or operands is important
 				
 			}
 			
@@ -2072,6 +2160,11 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 			deleteIntersectionPoint(it,intersectionGraph,circles);
 		}
 		
+		if(hasStarted && intersectionGraph.size()<=1){
+			if(ti==0) fprintf(stderr,"BREAKING PREMATURELY\n");
+			break;
+		}
+		
 		
 		
 		
@@ -2088,6 +2181,8 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 			x.id1 = start.id1;
 			
 			
+			//if(ti==0) fprintf(stderr,"STARTING WITH: %d - %d\n",x.id0,x.id1);
+
 			
 			valid=true;
 			potentialSasa.sasa.clear();
@@ -2095,6 +2190,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 				
 				if(intersectionGraph[x].visited || (intersectionGraph[x].pointsTo0==0 && intersectionGraph[x].pointsTo1==0)){
 					valid = false;
+					//if(ti==0) fprintf(stderr,"BREAK\n");
 					break;
 					
 				}
@@ -2132,7 +2228,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 				
 				x = t;
 				
-				
+				//if(ti==0) fprintf(stderr,"NEXT: %d - %d\n",x.id0,x.id1);
 				
 				
 				

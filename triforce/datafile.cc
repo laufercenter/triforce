@@ -39,6 +39,7 @@ Data3D* DataFile::digest3DBinaryTable(){
 	int parameter0Dim;
 	int parameter1Dim;
 	int parameter2Dim;
+	int derivativeLevel, containsphiValues;
 	
 	//printf("digesting...\n");
 	
@@ -47,6 +48,14 @@ Data3D* DataFile::digest3DBinaryTable(){
 	//first 4 bytes should be "NILS" : 78, 73, 76, 83
 	f.read(buffer0,4);
 	if(buffer0[0] != 78 || buffer0[1] != 73 || buffer0[2] != 76 || buffer0[3] != 83) exit(-1);
+
+	//level of derivatives
+	f.read(buffer1,1);
+	derivativeLevel = static_cast<int>(buffer1[0]);
+
+	//contains phi values
+	f.read(buffer1,1);
+	containsphiValues = static_cast<int>(buffer1[0]);
 	
 	//this byte gives number of dimensions (should be 3)
 	f.read(buffer1,1);
@@ -69,7 +78,7 @@ Data3D* DataFile::digest3DBinaryTable(){
 	
 	//printf("dimensions: %d, rows in header: %d, maxdim: %d\n",numberDimensions,nrowsHeader,maxdim); 
 	
-	tbl = new Data3D(parameter0Dim, parameter1Dim, parameter2Dim);
+	tbl = new Data3D(parameter0Dim, parameter1Dim, parameter2Dim, derivativeLevel, containsphiValues==1);
 	
 	//read PHI header
 	buffer=new char[parameter0Dim*BINARY_DATA_BLOCK_SIZE];
@@ -110,50 +119,53 @@ Data3D* DataFile::digest3DBinaryTable(){
 	delete buffer;
 	
 	
-	
-	//read gradients
-	totalCells = parameter0Dim*parameter1Dim*parameter2Dim*3;
-	buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
-	f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
-	for(int z=0; z<parameter2Dim; z++)
-		for(int y=0; y<parameter1Dim; y++)
-			for(int x=0; x<parameter0Dim; x++)
-				for(int i=0; i<3; i++){
-					double v = charArray2Double(buffer+(((z*parameter1Dim+y)*parameter0Dim+x)*3+i)*BINARY_DATA_BLOCK_SIZE);
-					tbl->setGradientCell(x,y,z,i,v);
-				}
-	
-	delete buffer;
-	
-
-	//read hessians
-	totalCells = parameter0Dim*parameter1Dim*parameter2Dim*3*3;
-	buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
-	f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
-	for(int z=0; z<parameter2Dim; z++)
-		for(int y=0; y<parameter1Dim; y++)
-			for(int x=0; x<parameter0Dim; x++)
-				for(int j=0; j<3; j++)
+	if(derivativeLevel>=2){
+		//read gradients
+		totalCells = parameter0Dim*parameter1Dim*parameter2Dim*3;
+		buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
+		f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
+		for(int z=0; z<parameter2Dim; z++)
+			for(int y=0; y<parameter1Dim; y++)
+				for(int x=0; x<parameter0Dim; x++)
 					for(int i=0; i<3; i++){
-						double v = charArray2Double(buffer+((((z*parameter1Dim+y)*parameter0Dim+x)*3+j)*3+i)*BINARY_DATA_BLOCK_SIZE);
-						tbl->setHessianCell(x,y,z,j,i,v);
+						double v = charArray2Double(buffer+(((z*parameter1Dim+y)*parameter0Dim+x)*3+i)*BINARY_DATA_BLOCK_SIZE);
+						tbl->setGradientCell(x,y,z,i,v);
 					}
+		
+		delete buffer;
+	}
 	
-	delete buffer;
+	if(derivativeLevel>=3){
+		//read hessians
+		totalCells = parameter0Dim*parameter1Dim*parameter2Dim*3*3;
+		buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
+		f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
+		for(int z=0; z<parameter2Dim; z++)
+			for(int y=0; y<parameter1Dim; y++)
+				for(int x=0; x<parameter0Dim; x++)
+					for(int j=0; j<3; j++)
+						for(int i=0; i<3; i++){
+							double v = charArray2Double(buffer+((((z*parameter1Dim+y)*parameter0Dim+x)*3+j)*3+i)*BINARY_DATA_BLOCK_SIZE);
+							tbl->setHessianCell(x,y,z,j,i,v);
+						}
+		
+		delete buffer;
+	}
 	
-	
-	//read phi
-	totalCells = parameter0Dim*parameter1Dim*parameter2Dim;
-	buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
-	f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
-	for(int z=0; z<parameter2Dim; z++)
-		for(int y=0; y<parameter1Dim; y++)
-			for(int x=0; x<parameter0Dim; x++){
-				double v = charArray2Double(buffer+((z*parameter1Dim+y)*parameter0Dim+x)*BINARY_DATA_BLOCK_SIZE);
-				tbl->setAuxiliaryCell(x,y,z,v);
-			}
-	
-	delete buffer;
+	if(containsphiValues == 1){
+		//read phi
+		totalCells = parameter0Dim*parameter1Dim*parameter2Dim;
+		buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
+		f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
+		for(int z=0; z<parameter2Dim; z++)
+			for(int y=0; y<parameter1Dim; y++)
+				for(int x=0; x<parameter0Dim; x++){
+					double v = charArray2Double(buffer+((z*parameter1Dim+y)*parameter0Dim+x)*BINARY_DATA_BLOCK_SIZE);
+					tbl->setAuxiliaryCell(x,y,z,v);
+				}
+		
+		delete buffer;
+	}
 	
 	
 	

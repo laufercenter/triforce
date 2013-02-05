@@ -71,7 +71,7 @@ double IntegratorNumerical::integrate(Molecule *molecule){
 	double a;
 	double d_i;
 	double r_i,r_l,radius;
-	
+	bool internalAtom;
 	
 	
 	area = 0;
@@ -94,6 +94,7 @@ double IntegratorNumerical::integrate(Molecule *molecule){
 		mus.clear();
 		lambdas.clear();
 		forms.clear();
+		internalAtom = false;
 		for(j=0; j<atoms.size(); ++j){
 			if(i!=j){
 				
@@ -131,7 +132,15 @@ double IntegratorNumerical::integrate(Molecule *molecule){
 					mus.push_back(normal);
 					lambdas.push_back(lambda);
 					forms.push_back(form);
-				}				
+				}
+				else if(r_i + lenv < r_k){
+					internalAtom = true;
+					break;
+				}
+	
+					
+					
+					
 			}
 				
 				
@@ -139,6 +148,10 @@ double IntegratorNumerical::integrate(Molecule *molecule){
 			
 		}
 		
+		if(internalAtom){
+			*(areas[i]) = 0;
+			continue;
+		}
 		
 		
 		sasaCount=0;
