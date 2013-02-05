@@ -34,8 +34,8 @@ using namespace std;
 using namespace arma;
 
 #define THRESHOLD_NEGATIVE  0.5
-#define LAMBDA_LOGISTIC_LIMIT 0.25
-#define LOGISTIC_SMOOTHER_PARAMETER 9
+#define LOGISTIC_LIMIT 0.15
+#define LOGISTIC_SMOOTHER_PARAMETER 8
 
 typedef struct
 {
