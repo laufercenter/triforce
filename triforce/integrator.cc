@@ -227,10 +227,10 @@ double IntegratorTriforce::integrateSASA(int l, SASA &sasa, double radius){
 		phi += sign_prephi * actphi;
 		sign_prephi = sgn(actphi);
 		
-		
-		//if(l==0)
-			//fprintf(stderr,"AREA: (%d %d) (%d %d) %f\n", x0.id0, x0.id1, x1.id0, x1.id1, integral.area*radius*radius);
-		
+		/*
+		if(l==10)
+			fprintf(stderr,"AREA: (%d %d) (%d %d) %f\n", x0.id0, x0.id1, x1.id0, x1.id1, integral.area*radius*radius);
+		*/
 		
 		area += integral.area;
 		
@@ -584,7 +584,7 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	force_k = q*(Tjk(1) * PHIjk.drotation_dxj);
 	force_l = q*((Tjk(1) * PHIjk.drotation_dxl + Tjk(2) * psi.drotation_dxl + Tjk(3) * lambda.drotation_dxl) - (Tij(1) * PHIij.drotation_dxl + Tij(2) * psi.drotation_dxl + Tij(3) * lambda.drotation_dxl));
 	
-	
+	/*
 	int ti=12;
 	if(x0.index0==ti || x0.index1==ti || x1.index0==ti || x1.index1==ti || l==ti){
 	
@@ -599,7 +599,7 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 		fprintf(stderr, "psi dxi   : (%f %f %f) \t psi dxj   : (%f %f %f) \t psi dxl   : (%f %f %f)\n",psi.drotation_dxi(0),psi.drotation_dxi(1),psi.drotation_dxi(2),psi.drotation_dxj(0),psi.drotation_dxj(1),psi.drotation_dxj(2),psi.drotation_dxl(0),psi.drotation_dxl(1),psi.drotation_dxl(2));
 		fprintf(stderr, "lambda dxi: (%f %f %f) \t lambda dxj: (%f %f %f) \t lambda dxl: (%f %f %f)\n",lambda.drotation_dxi(0),lambda.drotation_dxi(1),lambda.drotation_dxi(2),lambda.drotation_dxj(0),lambda.drotation_dxj(1),lambda.drotation_dxj(2),lambda.drotation_dxl(0),lambda.drotation_dxl(1),lambda.drotation_dxl(2));
 	}
-	
+	*/
 	q=s_convex;
 	
 	if(PHIjk.rotation < PHIij.rotation){
@@ -634,11 +634,13 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	
 	//here, we apply a logistic function to smooth the derivative for small lambdas
 
-	int index_j,index_l;
+	int index_j, index_l, index_i, index_k;
 	Vector v_j,mu_j,mu_l;
 	double d_j,r_j,r_l, t_j, dd;
 	
+	index_i=x0.index0;
 	index_j=x0.index1;
+	index_k=x1.index1;
 	index_l=l;
 	
 	if(index_j>=0){
@@ -666,14 +668,20 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 			
 			dd = -LOGISTIC_LIMIT/(r_j+r_l);
 			
-			fprintf(stderr,"TJ: %f %f %f\n",t_j,ls, dls);
+			//fprintf(stderr,"TJ: %f %f %f\n",t_j,ls, dls);
 			
 			
 			
 			a.area = a.area * ls;
-			a.force_i = a.force_i * ls;
+			if(index_i==index_j)
+				a.force_i = a.force_i * ls + area * dls * dd * mu_j;
+			else
+				a.force_i = a.force_i * ls;
 			a.force_j = a.force_j * ls + area * dls * dd * mu_j;
-			a.force_k = a.force_k * ls;
+			if(index_k==index_j)
+				a.force_k = a.force_k * ls + area * dls * dd * mu_j;
+			else
+				a.force_k = a.force_k * ls;
 			a.force_l = a.force_l * ls + area * dls * dd * mu_l;
 		}
 	}

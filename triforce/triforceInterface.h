@@ -1,4 +1,4 @@
-/* Copyright 2012, Nils J. D. Drechsel & Jordi Villà-Freixa
+/* Copyright 2013, Nils J. D. Drechsel & Jordi Villà-Freixa
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -15,62 +15,52 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#ifndef DATAFILE_H_
-#define DATAFILE_H_
+#ifndef TRIFORCE_INTERFACE_H_
+#define TRIFORCE_INTERFACE_H_
 
-
-#include <string>
-#include <vector>
-#include <map>
-#include <armadillo>
+#include "datafile.h"
 #include "data3d.h"
-#include "topology.h"
+#include "surface3d.h"
+#include "interpolation.h"
+#include "integrator.h"
 #include "molecule.h"
-
 
 using namespace std;
 using namespace arma;
 
 
 
-
-
-enum DataFileType{
-	MapCSV,
-	Binary
-};
-
-
-class DataFile{
+class TriforceInterface{
 public:
-	DataFile();
-	DataFile(string name);
-	Data3D* digest3DBinaryTable();
-	Topology *digestMapCSV();
-	Topology* digestTOP();
-	Molecule *digestGRO(Topology &top);
+	TriforceInterface(string path);
+	
+	double calculateSurfaceArea(Molecule &mol);
+	
+protected:
+	DataFile *df0;
+	DataFile *df1;
+	DataFile *df2;
+	DataFile *df3;
+	
+	Data3D *dat0;
+	Data3D *dat1;
+	Data3D *dat2;
+	Data3D *dat3;
 
-		
-private:
-	
-	string name;
-	DataFileType type;
-	
+	Surface3D* surf0;
+	Surface3D* surf1;
+	Surface3D* surf2;
+	Surface3D* surf3;
 
-	double charArray2Double(char* data);
-	int32_t charArray2FixedSignedInt32(char *data);
-	double fixedSignedInt322Double(int32_t x, unsigned short fraction);
-	int fixedSignedInt322Int(int32_t x);	
+	Interpolation *interpolator0;
+	Interpolation *interpolator1;
+	Interpolation *interpolator2;
+	Interpolation *interpolator3;
 	
-	
-	
-	double string2double(string s);
-	vector<string>* split(string &s, char delimiter);
-	string string2UpperCase(string s);
-	
+	IntegratorTriforce *integrator;	
 };
-	
 
 
 
-#endif //DATAFILE_H_
+
+#endif //TRIFORCE_INTERFACE_H_

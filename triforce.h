@@ -31,5 +31,6 @@
 #include "triforce/integratorStatistical.h"
 #include "triforce/integratorGaussBonnet.h"
 #include "triforce/integratorNumerical.h"
+#include "triforce/triforceInterface.h"
 
 #endif // TRIFORCE_H_

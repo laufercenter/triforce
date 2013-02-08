@@ -15,9 +15,8 @@
 DataFile::DataFile(){
 }
 
-DataFile::DataFile(const char* name, DataFileType type){
-	this->name=string(name);
-	this->type=type;
+DataFile::DataFile(string name){
+	this->name=name;
 }
 
 
