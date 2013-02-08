@@ -87,7 +87,7 @@ am_libtriforce_@TRIFORCE_API_VERSION@_la_OBJECTS =  \
 	triforce/topology.lo triforce/interpolation.lo \
 	triforce/integrator.lo triforce/integratorStatistical.lo \
 	triforce/integratorGaussBonnet.lo \
-	triforce/integratorNumerical.lo
+	triforce/integratorNumerical.lo triforce/triforceInterface.lo
 libtriforce_@TRIFORCE_API_VERSION@_la_OBJECTS =  \
 	$(am_libtriforce_@TRIFORCE_API_VERSION@_la_OBJECTS)
 libtriforce_@TRIFORCE_API_VERSION@_la_LINK = $(LIBTOOL) --tag=CXX \
@@ -260,7 +260,8 @@ libtriforce_@TRIFORCE_API_VERSION@_la_SOURCES = triforce/tessellation.cc \
 						triforce/integrator.cc \
 						triforce/integratorStatistical.cc \
 						triforce/integratorGaussBonnet.cc \
-						triforce/integratorNumerical.cc
+						triforce/integratorNumerical.cc \
+						triforce/triforceInterface.cc
 
 libtriforce_@TRIFORCE_API_VERSION@_la_LDFLAGS = -version-info $(TRIFORCE_SO_VERSION)
 triforce_includedir = $(includedir)/triforce-$(TRIFORCE_API_VERSION)
@@ -275,7 +276,8 @@ nobase_triforce_include_HEADERS = triforce.h \
 					triforce/integrator.h \
 					triforce/integratorStatistical.h \
 					triforce/integratorGaussBonnet.h \
-					triforce/integratorNumerical.h
+					triforce/integratorNumerical.h \
+					triforce/triforceInterface.h
 
 triforce_libincludedir = $(libdir)/triforce-$(TRIFORCE_API_VERSION)/include
 nodist_triforce_libinclude_HEADERS = triforceconfig.h
@@ -409,6 +411,8 @@ triforce/integratorGaussBonnet.lo: triforce/$(am__dirstamp) \
 	triforce/$(DEPDIR)/$(am__dirstamp)
 triforce/integratorNumerical.lo: triforce/$(am__dirstamp) \
 	triforce/$(DEPDIR)/$(am__dirstamp)
+triforce/triforceInterface.lo: triforce/$(am__dirstamp) \
+	triforce/$(DEPDIR)/$(am__dirstamp)
 libtriforce-@TRIFORCE_API_VERSION@.la: $(libtriforce_@TRIFORCE_API_VERSION@_la_OBJECTS) $(libtriforce_@TRIFORCE_API_VERSION@_la_DEPENDENCIES) 
 	$(libtriforce_@TRIFORCE_API_VERSION@_la_LINK) -rpath $(libdir) $(libtriforce_@TRIFORCE_API_VERSION@_la_OBJECTS) $(libtriforce_@TRIFORCE_API_VERSION@_la_LIBADD) $(LIBS)
 
@@ -436,6 +440,8 @@ mostlyclean-compile:
 	-rm -f triforce/tessellation.lo
 	-rm -f triforce/topology.$(OBJEXT)
 	-rm -f triforce/topology.lo
+	-rm -f triforce/triforceInterface.$(OBJEXT)
+	-rm -f triforce/triforceInterface.lo
 
 distclean-compile:
 	-rm -f *.tab.c
@@ -451,6 +457,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/surface3d.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/tessellation.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/topology.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/triforceInterface.Plo@am__quote@
 
 .cc.o:
 @am__fastdepCXX_TRUE@	depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\

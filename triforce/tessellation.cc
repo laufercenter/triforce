@@ -27,11 +27,13 @@ void Tessellation::build(bool split){
 		//int i=12;{
 		buildGaussBonnetPath(i, atoms, radii, sasasForMolecule, split);
 		/*
+		if(i==10){
 		fprintf(stderr,"--GBATOM-- %d\n",i);
 			for(int j=0; j<sasasForMolecule[i].sasas.size(); ++j){
 				fprintf(stderr,"SASA %d (%d)\n",j,sasasForMolecule[i].sasas[j].hemisphere);
 				outputGaussBonnetPath(sasasForMolecule[i].sasas[j]);
 			}
+		}
 		*/
 
 	}
@@ -76,6 +78,7 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 	CircularInterfacesPerAtom circles;
 	CircularInterfacesPerAtom circlesFrontHemisphere;
 	CircularInterfacesPerAtom circlesBackHemisphere;
+	
 	
 	Vector frontTessellationOrigin(3);
 	Vector backTessellationOrigin(3);
@@ -1815,7 +1818,8 @@ void Tessellation::printIntersectionGraph(IntersectionGraph &g,CircularInterface
 	IntersectionGraph::iterator it;
 	
 	for(it = g.begin(); it != g.end(); ++it){
-		fprintf(stderr,"NODE[%d,%d]: (%d,%d) -> (%d,%d)\n", circles[it->first.id0-1].index, circles[it->first.id1-1].index, circles[it->second.id0-1].index, circles[it->second.id1-1].index, circles[it->second.pointsTo0-1].index, circles[it->second.pointsTo1-1].index);
+		//fprintf(stderr,"NODE[%d,%d]: (%d,%d) -> (%d,%d)\n", circles[it->first.id0-1].index, circles[it->first.id1-1].index, circles[it->second.id0-1].index, circles[it->second.id1-1].index, circles[it->second.pointsTo0-1].index, circles[it->second.pointsTo1-1].index);
+		fprintf(stderr,"NODE[%d,%d]: (%d,%d) -> (%d,%d)\n", it->first.id0, it->first.id1, it->second.id0, it->second.id1, it->second.pointsTo0, it->second.pointsTo1);
 	}
 }
 
@@ -1830,6 +1834,8 @@ bool Tessellation::addToEraseList(map<IntersectionBranches::iterator, bool, Iter
 			eraseList[it]=true;
 			it->second.flagged=true;
 			it_mirror->second.flagged=true;
+			//if(ti==10) fprintf(stderr,"CASCADE ERASE %d %d\n",it->second.node->id0,it->second.node->id1);
+				
 	}
 	else return false;
 	
@@ -1843,6 +1849,8 @@ bool Tessellation::addToEraseListCascade(map<IntersectionBranches::iterator, boo
 	bool a2l;
 	it_mirror = it->second.it;
 	res = false;
+	
+	//if(ti==10) fprintf(stderr,"CASCADING %d %d\n",it->second.node->id0,it->second.node->id1);
 	
 	if(it->second.id != limit && it_mirror->second.id != limit){
 
@@ -1984,6 +1992,19 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 			}
 		}
 		
+/*
+		if(ti==10){
+		for(int m=0; m<circles.size(); ++m){
+			fprintf(stderr,"circle %d\n",m);
+			for(it_main = circles[m].intersectionBranches.begin(); it_main != circles[m].intersectionBranches.end(); ++it_main){
+				if(it_main->second.direction==OUT)
+					fprintf(stderr,"[%d] form: %d (%d,%d) d: %f - (%f,%f) (OUT)\n",it_main->second.id, circles[it_main->second.id-1].form, it_main->second.node->id0, it_main->second.node->id1, it_main->first, it_main->second.node->rotation0.rotation, it_main->second.node->rotation1.rotation);
+				else
+					fprintf(stderr,"[%d] form: %d (%d,%d) d: %f - (%f,%f) (IN)\n",it_main->second.id, circles[it_main->second.id-1].form, it_main->second.node->id0, it_main->second.node->id1, it_main->first, it_main->second.node->rotation0.rotation, it_main->second.node->rotation1.rotation);
+			}
+		}
+		}
+		*/
 		
 			
 			
@@ -1992,6 +2013,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 		
 		for(it_main = I->intersectionBranches.begin(); it_main != I->intersectionBranches.end(); ++it_main){
 			it_main->second.visited=-1;
+			
 		}
 		
 		eraseList.clear();
@@ -2006,6 +2028,13 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 				
 				it_mirror = it->second.it;
 				
+				bool Q=false;
+				/*if(ti==10){// && circles[it->second.node->id0-1].index==4 && circles[it->second.node->id1-1].index==0){
+					//fprintf(stderr,"Q ACTIVE\n");
+					
+					Q = true;
+				}
+				*/
 				
 				it_next = increaseBranchInterator(it, circles);
 				it_prev = decreaseBranchInterator(it, circles);
@@ -2054,34 +2083,44 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 						it_mirror->second.backward = EXTERNAL;
 					}
 					connectIntersectionPoints(*it_mirror->second.node, *it_next->second.node, intersectionGraph);
+					
+					if(Q) fprintf(stderr,"EMPTY\n");
+					
 				}
 				else{
 					if(it->second.direction == IN){
 						
 						if(it_mirror_prev_ignore->second.forward == EXTERNAL && it_mirror_next_ignore->second.backward == EXTERNAL){
+						/*	if(Q) fprintf(stderr, "CONNECT: (%d %d) - (%d %d)\n",it_mirror_prev->second.node->id0,it_mirror_prev->second.node->id1, it_mirror->second.node->id0, it_mirror->second.node->id1);
+							if(Q) fprintf(stderr, "CONNECT: (%d %d) - (%d %d)\n",it_mirror->second.node->id0,it_mirror->second.node->id1, it_next->second.node->id0, it_next->second.node->id1);
+						*/	
 							connectIntersectionPoints(*it_mirror_prev->second.node, *it_mirror->second.node, intersectionGraph);
 							connectIntersectionPoints(*it_mirror->second.node, *it_next->second.node, intersectionGraph);
 							it->second.backward=INTERNAL;
 							it->second.forward=EXTERNAL;
 							it_mirror->second.backward=EXTERNAL;
 							it_mirror->second.forward=INTERNAL;
-							
 							if(it_mirror_next->second.it->second.id != it->second.id){
 								eraseList[it_mirror_next]=true;
+						//		if(Q) fprintf(stderr, "ERASE0: (%d %d)\n",it_mirror_next->second.node->id0,it_mirror_next->second.node->id1);
 							}
 							if(it_prev->second.it->second.id != it_mirror->second.id){
 								eraseList[it_prev]=true;
+						//		if(Q) fprintf(stderr, "ERASE1: (%d %d)\n",it_prev->second.node->id0,it_prev->second.node->id1);
 							}
 							
 						}
 						else{
 							eraseList[it]=true;
+						//	if(Q) fprintf(stderr, "ERASE2: (%d %d)\n",it->second.node->id0,it->second.node->id1);
 						}
 					}
 					
 					if(it->second.direction == OUT){
 						
 						if(it_mirror_next_ignore->second.backward == EXTERNAL && it_mirror_prev_ignore->second.forward == EXTERNAL){
+						//	if(Q) fprintf(stderr, "CONNECT: (%d %d) - (%d %d)\n",it_mirror->second.node->id0,it_mirror->second.node->id1, it_mirror_next->second.node->id0, it_mirror_next->second.node->id1);
+						//	if(Q) fprintf(stderr, "CONNECT: (%d %d) - (%d %d)\n",it_prev->second.node->id0,it_prev->second.node->id1, it->second.node->id0, it->second.node->id1);
 							connectIntersectionPoints(*it_mirror->second.node, *it_mirror_next->second.node, intersectionGraph);
 							connectIntersectionPoints(*it_prev->second.node, *it->second.node, intersectionGraph);
 							it->second.backward=EXTERNAL;
@@ -2091,14 +2130,19 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 							
 							if(it_mirror_prev->second.it->second.id != it->second.id){
 								eraseList[it_mirror_prev]=true;
+						//		if(Q) fprintf(stderr, "ERASE3: (%d %d)\n",it_mirror_prev->second.node->id0,it_mirror_prev->second.node->id1);
+						//		if(Q) fprintf(stderr,"OUT0 0\n");
 							}
 							if(it_next->second.it->second.id != it_mirror->second.id){
 								eraseList[it_next]=true;
+						//		if(Q) fprintf(stderr, "ERASE4: (%d %d)\n",it_next->second.node->id0,it_next->second.node->id1);
+						//		if(Q) fprintf(stderr,"OUT0 1\n");
 							}
 							
 						}
 						else{
 							eraseList[it]=true;
+						//	if(Q) fprintf(stderr, "ERASE5: (%d %d)\n",it->second.node->id0,it->second.node->id1);
 						}
 					}
 					
@@ -2106,14 +2150,11 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 				}
 				
 				
-/*				if(ti==8){
-					fprintf(stderr,"-------------------------------------------------\n");
-					printIntersectionGraph(intersectionGraph,circles);
-					fprintf(stderr,"-------------------------------------------------\n");
-				}
-*/				
+				
 				
 			}
+			
+			
 			
 		}
 		
@@ -2125,6 +2166,22 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 		}
 		
 		do{
+/*			if(ti==10){
+			fprintf(stderr,"-------MASTER LIST--------\n");
+			for(it_e=eraseList.begin(); it_e != eraseList.end(); ++it_e){
+				it = it_e->first;
+				fprintf(stderr,"%d-%d\n",it->second.node->id0,it->second.node->id1);
+			}
+			fprintf(stderr,"-------------------------------\n");
+			fprintf(stderr,"-------SEARCH LIST--------\n");
+			for(it_e=eraseList2.begin(); it_e != eraseList2.end(); ++it_e){
+				it = it_e->first;
+				fprintf(stderr,"%d-%d\n",it->second.node->id0,it->second.node->id1);
+			}
+			fprintf(stderr,"-------------------------------\n");
+			}
+*/			
+			
 			for(it_e=eraseList.begin(); it_e != eraseList.end(); ++it_e){
 				it = it_e->first;
 			}
@@ -2161,9 +2218,17 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationOri
 		}
 		
 		if(hasStarted && intersectionGraph.size()<=1){
-			if(ti==0) fprintf(stderr,"BREAKING PREMATURELY\n");
+			//if(ti==0) fprintf(stderr,"BREAKING PREMATURELY\n");
 			break;
 		}
+		
+		/*
+				if(ti==10){
+					fprintf(stderr,"-------------------------------------------------\n");
+					printIntersectionGraph(intersectionGraph,circles);
+					fprintf(stderr,"-------------------------------------------------\n");
+				}
+		*/
 		
 		
 		
