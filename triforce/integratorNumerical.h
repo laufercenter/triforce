@@ -37,9 +37,10 @@ class IntegratorNumerical: public Integrator{
 	
 public:
 	IntegratorNumerical();
-	IntegratorNumerical(int trials);
+	IntegratorNumerical(int trials, double fd=0);
 	double integrate(Molecule *molecule, Tessellation *tessellation);
-	double integrate(Molecule *molecule, int index=-1);
+	double integrate(Molecule *molecule, int index=-1,  void (*feedback)(double)=NULL);
+	double integrateMolecule(Molecule *molecule, int index=-1);
 	
 	
 private:
@@ -52,10 +53,13 @@ private:
 	vector<Vector> atoms;
 	vector<double> radii;
 	
+	double fd;
+	
 	
 	double angle(Vector &a, Vector &b);
 	double integrateAtomicSASA(SASAsForAtom sasasForAtom);
 	Vector spherical2cartesian(Vector s);
+	void progressBar(int p);
 	
 };
 

@@ -179,7 +179,8 @@ void Molecule::print(){
 		fprintf(stderr,"[%d]: (%f, %f, %f), eps: %f, sig: %f, pointers: (%d,%d,%d)\n",i,atoms[i](0),atoms[i](1),atoms[i](2),epsilons[i],sigmas[i],
 		       atomicPointers[i].x,atomicPointers[i].y,atomicPointers[i].z);
 	}
-*/	fprintf(stderr,"Areas and forces:\n");
+*/
+	//fprintf(stderr,"Areas and forces:\n");
 	fprintf(stdout,"index\tname\tarea\tgradx\tgrady\tgradz\tradius\n");
 	for(int i=0;i<areas.size();++i){
 		fprintf(stdout,"%d\t%s\t%f\t%f\t%f\t%f\t%f\n",i, names[i].c_str(),*(areas[i]), *(forces[i][0]), *(forces[i][1]), *(forces[i][2]), radii[i]);
@@ -187,3 +188,18 @@ void Molecule::print(){
 	}
 	
 }
+
+
+
+void Molecule::printDifference(Molecule *mol){
+	//we assume here that the two molecules have same number of atoms etc..
+	vector<double*> areas2 = mol->fetchAreaPointers();
+	vector<vector<double*> > forces2 = mol->fetchForcePointers();
+	
+	fprintf(stdout,"index\tname\tarea\tgradx\tgrady\tgradz\tradius\n");
+	for(int i=0;i<areas.size();++i){
+		fprintf(stdout,"%d\t%s\t%f\t%f\t%f\t%f\t%f\n",i, names[i].c_str(),*(areas[i])-*(areas2[i]), *(forces[i][0])-*(forces2[i][0]), *(forces[i][1])-*(forces2[i][1]), *(forces[i][2])-*(forces2[i][2]), radii[i]);
+	}
+	
+}
+
