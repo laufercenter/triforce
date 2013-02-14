@@ -39,7 +39,7 @@ public:
 	IntegratorNumerical();
 	IntegratorNumerical(int trials);
 	double integrate(Molecule *molecule, Tessellation *tessellation);
-	double integrate(Molecule *molecule);
+	double integrate(Molecule *molecule, int index=-1);
 	
 	
 private:

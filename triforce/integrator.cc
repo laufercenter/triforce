@@ -627,7 +627,7 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 	
 	
 	
-	
+	/*
 	
 	//if(l==0) fprintf(stderr,"T3: %f\n",a.area);
 	
@@ -686,7 +686,7 @@ Area IntegratorTriforce::integrateTriangle(int l, SASANode &x0, SASANode &x1, Ve
 		}
 	}
 	
-	
+	*/
 	
 	return a;
 

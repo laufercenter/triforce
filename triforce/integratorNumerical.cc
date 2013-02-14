@@ -35,7 +35,7 @@ double IntegratorNumerical::angle(Vector &a, Vector &b){
 
 
 
-double IntegratorNumerical::integrate(Molecule *molecule){
+double IntegratorNumerical::integrate(Molecule *molecule, int index){
 	Vector origin;
 	double r_k;
 	double lenv;
@@ -84,7 +84,9 @@ double IntegratorNumerical::integrate(Molecule *molecule){
 	atoms = molecule->fetchCoordinates();
 	areas = molecule->fetchAreaPointers();
 	
-	file = fopen ("gbonnet1.csv","a");
+	
+	if(index>=0)
+		file = fopen ("rays.csv","w");
 	
 	
 	for(i=0; i<atoms.size(); ++i){
@@ -95,12 +97,19 @@ double IntegratorNumerical::integrate(Molecule *molecule){
 		lambdas.clear();
 		forms.clear();
 		internalAtom = false;
+		
+		if(index==i) fprintf(file, "atom radius %f\n", radius);
+		
+		
 		for(j=0; j<atoms.size(); ++j){
 			if(i!=j){
 				
 				v=atoms[j] - origin;
 				r_k = radii[j];
 				r_i = radius;
+				
+				if(index==i) fprintf(file, "intersector %d radius %f vector %f %f %f\n", j, r_k, v(0), v(1), v(2));
+				
 				
 				
 				lenv = norm(v,2);
@@ -147,6 +156,12 @@ double IntegratorNumerical::integrate(Molecule *molecule){
 				
 			
 		}
+		
+		
+		
+		
+		
+		
 		
 		if(internalAtom){
 			*(areas[i]) = 0;
@@ -208,7 +223,7 @@ double IntegratorNumerical::integrate(Molecule *molecule){
 			
 					
 			
-				fprintf(file, "ray %f %f %f occluded %d\n", v(0),v(1),v(2),occluded);
+				if(index==i) fprintf(file, "ray %f %f %f occluded %d\n", v(0),v(1),v(2),occluded);
 				
 				if(!occluded) sasaCount++;
 				else sesaCount++;
@@ -226,8 +241,8 @@ double IntegratorNumerical::integrate(Molecule *molecule){
 	
 	}
 	
-	
-	fclose(file);
+	if(index>=0)
+		fclose(file);
 	
 	return area;
 	

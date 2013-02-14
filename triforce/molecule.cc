@@ -36,11 +36,11 @@ void Molecule::addInternallyStoredAtom(double x, double y, double z, string type
 	Parameters p;
 	p=topology.getAssociatedCell(string2UpperCase(type));
 	
-	addInternallyStoredAtom(x,y,z,p.sigma,p.epsilon,i);
+	addInternallyStoredAtom(x,y,z,p.sigma,p.epsilon,type,i);
 	
 }
 	
-void Molecule::addInternallyStoredAtom(double x, double y, double z, double sigma, double epsilon, int i){
+void Molecule::addInternallyStoredAtom(double x, double y, double z, double sigma, double epsilon, string name, int i){
 	if(i<0) i = atomicPointers.size();
 	
 	if(i>=atomicPointers.size()){
@@ -52,7 +52,7 @@ void Molecule::addInternallyStoredAtom(double x, double y, double z, double sigm
 	atoms[i](2)=z;
 	
 	
-	addAtom(&atoms[i](0),&atoms[i](1),&atoms[i](2),&realArea[realArea.size()-1],&realForceX[realForceX.size()-1],&realForceY[realForceY.size()-1],&realForceZ[realForceZ.size()-1], sigma, epsilon,i);
+	addAtom(&atoms[i](0),&atoms[i](1),&atoms[i](2),&realArea[realArea.size()-1],&realForceX[realForceX.size()-1],&realForceY[realForceY.size()-1],&realForceZ[realForceZ.size()-1], sigma, epsilon,name,i);
 	
 	source[i] = INTERNAL_SOURCE;
 	
@@ -91,6 +91,7 @@ void Molecule::constructAtoms(int end){
 		realForceY.resize(end+1,0);
 		realForceZ.resize(end+1,0);
 		source.resize(end+1,EXTERNAL_SOURCE);
+		names.resize(end+1,string(""));
 	}
 }
 
@@ -99,13 +100,13 @@ void Molecule::addAtom(double* x, double* y, double* z, double* area, double* fo
 	Parameters p;
 	p=topology.getAssociatedCell(string2UpperCase(type));
 	
-	addAtom(x,y,z,area, forceX, forceY, forceZ, p.sigma,p.epsilon,i);
+	addAtom(x,y,z,area, forceX, forceY, forceZ, p.sigma,p.epsilon,type,i);
 	
 	
 }
 
 
-void Molecule::addAtom(double* x, double* y, double* z, double* area, double* forceX, double* forceY, double* forceZ, double sigma, double epsilon, int i){
+void Molecule::addAtom(double* x, double* y, double* z, double* area, double* forceX, double* forceY, double* forceZ, double sigma, double epsilon, string name, int i){
 	AtomicPointers c;
 	Parameters p;
 	vector<double*> force;
@@ -133,7 +134,7 @@ void Molecule::addAtom(double* x, double* y, double* z, double* area, double* fo
 	areas[i] = area;
 	forces[i] = force;
 	source[i] = EXTERNAL_SOURCE;
-		
+	names[i]=name;	
 }
 
 
@@ -179,8 +180,9 @@ void Molecule::print(){
 		       atomicPointers[i].x,atomicPointers[i].y,atomicPointers[i].z);
 	}
 */	fprintf(stderr,"Areas and forces:\n");
+	fprintf(stdout,"index\tname\tarea\tgradx\tgrady\tgradz\tradius\n");
 	for(int i=0;i<areas.size();++i){
-		fprintf(stderr,"[%d]: %f (%f, %f, %f) pointers: (%d, %d, %d)\n",i,*(areas[i]), *(forces[i][0]), *(forces[i][1]), *(forces[i][2]), forces[i][0], forces[i][1], forces[i][2]);
+		fprintf(stdout,"%d\t%s\t%f\t%f\t%f\t%f\t%f\n",i, names[i].c_str(),*(areas[i]), *(forces[i][0]), *(forces[i][1]), *(forces[i][2]), radii[i]);
 		//printf("[%d]: pointers: (%d, %d, %d, %d)\n",i,areas[i], forces[i][0], forces[i][1], forces[i][2]);
 	}
 	
