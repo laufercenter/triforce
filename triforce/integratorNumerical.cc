@@ -18,13 +18,14 @@ using namespace boost;
 
 
 IntegratorNumerical::IntegratorNumerical(){
-	IntegratorNumerical(100);
+	IntegratorNumerical(100,0);
 }
 
 
 
-IntegratorNumerical::IntegratorNumerical(int trials){
+IntegratorNumerical::IntegratorNumerical(int trials, double fd){
 	this->trials=trials;
+	this->fd = fd;
 	
 }
 
@@ -35,7 +36,53 @@ double IntegratorNumerical::angle(Vector &a, Vector &b){
 
 
 
-double IntegratorNumerical::integrate(Molecule *molecule, int index){
+
+
+
+double IntegratorNumerical::integrate(Molecule *molecule, int index, void (*feedback)(double)){
+	Vector coordinate(3);
+	Vector pp(3),pn(3);
+	double areap,arean;
+	vector<vector<double*> > forces;	
+	
+	
+	//numerical derivatives
+	if(fd!=0){
+		atoms = molecule->fetchCoordinates();
+		forces = molecule->fetchForcePointers();
+		
+		
+		
+		for(int i=0; i<atoms.size(); ++i){
+			if(feedback!=NULL) feedback((double)i/((double)atoms.size()-1));
+			
+			coordinate = molecule->getInternallyStoredAtomCoordinates(i);
+			for(int j=0; j<3; ++j){
+				pp = Vector(3).zeros();
+				pn = Vector(3).zeros();
+				pp(j) = fd;
+				pn(j) = -fd;
+				
+				
+				molecule->perturbInternallyStoredAtomCoordinates(i, pp);
+				areap = integrateMolecule(molecule,-1);
+				molecule->setInternallyStoredAtomCoordinates(i, coordinate);
+				
+				molecule->perturbInternallyStoredAtomCoordinates(i, pn);
+				arean = integrateMolecule(molecule,-1);
+				molecule->setInternallyStoredAtomCoordinates(i, coordinate);
+				
+				*(forces[i][j]) = (areap - arean)/(2*fd);
+			}
+			
+		}		
+	}
+	
+	return integrateMolecule(molecule, index);
+}
+
+
+double IntegratorNumerical::integrateMolecule(Molecule *molecule, int index){
 	Vector origin;
 	double r_k;
 	double lenv;

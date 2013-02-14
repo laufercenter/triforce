@@ -70,6 +70,8 @@ public:
 	void perturbInternallyStoredAtomCoordinates(int i, Vector p);
 	
 	void print();
+	void printDifference(Molecule *mol);
+	
 	vector<Vector> &fetchCoordinates();
 	vector<double> &fetchRadii();
 	vector<double*> &fetchAreaPointers();
