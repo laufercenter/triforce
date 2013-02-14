@@ -61,10 +61,10 @@ public:
 	Molecule();
 	Molecule(Topology topology);
 	void addAtom(double* x, double* y, double* z, double* area, double* forceX, double* forceY, double* forceZ, string type, int i=-1);
-	void addAtom(double* x, double* y, double* z, double* area, double* forceX, double* forceY, double* forceZ, double sigma, double epsilon, int i=-1);
+	void addAtom(double* x, double* y, double* z, double* area, double* forceX, double* forceY, double* forceZ, double sigma, double epsilon, string name, int i=-1);
 	void update();
 	void addInternallyStoredAtom(double x, double y, double z, string type, int i=-1);
-	void addInternallyStoredAtom(double x, double y, double z, double sigma, double epsilon, int i=-1);
+	void addInternallyStoredAtom(double x, double y, double z, double sigma, double epsilon, string name, int i=-1);
 	Vector getInternallyStoredAtomCoordinates(int i);
 	void setInternallyStoredAtomCoordinates(int i, Vector &v);
 	void perturbInternallyStoredAtomCoordinates(int i, Vector p);
@@ -91,6 +91,7 @@ private:
 	vector<double*> areas;
 	vector<vector<double*> >forces;
 	vector<Source> source;
+	vector<string> names;
 	
 	
 	ForceField forcefield;

@@ -391,6 +391,7 @@ Topology* DataFile::digestTOP(){
 	Topology *data;
 	string block;
 	Parameters p;
+	string prefix=string("");
 	
 	ifs = new ifstream(name.c_str(),ifstream::in);
 
@@ -403,7 +404,6 @@ Topology* DataFile::digestTOP(){
 	while(ifs->good()){
 		std::getline(*ifs,line);
 		content=split(line,' ');
-		
 		if(content->size()>0){
 			
 			//are we in section atomtypes?
@@ -437,9 +437,9 @@ Topology* DataFile::digestTOP(){
 						//right amount of parameters?
 						if(content->size()>=8){
 							ident1=string2UpperCase((*content)[1]);
-							ident0=string2UpperCase((*content)[4]);
+							ident0=(*content)[2]+string2UpperCase((*content)[3])+string2UpperCase((*content)[4]);
 							//is it already in the map?
-							if(data->contains(ident)){
+							if(data->contains(ident1)){
 								data->setMassValue(ident1,string2double((*content)[7]));
 							}
 							else{
@@ -451,6 +451,7 @@ Topology* DataFile::digestTOP(){
 							data->setAssociation(ident0,ident1);
 						}
 					}
+					
 				}
 			}
 			
@@ -494,12 +495,13 @@ Molecule *DataFile::digestGRO(Topology &top){
 		
 		content=split(line,' ');
 		
+		
 		if(content->size()>0){
 			//is it not a comment?
 			if((*content)[0][0]!=';'){
 				//right amount of parameters?
 				if(content->size()>=6){
-					ident=string2UpperCase((*content)[1]);
+					ident=string2UpperCase((*content)[0]) + string2UpperCase((*content)[1]);
 					x=string2double((*content)[3])*10;
 					y=string2double((*content)[4])*10;
 					z=string2double((*content)[5])*10;
