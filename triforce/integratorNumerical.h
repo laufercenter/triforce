@@ -59,7 +59,8 @@ private:
 	double angle(Vector &a, Vector &b);
 	double integrateAtomicSASA(SASAsForAtom sasasForAtom);
 	Vector spherical2cartesian(Vector s);
-	void progressBar(int p);
+	bool occludes(Vector v, vector<double> &lambdas, vector<Vector> &mus, vector<CircularInterfaceForm> &forms, double &conflict);
+	Vector sphericalVector(double phi, double theta);
 	
 };
 

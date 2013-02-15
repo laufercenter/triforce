@@ -82,6 +82,101 @@ double IntegratorNumerical::integrate(Molecule *molecule, int index, void (*feed
 }
 
 
+/*
+double IntegratorNumerical::partitionSearch(int p0, int p1, double phi0, double theta0, double phi1, double theta1, vector<double> &lambdas, vector<Vector> &mus, vector<CircularInterfaceForm> &forms){
+	Vector v0 = Vector(2);
+	Vector v1 = Vector(2);
+	v0(0)=phi0;
+	v0(1)=theta0;
+	v1(0)=phi1;
+	v1(1)=theta1;
+	Vector l=v0;
+	Vector r=v1;
+	double length = norm(l-r,2);
+	double h = 1;
+	Vector c=r;
+	int p;
+	//printf("[%f %f - %f %f (%f) %d %d]\n",phi0,theta0,phi1,theta1,length,p0,p1);
+	while(h>partitionThreshold){
+		c = r+(l-r)*0.5;
+		p = occludes(c(0),c(1), lambdas, mus, forms);
+		if(p0==p) l=c;
+		else r=c;
+		
+		h = norm(l-r,2)/length;
+		//printf("%f %f (%f) [%d]\n",c(0),c(1),h,p);
+		
+	}
+	//printf("[%f]\n",norm(v0-c,2)/length);
+	
+	return norm(v0-c,2)/length;
+}
+*/
+
+
+Vector IntegratorNumerical::sphericalVector(double phi, double theta){
+	Vector v(3);
+	// Find the position of the current surface segment.
+	v(0) = 1;
+	v(1) = theta;
+	v(2) = phi;
+	v = spherical2cartesian(v);
+	
+	return v;
+}
+
+	
+bool IntegratorNumerical::occludes(Vector v, vector<double> &lambdas, vector<Vector> &mus, vector<CircularInterfaceForm> &forms, double &conflict){
+	bool occluded;
+	CircularInterfaceForm form;
+	double l;
+	Vector n;
+	double conflict_sasa, conflict_sesa;
+	
+	conflict_sasa=99999999999;
+	
+	occluded = false;
+	
+	for(int j=0; j<mus.size() && !occluded; ++j){
+		n = mus[j];
+		l = lambdas[j];
+		form = forms[j];
+		
+		double a=angle(v,n);
+	
+		if(form==CONVEX){
+			if(a <= l){
+				occluded=true; 
+				conflict_sesa=l-a;
+			}
+			else{
+				if(a-l<conflict_sasa) conflict_sasa=a-l;
+			}
+		}
+		else{
+			if(a >= l){
+				occluded=true; 
+				conflict_sesa=a-l;
+			}
+			else{
+				if(l-a<conflict_sasa) conflict_sasa=l-a;
+			}
+				
+		}
+	}
+	
+	if(occluded) conflict=conflict_sesa;
+	else conflict=conflict_sasa;
+	
+	
+
+	
+	
+	return occluded;
+	
+}
+
+
 double IntegratorNumerical::integrateMolecule(Molecule *molecule, int index){
 	Vector origin;
 	double r_k;
@@ -97,8 +192,8 @@ double IntegratorNumerical::integrateMolecule(Molecule *molecule, int index){
 	
 	double area;
 	Vector v(3);
-	int sasaCount;
-	int sesaCount;
+	double sasaCount;
+	double sesaCount;
 	bool occluded;
 	int detail;
 	boost::mt19937 randomizer;
@@ -119,6 +214,11 @@ double IntegratorNumerical::integrateMolecule(Molecule *molecule, int index){
 	double d_i;
 	double r_i,r_l,radius;
 	bool internalAtom;
+	Vector v0,v1,v2,v3;
+	double x;
+	double conflict,conflict1;
+	
+	Vector lineNew, lineOld;
 	
 	
 	area = 0;
@@ -243,37 +343,68 @@ double IntegratorNumerical::integrateMolecule(Molecule *molecule, int index){
 			dtheta2 = temp_dtheta;
 			
 			for (float theta = theta_step * dtheta;	theta < 2 * M_PI; theta += theta_step) {
-		
-				// Find the position of the current surface segment.
-				v(0) = 1;
-				v(1) = theta;
-				v(2) = phi;
-				v = spherical2cartesian(v);
 				
+				v = sphericalVector(phi,theta);
+
 				
-				occluded = false;
-				
-				for(j=0; j<mus.size() && !occluded; ++j){
-					n = mus[j];
-					l = lambdas[j];
-					form = forms[j];
+				if(occludes(v,lambdas,mus,forms,conflict)){
+					v0 = sphericalVector(phi-phi_step,theta);
+					v1 = sphericalVector(phi+phi_step,theta);
+					v2 = sphericalVector(phi,theta-theta_step);
+					v3 = sphericalVector(phi,theta+theta_step);
 					
-				
-					if(form==CONVEX){
-						if(angle(v,n) <= l) occluded=true; 
-					}
-					else{
-						//n = -n;
-						if(angle(v,n) >= l) occluded=true; 
-					}
+					x=0;
+					
+					if(!occludes(v0,lambdas,mus,forms,conflict1))
+						x += conflict/(conflict+conflict1);
+					else x+=1;
+					if(!occludes(v1,lambdas,mus,forms,conflict1))
+						x += conflict/(conflict+conflict1);
+					else x+=1;
+					if(!occludes(v2,lambdas,mus,forms,conflict1))
+						x += conflict/(conflict+conflict1);
+					else x+=1;
+					if(!occludes(v3,lambdas,mus,forms,conflict1))
+						x += conflict/(conflict+conflict1);
+					else x+=1;
+
+					sasaCount+=1.0-(x/4.0);
+					sesaCount+=x/4.0;
+						
+						
+						
 				}
-			
+				else{
+					v0 = sphericalVector(phi-phi_step,theta);
+					v1 = sphericalVector(phi+phi_step,theta);
+					v2 = sphericalVector(phi,theta-theta_step);
+					v3 = sphericalVector(phi,theta+theta_step);
 					
+					x=0;
+					
+					if(occludes(v0,lambdas,mus,forms,conflict1))
+						x += conflict/(conflict+conflict1);
+					else x+=1;
+					if(occludes(v1,lambdas,mus,forms,conflict1))
+						x += conflict/(conflict+conflict1);
+					else x+=1;
+					if(occludes(v2,lambdas,mus,forms,conflict1))
+						x += conflict/(conflict+conflict1);
+					else x+=1;
+					if(occludes(v3,lambdas,mus,forms,conflict1))
+						x += conflict/(conflict+conflict1);
+					else x+=1;
+
+					sesaCount+=1.0-(x/4.0);
+					sasaCount+=x/4.0;
+						
+					
+					
+				}
+				
 			
 				if(index==i) fprintf(file, "ray %f %f %f occluded %d\n", v(0),v(1),v(2),occluded);
 				
-				if(!occluded) sasaCount++;
-				else sesaCount++;
 			}
 		}
 		
