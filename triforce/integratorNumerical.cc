@@ -54,10 +54,10 @@ double IntegratorNumerical::integrate(Molecule *molecule, int index, void (*feed
 		
 		
 		for(int i=0; i<atoms.size(); ++i){
-			if(feedback!=NULL) feedback((double)i/((double)atoms.size()-1));
-			
 			coordinate = molecule->getInternallyStoredAtomCoordinates(i);
 			for(int j=0; j<3; ++j){
+				if(feedback!=NULL) feedback((double)(i*3+j)/((double)(atoms.size()*3)-1));
+
 				pp = Vector(3).zeros();
 				pn = Vector(3).zeros();
 				pp(j) = fd;
