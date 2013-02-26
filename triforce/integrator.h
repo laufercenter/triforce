@@ -85,9 +85,8 @@ private:
 	double complAngle(Vector &a, Vector &b);
 	double complLongAngle(Vector &n, Vector &o, Vector &a);
 	double angle(Vector &a, Vector &b);
-	Area integrateTriangle(int l, SASANode &x0, SASANode &x1, Vector integrationOrigin, double &phi);
-	double integrateAtomicSASA(int l, SASAsForAtom sasasForAtom, double radius);
-	double integrateSASA(int l, SASA &s, double radius);
+	Area integrateTriangle(int l, SASASegment &x, Vector integrationOrigin, double &phi);
+	double integrateSASA(int l, SASASegmentList &s, double radius);
 	Vector lookUp(double PHI, double psi, double lambda, double &phi, CircularInterfaceForm form);
 	Vector lookUp2(double PHI, double psi, double lambda);
 	Vector lookUp3(double PHI, double psi, double lambda);
