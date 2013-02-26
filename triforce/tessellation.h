@@ -82,6 +82,12 @@ enum Direction{
 	OUT
 };
 
+enum Orientation{
+	FORWARD,
+	BACKWARD
+};
+
+
 enum Hemisphere{
 	FRONTHEMISPHERE,
 	BACKHEMISPHERE
@@ -91,19 +97,64 @@ enum Hemisphere{
 typedef struct
 {
 	double rotation;
-	double rotation2;
 	Vector drotation_dxi;
 	Vector drotation_dxj;
 	Vector drotation_dxl;
-	Vector vector;
 }
 Rotation;
 
 
 typedef struct
 {
-	Rotation out;
-	Rotation in;
+	double rotation;
+	double di;
+	double dij;
+	Vector ni;
+	Vector nij;
+	double dot_ni_nij;
+	double s0;
+	double s2;
+	
+	int id_i;
+	int id_j;
+}
+OmegaRotation;
+
+typedef struct
+{
+	double rotation;
+	double sig0;
+	double sig1;
+	double sig2;
+	double dot_IJ;
+	double rho;
+
+	int id_i;
+	int id_j;
+	
+}
+EtaRotation;
+
+
+typedef struct
+{
+	double rotation;
+	
+	OmegaRotation omega;
+	EtaRotation eta;
+	
+	int s;
+	
+	
+}
+PHIRotation;
+
+
+
+typedef struct
+{
+	PHIRotation out;
+	PHIRotation in;
 }
 PHIContainer;
 
@@ -190,6 +241,7 @@ typedef struct IntersectionBranch
 	IntersectionBranches* body;
 	int id;
 	bool flagged;
+	PHIRotation PHI;
 }
 IntersectionBranch;
 
@@ -244,40 +296,28 @@ typedef struct
 {
 	int id0;
 	int id1;
+	int id2;
 	int index0;
 	int index1;
+	int index2;
 	CircularInterfaceForm form0;
 	CircularInterfaceForm form1;
-	Vector vector;
+	CircularInterfaceForm form2;
 	Rotation rotation0;
 	Rotation rotation1;
 	Vector normalForCircularInterface;
 	Rotation lambda;
 	Rotation psi;
-	CircularInterfaceForm form;
-}
-SASANode;
-
-typedef vector<SASANode> SASANodeList;
-
-
-typedef struct{
-	Vector tessellationOrigin;
+	Vector tessellationAxis;
 	Hemisphere hemisphere;
-	SASANodeList sasa;
 }
-SASA;
+SASASegment;
 
-typedef vector<SASA> SASAs;
+typedef vector<SASASegment> SASASegmentList;
 
-typedef struct{
-	SASAs sasas;
-	double radius;
-	Vector vector;
-}
-SASAsForAtom;
 
-typedef vector<SASAsForAtom> SASAsForMolecule;
+
+typedef vector<SASASegmentList> SASAs;
 
 
 typedef map<IntersectionAddress, IntersectionNode, InteractionNodeComparator> IntersectionGraph;
@@ -320,21 +360,24 @@ public:
 	Tessellation(Molecule &m);
 	
 	void build(bool split);
-	SASAsForMolecule &sasas();
+	SASAs &sasas();
 	
 	
 	Vector calculateInterfaceNormal(const Vector &v_l, const Vector &v_i);
 	Vector calculateInterfaceNormal(const Vector &v_l, const Vector &v_i, double &d);
 	Rotation calculateLambda(int index_i, double d_i, double r_l, double r_i, Vector &mu_i, CircularInterfaceForm &form, double &g2, bool derivatives);
 	Rotation calculateLambda(double d_i, double r_l, double r_i, Vector &mu_i);
-	Rotation calculatePsi(Vector &tessellationOrigin, Vector &mu_i, Matrix &dmu_dx, CircularInterfaceForm form, int index, bool derivatives);
-	Rotation calculatePsi(Vector &tessellationOrigin, Vector &mu_i);
-	Rotation calculateEta(Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j);
-	Rotation calculateEta(Vector &tessellationOrigin, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, Matrix &dmui_dxi, Matrix &dmuj_dxj, int index_i, int index_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, bool derivatives);
-	Rotation calculateOmega(Vector &tessellationOrigin, Vector &mu_i, Vector &mu_j);
-	Rotation calculateOmega(Vector &tessellationOrigin, Vector &mu_i, Vector &mu_j, Matrix &dmui_dxi, Matrix &dmuj_dxj, int index_i, int index_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, bool derivatives);
-	PHIContainer calculatePHI(Vector &tessellationOrigin, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j);
-	PHIContainer calculatePHI(Vector &tessellationOrigin, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, Matrix &dmui_dxi, Matrix &dmuj_dxj, int index_i, int index_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, bool derivatives);
+	Rotation calculatePsi(Vector &tessellationAxis, Vector &mu_i, Matrix &dmu_dx, CircularInterfaceForm form, int index, bool derivatives);
+	Rotation calculatePsi(Vector &tessellationAxis, Vector &mu_i);
+	EtaRotation calculateEta(Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j);
+	EtaRotation calculateEta(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j);
+	Rotation calculateEtaDerivatives(EtaRotation &r, CircularInterfacesPerAtom &circles);
+	OmegaRotation calculateOmega(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j);
+	OmegaRotation calculateOmega(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j);
+	Rotation calculateOmegaDerivatives(OmegaRotation &r, CircularInterfacesPerAtom &circles, Vector &tessellationAxis);
+	PHIContainer calculatePHI(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j);
+	PHIContainer calculatePHI(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j);
+	Rotation calculatePHIDerivatives(PHIRotation &r, CircularInterfacesPerAtom &circles, Vector &tessellationAxis);
 	double calculateRho(Vector &mu_i, Vector &mu_j);
 	double calculateRho(Vector &mu_i, Vector &mu_j, bool derivatives);
 	double sacos(Vector &a, Vector &b);
@@ -353,10 +396,10 @@ private:
 	int ti;
 	//#atoms #circularregions
 	//#atoms #sasas #circularregions
-	SASAsForMolecule sasasForMolecule;
+	SASAs sasasForMolecule;
 
-	CircularInterfacesPerAtom coverHemisphere(Vector tessellationOrigin, double radius, CircularInterfacesPerAtom circles, CircularInterfaceForm form);
-	void buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<double> &radii, SASAsForMolecule &sasas, bool split);
+	CircularInterfacesPerAtom coverHemisphere(Vector tessellationAxis, double radius, CircularInterfacesPerAtom circles, CircularInterfaceForm form);
+	void buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<double> &radii, SASAs &sasas, bool split);
 	double vsign(double v);
 	double cot(double a);
 	double csc(double a);
@@ -367,43 +410,29 @@ private:
 	void determineProjection(Vector &origin, double radius, CircularInterface &circle);
 	IntersectionPair determineIntersectionPoints(double radius, CircularInterface &K, CircularInterface &J);
 	bool makeCircularInterfaces(int i,Vector &origin, double radius, vector<vec> &atoms, vector<double> &radii, vector<CircularInterface> &circles);
-	int filterCircularInterfaces(Vector tessellationOrigin, double radius, vector<CircularInterface> &circles);
-	void outputGaussBonnetPath(SASA &points);
+	int filterCircularInterfaces(Vector tessellationAxis, double radius, vector<CircularInterface> &circles);
+	void outputGaussBonnetPath(SASAs &points);
 	void reindexCircularInterfaces(CircularInterfacesPerAtom &circles);
-	void insertArtificialIntersectionPoints(CircularInterface &I, IntersectionGraph &intersectionGraph, Vector &tessellationOrigin);
+	void insertArtificialIntersectionPoints(CircularInterface &I, Vector &tessellationAxis);
 	int sgn(double d);
 	void determineCircularIntersections(CircularInterfacesPerAtom &circles);
 	double complLongAngle(Vector &vi, Vector &vj, Vector &vk);
-	double angularInterface(Vector &x0, Vector &v, Vector &p0, Vector &p1);
-	void measurementPoints(Vector &p0, Vector &p1, Vector &tessellationOrigin, CircularInterface &I);
-	Interfaces angularInterfaces(Vector &x0, Vector &x1, Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J);
-	PHIContainer retrieveInterfaces(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J, double dij, double radius);
-	IntersectionBranches::iterator increaseBranchInterator(IntersectionBranches::iterator it, CircularInterfacesPerAtom &circles);
-	IntersectionBranches::iterator decreaseBranchInterator(IntersectionBranches::iterator it, CircularInterfacesPerAtom &circles);
-	IntersectionBranches::iterator increaseBranchInterator(multimap<double, IntersectionBranch>::iterator it, int ignore, CircularInterfacesPerAtom &circles);
-	IntersectionBranches::iterator decreaseBranchInterator(IntersectionBranches::iterator it, int ignore, CircularInterfacesPerAtom &circles);
-	void disconnectIntersectionPoint(IntersectionNode &a);
-	void connectIntersectionPoints(IntersectionNode &a, IntersectionNode &b, IntersectionGraph &intersectionGraph);
-	void createIntersectionNode(IntersectionAddress &address, IntersectionGraph &intersectionGraph);
-	void createIntersectionNode(int id0, int id1, IntersectionGraph &intersectionGraph);
-	void createIntersectionBranch(IntersectionAddress &address, PHIContainer &PHII, PHIContainer &PHIJ, CircularInterface &I, CircularInterface &J, IntersectionGraph &intersectionGraph);
+	IntersectionBranches::iterator increaseBranchInterator(IntersectionBranches::iterator it, CircularInterface &circle);
+	IntersectionBranches::iterator decreaseBranchInterator(IntersectionBranches::iterator it, CircularInterface &circle);
+	void createIntersectionBranch(PHIContainer &PHII, PHIContainer &PHIJ, CircularInterface &I, CircularInterface &J);
 	void printBranch(const char* s, multimap<double, IntersectionBranch>::iterator &it);
 	void printIntersectionGraph(IntersectionGraph &g, CircularInterfacesPerAtom &circles);
-	void buildIntersectionGraph(double radius, Vector &tessellationOrigin, CircularInterfacesPerAtom &circles, SASAs &sasas, Hemisphere hemisphere, string filename);
+	void buildIntersectionGraph(double radius, Vector &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename);
 	void outputGaussBonnetData(string filename, double radius, CircularInterfacesPerAtom &circles, SASAs &sasas, IntersectionGraph &intersectionGraph);
-	void deleteIntersectionPoint(IntersectionBranches::iterator &it,IntersectionGraph &intersectionGraph, CircularInterfacesPerAtom &circles);
-	void depleteCircularInterfaces(Vector tessellationOrigin, double radius, vector<CircularInterface> &circles);
-	double rotationalAngle(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J);
+	void depleteCircularInterfaces(Vector tessellationAxis, double radius, vector<CircularInterface> &circles);
 	bool isWithinNumericalLimits(double x, double l);
 	bool isWithinStrongNumericalLimits(double x, double l);
-	Rotation calculateOmega(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J);
-	Rotation calculateEta(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J);
-	PHIContainer calculatePHI(Vector &tessellationOrigin, CircularInterface &I, CircularInterface &J, double dij, double radius);
-	void determinePsiRotations(Vector &tessellationOrigin, CircularInterfacesPerAtom &circles);
-	Rotation calculatePsi(Vector &tessellationOrigin, CircularInterface &circle);
+	OmegaRotation calculateOmega(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J);
+	EtaRotation calculateEta(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J);
+	PHIContainer calculatePHI(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J, double radius);
+	void determinePsiRotations(Vector &tessellationAxis, CircularInterfacesPerAtom &circles);
+	Rotation calculatePsi(Vector &tessellationAxis, CircularInterface &circle);
 	Matrix matrixCross(Matrix &m, Vector &v);
-	bool addToEraseList(map<IntersectionBranches::iterator,bool,IteratorComparator> &masterEraseList, map<IntersectionBranches::iterator,bool,IteratorComparator> &eraseList, IntersectionBranches::iterator &it, int limit);
-	bool addToEraseListCascade(map<IntersectionBranches::iterator,bool,IteratorComparator> &masterEraseList, map<IntersectionBranches::iterator,bool,IteratorComparator> &eraseList, IntersectionBranches::iterator &it, int limit, CircularInterfacesPerAtom &circles);
 	Vector normalise(Vector x);
 	Vector normalise(Vector x, double &l);
 

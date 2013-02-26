@@ -28,8 +28,6 @@
 #include "triforce/interpolation.h"
 #include "triforce/topology.h"
 #include "triforce/integrator.h"
-#include "triforce/integratorStatistical.h"
-#include "triforce/integratorGaussBonnet.h"
 #include "triforce/integratorNumerical.h"
 #include "triforce/triforceInterface.h"
 

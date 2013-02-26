@@ -11,8 +11,6 @@ libtriforce_@TRIFORCE_API_VERSION@_la_SOURCES = triforce/tessellation.cc \
 						triforce/topology.cc \
 						triforce/interpolation.cc \
 						triforce/integrator.cc \
-						triforce/integratorStatistical.cc \
-						triforce/integratorGaussBonnet.cc \
 						triforce/integratorNumerical.cc \
 						triforce/triforceInterface.cc
 
@@ -28,8 +26,6 @@ nobase_triforce_include_HEADERS = triforce.h \
 					triforce/topology.h \
 					triforce/interpolation.h \
 					triforce/integrator.h \
-					triforce/integratorStatistical.h \
-					triforce/integratorGaussBonnet.h \
 					triforce/integratorNumerical.h \
 					triforce/triforceInterface.h
 
