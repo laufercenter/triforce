@@ -12,7 +12,8 @@ libtriforce_@TRIFORCE_API_VERSION@_la_SOURCES = triforce/tessellation.cc \
 						triforce/interpolation.cc \
 						triforce/integrator.cc \
 						triforce/integratorNumerical.cc \
-						triforce/triforceInterface.cc
+						triforce/triforceInterface.cc \
+						triforce/shellNeighbourList.cc
 
 libtriforce_@TRIFORCE_API_VERSION@_la_LDFLAGS = -version-info $(TRIFORCE_SO_VERSION)
 
@@ -27,7 +28,8 @@ nobase_triforce_include_HEADERS = triforce.h \
 					triforce/interpolation.h \
 					triforce/integrator.h \
 					triforce/integratorNumerical.h \
-					triforce/triforceInterface.h
+					triforce/triforceInterface.h \
+					triforce/shellNeighbourList.h
 
 triforce_libincludedir = $(libdir)/triforce-$(TRIFORCE_API_VERSION)/include
 nodist_triforce_libinclude_HEADERS = triforceconfig.h
