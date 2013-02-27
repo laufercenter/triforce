@@ -86,7 +86,7 @@ am_libtriforce_@TRIFORCE_API_VERSION@_la_OBJECTS =  \
 	triforce/data3d.lo triforce/surface3d.lo triforce/datafile.lo \
 	triforce/topology.lo triforce/interpolation.lo \
 	triforce/integrator.lo triforce/integratorNumerical.lo \
-	triforce/triforceInterface.lo
+	triforce/triforceInterface.lo triforce/shellNeighbourList.lo
 libtriforce_@TRIFORCE_API_VERSION@_la_OBJECTS =  \
 	$(am_libtriforce_@TRIFORCE_API_VERSION@_la_OBJECTS)
 libtriforce_@TRIFORCE_API_VERSION@_la_LINK = $(LIBTOOL) --tag=CXX \
@@ -258,7 +258,8 @@ libtriforce_@TRIFORCE_API_VERSION@_la_SOURCES = triforce/tessellation.cc \
 						triforce/interpolation.cc \
 						triforce/integrator.cc \
 						triforce/integratorNumerical.cc \
-						triforce/triforceInterface.cc
+						triforce/triforceInterface.cc \
+						triforce/shellNeighbourList.cc
 
 libtriforce_@TRIFORCE_API_VERSION@_la_LDFLAGS = -version-info $(TRIFORCE_SO_VERSION)
 triforce_includedir = $(includedir)/triforce-$(TRIFORCE_API_VERSION)
@@ -272,7 +273,8 @@ nobase_triforce_include_HEADERS = triforce.h \
 					triforce/interpolation.h \
 					triforce/integrator.h \
 					triforce/integratorNumerical.h \
-					triforce/triforceInterface.h
+					triforce/triforceInterface.h \
+					triforce/shellNeighbourList.h
 
 triforce_libincludedir = $(libdir)/triforce-$(TRIFORCE_API_VERSION)/include
 nodist_triforce_libinclude_HEADERS = triforceconfig.h
@@ -404,6 +406,8 @@ triforce/integratorNumerical.lo: triforce/$(am__dirstamp) \
 	triforce/$(DEPDIR)/$(am__dirstamp)
 triforce/triforceInterface.lo: triforce/$(am__dirstamp) \
 	triforce/$(DEPDIR)/$(am__dirstamp)
+triforce/shellNeighbourList.lo: triforce/$(am__dirstamp) \
+	triforce/$(DEPDIR)/$(am__dirstamp)
 libtriforce-@TRIFORCE_API_VERSION@.la: $(libtriforce_@TRIFORCE_API_VERSION@_la_OBJECTS) $(libtriforce_@TRIFORCE_API_VERSION@_la_DEPENDENCIES) 
 	$(libtriforce_@TRIFORCE_API_VERSION@_la_LINK) -rpath $(libdir) $(libtriforce_@TRIFORCE_API_VERSION@_la_OBJECTS) $(libtriforce_@TRIFORCE_API_VERSION@_la_LIBADD) $(LIBS)
 
@@ -421,6 +425,8 @@ mostlyclean-compile:
 	-rm -f triforce/interpolation.lo
 	-rm -f triforce/molecule.$(OBJEXT)
 	-rm -f triforce/molecule.lo
+	-rm -f triforce/shellNeighbourList.$(OBJEXT)
+	-rm -f triforce/shellNeighbourList.lo
 	-rm -f triforce/surface3d.$(OBJEXT)
 	-rm -f triforce/surface3d.lo
 	-rm -f triforce/tessellation.$(OBJEXT)
@@ -439,6 +445,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/integratorNumerical.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/interpolation.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/molecule.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/shellNeighbourList.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/surface3d.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/tessellation.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@triforce/$(DEPDIR)/topology.Plo@am__quote@
