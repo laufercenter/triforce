@@ -1,0 +1,44 @@
+using gcc ;
+
+LIBRARIES = 
+armadillo
+boost/multi_array.hpp
+boost/numeric/ublas/matrix.hpp ;
+
+project triforce-config : requirements <include>$(LIBRARIES) ;
+
+SOURCES = 
+tessellation.cc
+data3d.cc
+surface3d.cc
+datafile.cc
+molecule.cc
+interpolation.cc
+topology.cc
+integrator.cc
+integratorNumerical.cc
+triforceInterface.cc
+shellNeighbourList.cc ;
+
+
+HEADERS = 
+tessellation.h
+data3d.h
+surface3d.h
+datafile.h
+molecule.h
+interpolation.h
+topology.h
+integrator.h
+integratorNumerical.h
+triforceInterface.h
+shellNeighbourList.h ;
+
+
+
+
+lib triforce : triforce/$(SOURCES) ;
+
+install install-bin : triforce : <location>/usr/local/lib ;
+install install-headers : triforce/$(HEADERS) : <location>/usr/local/include <install-source-root>. ;
+
