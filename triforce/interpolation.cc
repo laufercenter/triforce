@@ -71,9 +71,9 @@ vector<double> Interpolation::weights(vector<VectorInt> &sp, Vector &x, Vector &
 	Vector p;
 	
 	//printf("stddist: %f, %f, %f\n",stddist(0),stddist(1),stddist(2));
-	for(int i=0;i<sp.size();++i){
+	for(unsigned int i=0;i<sp.size();++i){
 		p = data->getHeaderVector(sp[i](0),sp[i](1),sp[i](2));
-		for(int j=0;j<3;++j)
+		for(unsigned int j=0;j<3;++j)
 			d(j)=(fabs(p(j)-x(j)) / lengths(j));
 		w = 1.0-max(d(0),max(d(1),d(2)));
 		maxw=maxw+w;
@@ -81,7 +81,7 @@ vector<double> Interpolation::weights(vector<VectorInt> &sp, Vector &x, Vector &
 		
 		
 	}
-	for(int i=0;i<sp.size();++i){
+	for(unsigned int i=0;i<sp.size();++i){
 		r->at(i) = r->at(i)/maxw;
 		
 		//printf("weight: %f\n", r->at(i));
@@ -140,7 +140,7 @@ double Interpolation::multiPointTaylor(Vector &x, double &phi){
 	w = weights(sp,x,lengths);
 	closestSP = -1;
 	closestSPWeight = 0;
-	for(int i=0;i<sp.size();i++){
+	for(unsigned int i=0;i<sp.size();i++){
 		//data->printDataCell(sp[i](0),sp[i](1),sp[i](2));
 		//data->printGradientCell(sp[i](0),sp[i](1),sp[i](2));
 		//data->printHessianCell(sp[i](0),sp[i](1),sp[i](2));

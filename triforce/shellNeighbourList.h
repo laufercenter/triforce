@@ -26,7 +26,6 @@
 #include <armadillo>
 
 #include "data3d.h"
-#include "molecule.h"
 
 
 using namespace std;
@@ -48,7 +47,7 @@ typedef boost::multi_array<double,3> CubicalTemporaryGrid;
 class ShellNeighbourList{
 	
 public:
-	ShellNeighbourList(Vector &center, Vector &dim, double searchRadius, int sphericalDetail, int cubicalDetail);
+	ShellNeighbourList(Vector center, Vector dim, double searchRadius, int sphericalDetail, int cubicalDetail);
 	
 	void addSphere(Vector &x, int id);
 	set<int> getNeighbors(Vector &x);

@@ -16,7 +16,6 @@ Data3D::Data3D(){
 }
 
 Data3D::Data3D(int parameter0Dim, int parameter1Dim, int parameter2Dim, int derivativeLevel, bool containsAuxiliaryData){
-	int maxdim=0;
 	this->parameter0Dim = parameter0Dim;
 	this->parameter1Dim = parameter1Dim;
 	this->parameter2Dim = parameter2Dim;
@@ -133,11 +132,8 @@ bool Data3D::isWithinNumericalLimits(double x, double t){
 
 
 void Data3D::closestGridPoint(Vector &x, VectorInt &p, Vector &l){
-	double lengthparameter0;
 	int i_parameter0;
-	double lengthparameter1;
 	int i_parameter1;
-	double lengthparameter2;
 	int i_parameter2;
 	
 	l(0) = cellLengthParameter0;
@@ -167,7 +163,6 @@ void Data3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Ve
 	VectorInt v2(3);
 	int i,j,k;
 	VectorInt v(3);
-	bool neg;
 	
 	closestGridPoint(x, v, lengths);
 	
@@ -206,8 +201,8 @@ void Data3D::printGradientCell(int i, int j, int k){
 }
 
 void Data3D::printHessianCell(int i, int j, int k){
-	printf("Hessian[%d,%d,%d]: \n");
-	printf("|%f, %f, %f|\n",i,j,k,(*hessian)[i][j][k](0,0),(*hessian)[i][j][k](0,1),(*hessian)[i][j][k](0,2));
-	printf("|%f, %f, %f|\n",i,j,k,(*hessian)[i][j][k](1,0),(*hessian)[i][j][k](1,1),(*hessian)[i][j][k](1,2));
-	printf("|%f, %f, %f|\n",i,j,k,(*hessian)[i][j][k](2,0),(*hessian)[i][j][k](2,1),(*hessian)[i][j][k](2,2));
+	printf("Hessian[%d,%d,%d]: \n",i,j,k);
+	printf("|%f, %f, %f|\n",(*hessian)[i][j][k](0,0),(*hessian)[i][j][k](0,1),(*hessian)[i][j][k](0,2));
+	printf("|%f, %f, %f|\n",(*hessian)[i][j][k](1,0),(*hessian)[i][j][k](1,1),(*hessian)[i][j][k](1,2));
+	printf("|%f, %f, %f|\n",(*hessian)[i][j][k](2,0),(*hessian)[i][j][k](2,1),(*hessian)[i][j][k](2,2));
 }

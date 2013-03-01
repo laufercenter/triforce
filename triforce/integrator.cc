@@ -36,9 +36,8 @@ IntegratorTriforce::IntegratorTriforce(Interpolation *dataConcave, Interpolation
 
 	
 void IntegratorTriforce::clearForces(){
-	int i,j;
-	for(i=0; i<forces.size(); ++i)
-		for(j=0; j<3; ++j){
+	for(unsigned int i=0; i<forces.size(); ++i)
+		for(unsigned int j=0; j<3; ++j){
 			*(forces[i][j]) = 0;
 		}
 }
@@ -70,7 +69,7 @@ double IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 	area = 0;
 	
 	//iterate over all atoms
-	for(int i=0;i<sasas.size();++i){
+	for(unsigned int i=0;i<sasas.size();++i){
 		radius = radii[i];
 		a = integrateSASA(i, sasas[i], radius);
 		
@@ -168,12 +167,9 @@ double IntegratorTriforce::integrateSASA(int l, SASASegmentList &sasa, double ra
 	Area integral;
 	double r_square;
 	double actphi;
-	double phi;
-	double sign_prephi;
 	Vector c(2),c2(2);
-	double totalAngle,a;
+	double a;
 	Vector p0, p1, p2, p01, p12, n01(2);
-	double s;
 	
 	r_square = radius*radius;
 	
@@ -412,7 +408,7 @@ Area IntegratorTriforce::integrateTriangle(int l, SASASegment &x, Vector integra
 	Rotation lambda;
 	Rotation PHIij;
 	Rotation PHIjk;
-	double area,area0,area1;
+	double area;
 	Vector M;
 	Area a;
 	Vector Tij(4), Tjk(4);
@@ -424,9 +420,11 @@ Area IntegratorTriforce::integrateTriangle(int l, SASASegment &x, Vector integra
 	CircularInterfaceForm formi;
 	CircularInterfaceForm formj;
 	CircularInterfaceForm formk;
+	double s_convex, s_direction;
+	
+	
 	area = 0;
-	double s_convex, s_complementation, s_direction, s_psilambda;
-	double ls,dls;
+	
 	psi = x.psi;
 	lambda = x.lambda;
 	form = x.form1;

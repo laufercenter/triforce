@@ -1,11 +1,29 @@
 using gcc ;
 
-LIBRARIES = 
+INCLUDES_SEARCH_DIRECTORIES =
+/include
+/usr/include
+/usr/local/include ;
+
+LIBRARIES_SEARCH_DIRECTORIES =
+/lib
+/lib64
+/usr/lib
+/usr/lib64
+/usr/local/lib
+/usr/local/lib64 ;
+
+
+INCLUDES = 
 armadillo
 boost/multi_array.hpp
 boost/numeric/ublas/matrix.hpp ;
 
-project triforce-config : requirements <include>$(LIBRARIES) ;
+
+lib armadillo : : <search>$(LIBRARIES_SEARCH_DIRECTORIES) ;
+
+
+project triforce-config : requirements <include>$(INCLUDES) ;
 
 SOURCES = 
 tessellation.cc
@@ -37,8 +55,8 @@ shellNeighbourList.h ;
 
 
 
-lib triforce : triforce/$(SOURCES) ;
+lib triforce : armadillo triforce/$(SOURCES) ;
 
-install install-bin : triforce : <location>/usr/local/lib ;
-install install-headers : triforce/$(HEADERS) : <location>/usr/local/include <install-source-root>. ;
+install install-bin : triforce : <location>/usr/lib ;
+install install-headers : triforce/$(HEADERS) triforce.h : <location>/usr/include <install-source-root>. ;
 
