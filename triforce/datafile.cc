@@ -25,16 +25,12 @@ Data3D* DataFile::digest3DBinaryTable(){
 	char buffer0[4];
 	char buffer1[1];
 	char buffer2[8];
-	char shortbuffer[2];
 	char *buffer;
 	int numberDimensions;
-	int nrowsHeader;
 	vector<double> tmp;
 	Data3D *tbl;
 	vector<int> dimensions;
 	int totalCells;
-	int maxdim;
-	int d;
 	int parameter0Dim;
 	int parameter1Dim;
 	int parameter2Dim;
@@ -59,6 +55,7 @@ Data3D* DataFile::digest3DBinaryTable(){
 	//this byte gives number of dimensions (should be 3)
 	f.read(buffer1,1);
 	numberDimensions = static_cast<int>(buffer1[0]);
+	if(numberDimensions!=3) exit(-1);
 	
 	//read headers
 	//header for PHI
@@ -311,7 +308,6 @@ int DataFile::fixedSignedInt322Int(int32_t x){
 
 double DataFile::string2double(string s){
     istringstream strm;
-    double v;
     double d;
     
     strm.str(s);
@@ -378,6 +374,8 @@ Topology* DataFile::digestMapCSV(){
 	
 	return data;
 	*/
+
+	return new Topology();
 }
 
 
@@ -387,7 +385,6 @@ Topology* DataFile::digestTOP(){
 	string line;
 	vector<double> v;
 	string ident,ident0,ident1;
-	int i;
 	Topology *data;
 	string block;
 	Parameters p;

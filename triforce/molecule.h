@@ -25,6 +25,7 @@
 #include <armadillo>
 
 #include "topology.h"
+#include "shellNeighbourList.h"
 
 
 using namespace std;
@@ -76,11 +77,14 @@ public:
 	vector<double> &fetchRadii();
 	vector<double*> &fetchAreaPointers();
 	vector<vector<double*> > &fetchForcePointers();
+	void generateNeighbourList();
+	set<int> getNeighborListFor(int i);
+	
 	
 private:
 	
 	string string2UpperCase(string s);
-	void constructAtoms(int end);
+	void constructAtoms(unsigned int end);
 	
 
 	
@@ -94,6 +98,7 @@ private:
 	vector<vector<double*> >forces;
 	vector<Source> source;
 	vector<string> names;
+	bool hasNeighbourList;
 	
 	
 	ForceField forcefield;
@@ -106,6 +111,7 @@ private:
 	vector<double> realForceZ;
 	
 
+	ShellNeighbourList *shellNeighbourList;
 	
 	void refreshInternalPointers();
 	

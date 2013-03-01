@@ -8,16 +8,77 @@
 
 
 Molecule::Molecule(){
-	this->topology = *(new Topology());
+	Molecule(*(new Topology()));
 	
 }
 
 
 Molecule::Molecule(Topology topology){
 	this->topology=topology;
-
+	hasNeighbourList=false;
 	
 }
+
+void Molecule::generateNeighbourList(){
+	Vector maxPoint(3);
+	Vector minPoint(3);
+	Vector dim(3);
+	Vector center(3);
+	double maxRadius;
+	Vector v;
+	
+	center.zeros();
+	maxRadius=0;
+	
+	//calculate grid dimensions and center
+	update();
+	minPoint=maxPoint=atoms[0];
+	for(unsigned int i=0; i<atoms.size(); ++i){
+		v = atoms[i];
+		for(int j=0; j<3; ++j){
+			if(v(j) < minPoint(j)) minPoint(j) = v(j);
+			if(v(j) > maxPoint(j)) maxPoint(j) = v(j);
+		}
+	}
+	
+	
+	dim = (maxPoint - minPoint);
+	for(int i=0; i<3; ++i)
+		dim(i)=abs(dim(i));
+	
+	center=minPoint+(dim/2.0);
+	
+
+	dim*=1.5;
+	
+	for(unsigned int i=0; i<radii.size(); ++i){
+		maxRadius=max(maxRadius,radii[i]);
+	}
+	
+	
+	shellNeighbourList = new ShellNeighbourList(center, dim, maxRadius*6, 3, 3);
+	
+	for(unsigned int i=0; i<atoms.size(); ++i){
+		shellNeighbourList->addSphere(atoms[i],i);
+	}
+	
+	hasNeighbourList=true;
+	
+}
+
+set<int> Molecule::getNeighborListFor(int i){
+	if(hasNeighbourList)
+		return shellNeighbourList->getNeighbors(atoms[i]);
+	else{
+		set<int> s;
+		for(unsigned int i=0; i<atoms.size(); ++i)
+			s.insert(i);
+		
+		return s;
+	}
+	
+}
+
 
 
 Vector Molecule::getInternallyStoredAtomCoordinates(int i){
@@ -43,7 +104,7 @@ void Molecule::addInternallyStoredAtom(double x, double y, double z, string type
 void Molecule::addInternallyStoredAtom(double x, double y, double z, double sigma, double epsilon, string name, int i){
 	if(i<0) i = atomicPointers.size();
 	
-	if(i>=atomicPointers.size()){
+	if(i>=(signed int) atomicPointers.size()){
 		constructAtoms(i);
 	}
 	
@@ -61,8 +122,7 @@ void Molecule::addInternallyStoredAtom(double x, double y, double z, double sigm
 }
 
 void Molecule::refreshInternalPointers(){
-	int i;
-	for(i=0; i < source.size(); ++i){
+	for(unsigned int i=0; i < source.size(); ++i){
 		if(source[i]==INTERNAL_SOURCE){
 			atomicPointers[i].x = &(atoms[i](0));
 			atomicPointers[i].y = &(atoms[i](1));
@@ -76,7 +136,7 @@ void Molecule::refreshInternalPointers(){
 }
 
 
-void Molecule::constructAtoms(int end){
+void Molecule::constructAtoms(unsigned int end){
 	AtomicPointers c;
 	if(end>=atomicPointers.size()){
 		atomicPointers.resize(end+1,c);
@@ -108,7 +168,6 @@ void Molecule::addAtom(double* x, double* y, double* z, double* area, double* fo
 
 void Molecule::addAtom(double* x, double* y, double* z, double* area, double* forceX, double* forceY, double* forceZ, double sigma, double epsilon, string name, int i){
 	AtomicPointers c;
-	Parameters p;
 	vector<double*> force;
 	c.x=x;
 	c.y=y;
@@ -122,7 +181,7 @@ void Molecule::addAtom(double* x, double* y, double* z, double* area, double* fo
 	if(i<0) i = atomicPointers.size();
 	
 	
-	if(i>=atomicPointers.size()){
+	if(i>=(signed int) atomicPointers.size()){
 		constructAtoms(i);
 	}
 		
@@ -140,9 +199,8 @@ void Molecule::addAtom(double* x, double* y, double* z, double* area, double* fo
 
 
 void Molecule::update(){
-	int i;
 	AtomicPointers c;
-	for(i=0; i<atomicPointers.size(); ++i){
+	for(unsigned i=0; i<atomicPointers.size(); ++i){
 		c=atomicPointers[i];
 		atoms[i](0)=*c.x;
 		atoms[i](1)=*c.y;
@@ -181,9 +239,9 @@ void Molecule::print(){
 	}
 */
 	//fprintf(stderr,"Areas and forces:\n");
-	fprintf(stdout,"index\tname\tarea\tgradx\tgrady\tgradz\tradius\n");
-	for(int i=0;i<areas.size();++i){
-		fprintf(stdout,"%d\t%s\t%f\t%f\t%f\t%f\t%f\n",i, names[i].c_str(),*(areas[i]), *(forces[i][0]), *(forces[i][1]), *(forces[i][2]), radii[i]);
+	fprintf(stdout,"index\tname\tarea\tgradx\tgrady\tgradz\tradius\tx\ty\tz\n");
+	for(unsigned int i=0;i<areas.size();++i){
+		fprintf(stdout,"%d\t%s\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",i, names[i].c_str(),*(areas[i]), *(forces[i][0]), *(forces[i][1]), *(forces[i][2]), radii[i], atoms[i](0), atoms[i](1), atoms[i](2));
 		//printf("[%d]: pointers: (%d, %d, %d, %d)\n",i,areas[i], forces[i][0], forces[i][1], forces[i][2]);
 	}
 	
@@ -197,7 +255,7 @@ void Molecule::printDifference(Molecule *mol){
 	vector<vector<double*> > forces2 = mol->fetchForcePointers();
 	
 	fprintf(stdout,"index\tname\tarea\tgradx\tgrady\tgradz\tradius\n");
-	for(int i=0;i<areas.size();++i){
+	for(unsigned int i=0;i<areas.size();++i){
 		fprintf(stdout,"%d\t%s\t%f\t%f\t%f\t%f\t%f\n",i, names[i].c_str(),*(areas[i])-*(areas2[i]), *(forces[i][0])-*(forces2[i][0]), *(forces[i][1])-*(forces2[i][1]), *(forces[i][2])-*(forces2[i][2]), radii[i]);
 	}
 	

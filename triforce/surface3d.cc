@@ -39,9 +39,7 @@ Surface3D::Surface3D(Data3D* d)
 
 void Surface3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Vector &lengths){
 	VectorInt v2(3);
-	int i,j,k;
 	VectorInt v(3);
-	bool neg;
 	int discontinuity;
 	double vpsi,vlambda;
 	closestGridPoint(x, v, lengths);
@@ -62,8 +60,6 @@ void Surface3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r,
 		discontinuity = 2;
 	}
 	
-	if((*headerParameter1)[v(1)]+(*headerParameter2)[v(2)] < M_PI && !isWithinNumericalLimits((*headerParameter1)[v(1)]+(*headerParameter2)[v(2)],M_PI)) neg=true;
-	else neg=false;
 	
 	
 	
@@ -71,9 +67,9 @@ void Surface3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r,
 	
 	
 	r.clear();
-	for(i=0;i<2;++i)
-		for(j=0;j<2;++j)
-			for(k=0;k<2;++k){
+	for(unsigned int i=0;i<2;++i)
+		for(unsigned int j=0;j<2;++j)
+			for(unsigned int k=0;k<2;++k){
 				v2(0)=v(0)+i;
 				v2(1)=v(1)+j;
 				v2(2)=v(2)+k;
@@ -106,9 +102,9 @@ void Surface3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r,
 			
 			
 	if(r.size()==0){
-		for(i=0;i<2;++i)
-			for(j=0;j<2;++j)
-				for(k=0;k<2;++k){
+		for(unsigned int i=0;i<2;++i)
+			for(unsigned int j=0;j<2;++j)
+				for(unsigned int k=0;k<2;++k){
 					v2(0)=v(0)+i;
 					v2(1)=v(1)+j;
 					v2(2)=v(2)+k;

@@ -56,7 +56,7 @@ double IntegratorNumerical::integrate(Molecule *molecule, int index, void (*feed
 		
 		
 		
-		for(int i=0; i<atoms.size(); ++i){
+		for(unsigned int i=0; i<atoms.size(); ++i){
 			coordinate = molecule->getInternallyStoredAtomCoordinates(i);
 			for(int j=0; j<3; ++j){
 				if(feedback!=NULL) feedback((double)(i*3+j)/((double)(atoms.size()*3)-1));
@@ -140,7 +140,7 @@ bool IntegratorNumerical::occludes(Vector v, vector<double> &lambdas, vector<Vec
 	
 	occluded = false;
 	
-	for(int j=0; j<mus.size() && !occluded; ++j){
+	for(unsigned int j=0; j<mus.size() && !occluded; ++j){
 		n = mus[j];
 		l = lambdas[j];
 		form = forms[j];
@@ -203,15 +203,12 @@ double IntegratorNumerical::integrateMolecule(Molecule *molecule, int index){
 	static boost::uniform_real<> dist01(0, 1);
 	static boost::variate_generator<boost::mt19937&, boost::uniform_real<> > gen01(randomizer, dist01);
 	float phi_step;
-	int total_segs;
 	float dtheta;
 	float dtheta2;
 	float dots_in_ring;
 	float theta_step;
 	float temp_dtheta;
-	int i,j;
 	double g,g_normalised;
-	double l;
 	Vector n;
 	double a;
 	double d_i;
@@ -239,7 +236,7 @@ double IntegratorNumerical::integrateMolecule(Molecule *molecule, int index){
 		file = fopen ("rays.csv","w");
 	
 	
-	for(i=0; i<atoms.size(); ++i){
+	for(unsigned int i=0; i<atoms.size(); ++i){
 		//i=12;	{
 		origin = atoms[i];
 		radius = radii[i];
@@ -248,17 +245,17 @@ double IntegratorNumerical::integrateMolecule(Molecule *molecule, int index){
 		forms.clear();
 		internalAtom = false;
 		
-		if(index==i) fprintf(file, "atom radius %f\n", radius);
+		if(index == (signed int) i) fprintf(file, "atom radius %f\n", radius);
 		
 		
-		for(j=0; j<atoms.size(); ++j){
+		for(unsigned int j=0; j<atoms.size(); ++j){
 			if(i!=j){
 				
 				v=atoms[j] - origin;
 				r_k = radii[j];
 				r_i = radius;
 				
-				if(index==i) fprintf(file, "intersector %d radius %f vector %f %f %f\n", j, r_k, v(0), v(1), v(2));
+				if(index==(signed int) i) fprintf(file, "intersector %d radius %f vector %f %f %f\n", j, r_k, v(0), v(1), v(2));
 				
 				
 				
@@ -321,14 +318,12 @@ double IntegratorNumerical::integrateMolecule(Molecule *molecule, int index){
 		
 		sasaCount=0;
 		sesaCount=0;
-		total_segs = 0;
 		
 		// Set up a random reference rotation.
 		//  static boost::mt19937 rand_gen(time(0));
 
 		// Integrate over the surface as a set of rings.
 		dtheta = gen01();
-		dtheta2;
 		if (dtheta < 0.5) {
 			dtheta2 = 0.5 + dtheta;
 		}
@@ -373,11 +368,17 @@ double IntegratorNumerical::integrateMolecule(Molecule *molecule, int index){
 
 					sasaCount+=1.0-(x/4.0);
 					sesaCount+=x/4.0;
+					
+					occluded=true;
+					
+					
+					//sesaCount+=1.0;
 						
 						
 						
 				}
 				else{
+					
 					v0 = sphericalVector(phi-phi_step,theta);
 					v1 = sphericalVector(phi+phi_step,theta);
 					v2 = sphericalVector(phi,theta-theta_step);
@@ -400,13 +401,20 @@ double IntegratorNumerical::integrateMolecule(Molecule *molecule, int index){
 
 					sesaCount+=1.0-(x/4.0);
 					sasaCount+=x/4.0;
-						
+					
+					
+					occluded=false;
+					
+					
+					
+					//sasaCount+=1.0;
+					
 					
 					
 				}
 				
 			
-				if(index==i) fprintf(file, "ray %f %f %f occluded %d\n", v(0),v(1),v(2),occluded);
+				if(index==(signed int)i) fprintf(file, "ray %f %f %f occluded %d\n", v(0),v(1),v(2),occluded);
 				
 			}
 		}
