@@ -439,12 +439,14 @@ Topology* DataFile::digestTOP(){
 							if(data->contains(ident1)){
 								data->setMassValue(ident1,string2double((*content)[7]));
 							}
+							/*
 							else{
 								p.mass=string2double((*content)[7]);
 								p.epsilon=-1;
 								p.sigma=-1;
 								data->setCell(ident1,p);
 							}
+							*/
 							data->setAssociation(ident0,ident1);
 						}
 					}
@@ -473,6 +475,11 @@ Molecule *DataFile::digestGRO(Topology &top){
 	Molecule *mol;
 	double x,y,z;
 	string ident;
+	bool disregardingHydrogens;
+	string residue;
+	string atom;
+	
+	disregardingHydrogens=false;
 	
 	mol = new Molecule(top);
 	
@@ -498,11 +505,26 @@ Molecule *DataFile::digestGRO(Topology &top){
 			if((*content)[0][0]!=';'){
 				//right amount of parameters?
 				if(content->size()>=6){
-					ident=string2UpperCase((*content)[0]) + string2UpperCase((*content)[1]);
+					residue = string2UpperCase((*content)[0]);
+					atom = string2UpperCase((*content)[1]);
+					ident= residue + atom;
 					x=string2double((*content)[3])*10;
 					y=string2double((*content)[4])*10;
 					z=string2double((*content)[5])*10;
-					mol->addInternallyStoredAtom(x,y,z,ident);
+					try{
+						mol->addInternallyStoredAtom(x,y,z,ident);
+					}
+					catch(AssociationException const &e){
+						if(atom[0]!='H')
+							printf("disregarded heavy atom %s for which no parameters could be found\n",ident.c_str());
+						else
+							if(!disregardingHydrogens){
+								printf("disregarded some hydrogens for which no parameters could be found\n");
+								disregardingHydrogens=true;
+							}
+						
+						//do nothing
+					}
 					i++;
 				}
 			}

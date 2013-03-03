@@ -71,6 +71,8 @@ public:
 	void perturbInternallyStoredAtomCoordinates(int i, Vector p);
 	
 	void print();
+	void printxyz();
+	
 	void printDifference(Molecule *mol);
 	
 	vector<Vector> &fetchCoordinates();

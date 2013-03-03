@@ -247,6 +247,14 @@ void Molecule::print(){
 	
 }
 
+void Molecule::printxyz(){
+	for(unsigned int i=0;i<areas.size();++i){
+		fprintf(stdout,"%.3f %.3f %.3f %.3f\n", atoms[i](0), atoms[i](1), atoms[i](2), radii[i]-1.4);
+		//printf("[%d]: pointers: (%d, %d, %d, %d)\n",i,areas[i], forces[i][0], forces[i][1], forces[i][2]);
+	}
+	
+}
+
 
 
 void Molecule::printDifference(Molecule *mol){
