@@ -40,7 +40,8 @@ typedef struct{
 typedef map<string,Parameters > MapVector;
 typedef map<string,string> MapString;
 
-
+class AssociationException: std::exception{
+};
 
 
 

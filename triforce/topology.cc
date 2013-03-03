@@ -19,6 +19,9 @@ void Topology::setCell(string ident, Parameters p){
 }
 
 Parameters Topology::getCell(string ident){
+	if(data.find(ident)==data.end())
+		throw AssociationException();
+
 	return data[ident];
 }
 
