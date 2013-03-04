@@ -538,7 +538,7 @@ Molecule *DataFile::digestGRO(Topology &top){
 	//second line, number of atoms
 	std::getline(*ifs,line);
 	boost::trim(line);
-	numbAtoms = string2double(line);
+	numbAtoms = string2int(line);
 	i=0;
 	
 	chain=0;
