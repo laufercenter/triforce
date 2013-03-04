@@ -65,9 +65,11 @@ private:
 	
 	
 	double string2double(string s);
+	int string2int(string s);
 	vector<string>* split(string &s, char delimiter);
 	string string2UpperCase(string s);
-	
+	string int2string(int d);
+
 };
 	
 
