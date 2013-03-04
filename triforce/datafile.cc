@@ -559,7 +559,6 @@ Molecule *DataFile::digestGRO(Topology &top){
 				if(residuenum<prev_residuenum){
 					chain++;
 					chainstr = int2string(chain);
-					printf("UPGRADE\n");
 				}
 				
 				prev_residuenum = residuenum;
@@ -570,13 +569,13 @@ Molecule *DataFile::digestGRO(Topology &top){
 				trim(atom);
 				xstr = line.substr(20,8);
 				trim(xstr);
-				x=string2double(xstr);
+				x=string2double(xstr)*10;
 				ystr = line.substr(28,8);
 				trim(ystr);
-				y=string2double(ystr);
+				y=string2double(ystr)*10;
 				zstr = line.substr(36,8);
 				trim(zstr);
-				z=string2double(zstr);
+				z=string2double(zstr)*10;
 				
 				
 				
