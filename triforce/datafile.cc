@@ -404,7 +404,7 @@ Topology* DataFile::digestMapCSV(){
 }
 
 
-Topology* DataFile::digestTOP(){
+Topology* DataFile::digestTOP(TopologyMode topm){
 	ifstream *ifs;
 	vector<string> *content;
 	string line;
@@ -419,9 +419,10 @@ Topology* DataFile::digestTOP(){
 	int residuenum;
 	int prev_residuenum;
 	
+
 	ifs = new ifstream(name.c_str(),ifstream::in);
 
-	data = new Topology();
+	data = new Topology(topm);
 	
 	p.mass = 0;
 	p.epsilon= 0;
@@ -475,8 +476,10 @@ Topology* DataFile::digestTOP(){
 							}
 							prev_residuenum=residuenum;
 							
-							
-							ident0=chainstr+" "+(*content)[2]+" "+string2UpperCase((*content)[3])+" "+string2UpperCase((*content)[4]);
+							if(topm==GROMACS)
+								ident0=chainstr+" "+(*content)[2]+" "+string2UpperCase((*content)[3])+" "+string2UpperCase((*content)[4]);
+							else
+								ident0=string2UpperCase((*content)[3])+" "+string2UpperCase((*content)[4]);
 							//is it already in the map?
 							if(data->contains(ident1)){
 								data->setMassValue(ident1,string2double((*content)[7]));
@@ -580,8 +583,9 @@ Molecule *DataFile::digestGRO(Topology &top){
 				
 				
 				ident=chainstr + " " + residuenumstr + " " + residue + " " + atom;
+				name=chainstr + " " + residuenumstr + " " + residue + " " + atom;
 				try{
-					mol->addInternallyStoredAtom(x,y,z,ident);
+					mol->addInternallyStoredAtom(x,y,z,name,ident);
 				}
 				catch(AssociationException const &e){
 					if(atom[0]!='H')
@@ -608,6 +612,101 @@ Molecule *DataFile::digestGRO(Topology &top){
 
 
 
+
+
+Molecule *DataFile::digestPDB(Topology &top){
+	ifstream *ifs;
+	string line;
+	int numbAtoms;
+	int i;
+	string block;
+	Molecule *mol;
+	double x,y,z;
+	string ident;
+	bool disregardingHydrogens;
+	string residue;
+	string atom;
+	string xstr,ystr,zstr;
+	int chain;
+	string chainstr;
+	string residuenumstr;
+	int residuenum;
+	int prev_residuenum;
+	
+	disregardingHydrogens=false;
+	
+	mol = new Molecule(top);
+	
+	ifs = new ifstream(name.c_str(),ifstream::in);
+	
+	
+
+	
+	chain=0;
+	chainstr=string("0");
+	prev_residuenum=std::numeric_limits<int>::min();
+
+		
+	while(ifs->good()){
+		std::getline(*ifs,line);
+		
+		if(line.length()>=4){
+			//is it not a comment?
+			if(line.compare(0,4,"ATOM") == 0){
+				residuenumstr = line.substr(22,4);
+				trim(residuenumstr);
+				residuenum=string2int(residuenumstr);
+				
+				if(residuenum<prev_residuenum){
+					chain++;
+					chainstr = int2string(chain);
+				}
+				
+				prev_residuenum = residuenum;
+				
+				residue = line.substr(17,4);
+				trim(residue);
+				atom = string2UpperCase(line.substr(11,6));
+				trim(atom);
+				xstr = line.substr(30,8);
+				trim(xstr);
+				x=string2double(xstr);
+				ystr = line.substr(39,8);
+				trim(ystr);
+				y=string2double(ystr);
+				zstr = line.substr(46,8);
+				trim(zstr);
+				z=string2double(zstr);
+				
+				
+				
+				name=chainstr + " " + residuenumstr + " " + residue + " " + atom;
+				ident=residue+" "+atom;
+				try{
+					mol->addInternallyStoredAtom(x,y,z,name,ident);
+				}
+				catch(AssociationException const &e){
+					if(atom[0]!='H')
+						printf("disregarded heavy atom %s for which no parameters could be found\n",name.c_str());
+					else
+						if(!disregardingHydrogens){
+							printf("disregarded some hydrogens for which no parameters could be found\n");
+							disregardingHydrogens=true;
+						}
+					
+					//do nothing
+				}
+				i++;
+				
+			}
+			
+
+		}
+		
+	}
+	
+	return mol;
+}
 
 
 
