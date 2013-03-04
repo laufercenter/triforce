@@ -41,14 +41,17 @@ enum DataFileType{
 };
 
 
+
+
 class DataFile{
 public:
 	DataFile();
 	DataFile(string name);
 	Data3D* digest3DBinaryTable();
 	Topology *digestMapCSV();
-	Topology* digestTOP();
+	Topology* digestTOP(TopologyMode topm);
 	Molecule *digestGRO(Topology &top);
+	Molecule *digestPDB(Topology &top);
 
 		
 private:

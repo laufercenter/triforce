@@ -93,11 +93,11 @@ void Molecule::perturbInternallyStoredAtomCoordinates(int i, Vector p){
 	atoms[i] = atoms[i] + p;
 }
 
-void Molecule::addInternallyStoredAtom(double x, double y, double z, string type, int i){
+void Molecule::addInternallyStoredAtom(double x, double y, double z, string name, string type, int i){
 	Parameters p;
 	p=topology.getAssociatedCell(string2UpperCase(type));
 	
-	addInternallyStoredAtom(x,y,z,p.sigma,p.epsilon,type,i);
+	addInternallyStoredAtom(x,y,z,p.sigma,p.epsilon,name,i);
 	
 }
 	
@@ -156,11 +156,11 @@ void Molecule::constructAtoms(unsigned int end){
 }
 
 
-void Molecule::addAtom(double* x, double* y, double* z, double* area, double* forceX, double* forceY, double* forceZ, string type, int i){
+void Molecule::addAtom(double* x, double* y, double* z, double* area, double* forceX, double* forceY, double* forceZ, string name, string type, int i){
 	Parameters p;
 	p=topology.getAssociatedCell(string2UpperCase(type));
 	
-	addAtom(x,y,z,area, forceX, forceY, forceZ, p.sigma,p.epsilon,type,i);
+	addAtom(x,y,z,area, forceX, forceY, forceZ, p.sigma,p.epsilon,name,i);
 	
 	
 }

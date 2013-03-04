@@ -10,7 +10,10 @@ using namespace arma;
 
 
 
-Topology::Topology(){
+
+
+Topology::Topology(TopologyMode mode){
+	this->mode=mode;
 	
 }
 

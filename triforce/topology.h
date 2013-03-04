@@ -36,6 +36,13 @@ typedef struct{
 }Parameters;
 
 
+enum TopologyMode{
+	GROMACS,
+	GROMACS_GENERIC
+};
+
+
+
 
 typedef map<string,Parameters > MapVector;
 typedef map<string,string> MapString;
@@ -49,7 +56,7 @@ class AssociationException: std::exception{
 class Topology{
 	
 public:
-	Topology();
+	Topology(TopologyMode mode=GROMACS);
 	void setCell(string ident, Parameters p);
 	Parameters getCell(string ident);
 	Parameters getAssociatedCell(string ident);
@@ -62,11 +69,14 @@ public:
 
 	void print();
 	
+	TopologyMode mode;
+	
 	
 private:
 	
 	MapVector data;
 	MapString associations;
+	
 	
 	
 	
