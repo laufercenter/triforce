@@ -4,12 +4,15 @@
 #include <algorithm>
 #include <iostream>
 #include <stdint.h>
-#include "boost/multi_array.hpp"
+#include <boost/multi_array.hpp>
 #include <boost/algorithm/string.hpp>
 #include "topology.h"
 
 #define INT32BYTEMASK 255
 #define BINARY_DATA_BLOCK_SIZE 8
+
+
+using namespace boost;
 
 
 DataFile::DataFile(){
@@ -316,6 +319,28 @@ double DataFile::string2double(string s){
 }
 
 
+int DataFile::string2int(string s){
+    istringstream strm;
+    int d;
+    
+    strm.str(s);
+    strm >> d;
+    return d;
+}
+
+
+string DataFile::int2string(int d){
+    stringstream strm;
+    string s;
+    
+    strm << d;
+    
+    return strm.str();
+}
+
+
+
+
 vector<string>* DataFile::split(string &s, char delimiter) {
 	stringstream ss(s);
 	string x;
@@ -389,6 +414,10 @@ Topology* DataFile::digestTOP(){
 	string block;
 	Parameters p;
 	string prefix=string("");
+	int chain;
+	string chainstr;
+	int residuenum;
+	int prev_residuenum;
 	
 	ifs = new ifstream(name.c_str(),ifstream::in);
 
@@ -397,6 +426,10 @@ Topology* DataFile::digestTOP(){
 	p.mass = 0;
 	p.epsilon= 0;
 	p.sigma = 0;
+	
+	chain=0;
+	chainstr="0";
+	prev_residuenum=std::numeric_limits<int>::min();
 	
 	while(ifs->good()){
 		std::getline(*ifs,line);
@@ -434,7 +467,16 @@ Topology* DataFile::digestTOP(){
 						//right amount of parameters?
 						if(content->size()>=8){
 							ident1=string2UpperCase((*content)[1]);
-							ident0=(*content)[2]+string2UpperCase((*content)[3])+string2UpperCase((*content)[4]);
+							
+							residuenum = string2int((*content)[2]);
+							if(residuenum<prev_residuenum){
+								chain++;
+								chainstr=int2string(chain);
+							}
+							prev_residuenum=residuenum;
+							
+							
+							ident0=chainstr+" "+(*content)[2]+" "+string2UpperCase((*content)[3])+" "+string2UpperCase((*content)[4]);
 							//is it already in the map?
 							if(data->contains(ident1)){
 								data->setMassValue(ident1,string2double((*content)[7]));
@@ -467,7 +509,6 @@ Topology* DataFile::digestTOP(){
 
 Molecule *DataFile::digestGRO(Topology &top){
 	ifstream *ifs;
-	vector<string> *content;
 	string line;
 	int numbAtoms;
 	int i;
@@ -478,6 +519,12 @@ Molecule *DataFile::digestGRO(Topology &top){
 	bool disregardingHydrogens;
 	string residue;
 	string atom;
+	string xstr,ystr,zstr;
+	int chain;
+	string chainstr;
+	string residuenumstr;
+	int residuenum;
+	int prev_residuenum;
 	
 	disregardingHydrogens=false;
 	
@@ -493,40 +540,63 @@ Molecule *DataFile::digestGRO(Topology &top){
 	boost::trim(line);
 	numbAtoms = string2double(line);
 	i=0;
+	
+	chain=0;
+	chainstr=string("0");
+	prev_residuenum=std::numeric_limits<int>::min();
+
 		
 	while(ifs->good() && i<numbAtoms){
 		std::getline(*ifs,line);
 		
-		content=split(line,' ');
-		
-		
-		if(content->size()>0){
+		if(line.length()>=44){
 			//is it not a comment?
-			if((*content)[0][0]!=';'){
-				//right amount of parameters?
-				if(content->size()>=6){
-					residue = string2UpperCase((*content)[0]);
-					atom = string2UpperCase((*content)[1]);
-					ident= residue + atom;
-					x=string2double((*content)[3])*10;
-					y=string2double((*content)[4])*10;
-					z=string2double((*content)[5])*10;
-					try{
-						mol->addInternallyStoredAtom(x,y,z,ident);
-					}
-					catch(AssociationException const &e){
-						if(atom[0]!='H')
-							printf("disregarded heavy atom %s for which no parameters could be found\n",ident.c_str());
-						else
-							if(!disregardingHydrogens){
-								printf("disregarded some hydrogens for which no parameters could be found\n");
-								disregardingHydrogens=true;
-							}
-						
-						//do nothing
-					}
-					i++;
+			if(line[0]!=';'){
+				residuenumstr = line.substr(0,5);
+				trim(residuenumstr);
+				residuenum=string2int(residuenumstr);
+				
+				if(residuenum<prev_residuenum){
+					chain++;
+					chainstr = int2string(chain);
+					printf("UPGRADE\n");
 				}
+				
+				prev_residuenum = residuenum;
+				
+				residue = line.substr(5,5);
+				trim(residue);
+				atom = string2UpperCase(line.substr(10,5));
+				trim(atom);
+				xstr = line.substr(20,8);
+				trim(xstr);
+				x=string2double(xstr);
+				ystr = line.substr(28,8);
+				trim(ystr);
+				y=string2double(ystr);
+				zstr = line.substr(36,8);
+				trim(zstr);
+				z=string2double(zstr);
+				
+				
+				
+				ident=chainstr + " " + residuenumstr + " " + residue + " " + atom;
+				try{
+					mol->addInternallyStoredAtom(x,y,z,ident);
+				}
+				catch(AssociationException const &e){
+					if(atom[0]!='H')
+						printf("disregarded heavy atom %s for which no parameters could be found\n",ident.c_str());
+					else
+						if(!disregardingHydrogens){
+							printf("disregarded some hydrogens for which no parameters could be found\n");
+							disregardingHydrogens=true;
+						}
+					
+					//do nothing
+				}
+				i++;
+				
 			}
 			
 
