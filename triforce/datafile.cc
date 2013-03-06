@@ -504,6 +504,9 @@ Topology* DataFile::digestTOP(TopologyMode topm){
 		
 	}
 	
+	ifs->close();
+	
+	
 	return data;
 }
 
@@ -607,6 +610,9 @@ Molecule *DataFile::digestGRO(Topology &top){
 		
 	}
 	
+	ifs->close();
+	
+	
 	return mol;
 }
 
@@ -704,6 +710,8 @@ Molecule *DataFile::digestPDB(Topology &top){
 		}
 		
 	}
+	
+	ifs->close();
 	
 	return mol;
 }
