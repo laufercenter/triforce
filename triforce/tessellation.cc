@@ -24,7 +24,7 @@ void Tessellation::build(bool split){
 		neighbourlist = molecule.getNeighborListFor(i);
 
 		
-		printf("NEIGHBOURS RECEIVED: %d\n",neighbourlist.size());
+		//printf("NEIGHBOURS RECEIVED: %d\n",neighbourlist.size());
 		/*vector<int>::iterator it;
 		for(it=neighbourlist.begin(); it!=neighbourlist.end(); ++it){
 			printf(" %d",*it);
@@ -120,7 +120,6 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 	
 	
 	
-	printf("TESSELLATION AXIS: %f %f %f\n", frontTessellationAxis(0), frontTessellationAxis(1), frontTessellationAxis(2));
 
 
 	backTessellationAxis = -frontTessellationAxis;
