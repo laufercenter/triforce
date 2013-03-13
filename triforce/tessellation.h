@@ -162,6 +162,20 @@ PHIContainer;
 
 typedef struct
 {
+	double rotation;
+	double g;
+	double d_i;
+	double r_l;
+	double r_i;
+	Vector mu_i;
+	CircularInterfaceForm form;
+}
+LambdaRotation;
+
+
+
+typedef struct
+{
 	double d;
 	bool visited;
 	
@@ -269,6 +283,7 @@ typedef struct
 	int id;
 	int index;
 	Vector normal;
+	LambdaRotation lambdaPre;
 	Rotation lambda;
 	Rotation psi;
 	double g;
@@ -365,8 +380,9 @@ public:
 	
 	Vector calculateInterfaceNormal(const Vector &v_l, const Vector &v_i);
 	Vector calculateInterfaceNormal(const Vector &v_l, const Vector &v_i, double &d);
-	Rotation calculateLambda(int index_i, double d_i, double r_l, double r_i, Vector &mu_i, CircularInterfaceForm &form, double &g2, bool derivatives);
-	Rotation calculateLambda(double d_i, double r_l, double r_i, Vector &mu_i);
+	LambdaRotation calculateLambda(int index_i, double d_i, double r_l, double r_i, Vector &mu_i, CircularInterfaceForm &form);
+	Rotation calculateLambdaDerivatives(LambdaRotation &r);
+	LambdaRotation calculateLambda(double d_i, double r_l, double r_i, Vector &mu_i);
 	Rotation calculatePsi(Vector &tessellationAxis, Vector &mu_i, Matrix &dmu_dx, CircularInterfaceForm form, int index, bool derivatives);
 	Rotation calculatePsi(Vector &tessellationAxis, Vector &mu_i);
 	EtaRotation calculateEta(Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j);
@@ -383,7 +399,8 @@ public:
 	double sacos(Vector &a, Vector &b);
 	double sdot(Vector &a, Vector &b);
 	double l(Vector &a);
-	
+	void calculateProjectionDerivatives(CircularInterface &circle);
+
 	
 	
 private:
