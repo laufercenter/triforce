@@ -17,7 +17,7 @@ NeighbourList::NeighbourList(Vector center, Vector dim, double searchRadius){
 	for(int i=0; i<3; i++)
 		numCubes(i) = ceil(dim(i) / searchRadius);
 	
-	printf("creating neighbourlist with dim (%f, %f, %f), center (%f, %f, %f) searchRadius (%f) gridcells (%d %d %d)\n",dim(0),dim(1),dim(2),center(0),center(1),center(2),searchRadius,numCubes(0),numCubes(1),numCubes(2));
+	//printf("creating neighbourlist with dim (%f, %f, %f), center (%f, %f, %f) searchRadius (%f) gridcells (%d %d %d)\n",dim(0),dim(1),dim(2),center(0),center(1),center(2),searchRadius,numCubes(0),numCubes(1),numCubes(2));
 	
 	
 	
@@ -37,7 +37,7 @@ void NeighbourList::addSphere(Vector &v, int id){
 	y=c(1);
 	z=c(2);
 	
-	printf("adding sphere at (%d %d %d) (%f %f %f)\n",x,y,z, v(0), v(1), v(2));
+	//printf("adding sphere at (%d %d %d) (%f %f %f)\n",x,y,z, v(0), v(1), v(2));
 	
 	
 	(*cubicalGrid)[x][y][z].insert(id);
