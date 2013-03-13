@@ -36,7 +36,7 @@ topology.cc
 integrator.cc
 integratorNumerical.cc
 triforceInterface.cc
-shellNeighbourList.cc ;
+neighbourList.cc ;
 
 
 HEADERS = 
@@ -50,7 +50,7 @@ topology.h
 integrator.h
 integratorNumerical.h
 triforceInterface.h
-shellNeighbourList.h ;
+neighbourList.h ;
 
 
 

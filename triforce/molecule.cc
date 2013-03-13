@@ -56,23 +56,23 @@ void Molecule::generateNeighbourList(){
 	}
 	
 	
-	shellNeighbourList = new ShellNeighbourList(center, dim, maxRadius*6, 3, 3);
+	neighbourList = new NeighbourList(center, dim, maxRadius);
 	
 	for(unsigned int i=0; i<atoms.size(); ++i){
-		shellNeighbourList->addSphere(atoms[i],i);
+		neighbourList->addSphere(atoms[i],i);
 	}
 	
 	hasNeighbourList=true;
 	
 }
 
-set<int> Molecule::getNeighborListFor(int i){
+vector<int> Molecule::getNeighborListFor(int i){
 	if(hasNeighbourList)
-		return shellNeighbourList->getNeighbors(atoms[i]);
+		return neighbourList->getNeighbors(atoms[i]);
 	else{
-		set<int> s;
+		vector<int> s;
 		for(unsigned int i=0; i<atoms.size(); ++i)
-			s.insert(i);
+			s.push_back(i);
 		
 		return s;
 	}

@@ -399,7 +399,7 @@ private:
 	SASAs sasasForMolecule;
 
 	CircularInterfacesPerAtom coverHemisphere(Vector tessellationAxis, double radius, CircularInterfacesPerAtom circles, CircularInterfaceForm form);
-	void buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<double> &radii, SASAs &sasas, bool split, set<int> &neighbourlist);
+	void buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<double> &radii, SASAs &sasas, bool split, vector<int> &neighbourlist);
 	double vsign(double v);
 	double cot(double a);
 	double csc(double a);
@@ -409,7 +409,7 @@ private:
 	bool isInPositiveEpsilonRange(double v, double eps);
 	void determineProjection(Vector &origin, double radius, CircularInterface &circle);
 	IntersectionPair determineIntersectionPoints(double radius, CircularInterface &K, CircularInterface &J);
-	bool makeCircularInterfaces(int i,Vector &origin, double radius, vector<vec> &atoms, vector<double> &radii, vector<CircularInterface> &circles, set<int> &neighbourlist);
+	bool makeCircularInterfaces(int i,Vector &origin, double radius, vector<vec> &atoms, vector<double> &radii, vector<CircularInterface> &circles, vector<int> &neighbourlist);
 	int filterCircularInterfaces(Vector tessellationAxis, double radius, vector<CircularInterface> &circles);
 	void outputGaussBonnetPath(SASAs &points);
 	void reindexCircularInterfaces(CircularInterfacesPerAtom &circles);

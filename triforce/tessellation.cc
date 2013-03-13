@@ -9,7 +9,7 @@ Tessellation::Tessellation(Molecule &m){
 
 void Tessellation::build(bool split){
 	CircularInterfacesPerAtom circlesPerAtom;
-	set<int> neighbourlist;
+	vector<int> neighbourlist;
 	sasasForMolecule.clear();
 	
 	//molecule.update();
@@ -23,9 +23,9 @@ void Tessellation::build(bool split){
 		//int i=12;{
 		neighbourlist = molecule.getNeighborListFor(i);
 
-		/*
-		printf("NEIGHBOURS RECEIVED: ");
-		set<int>::iterator it;
+		
+		printf("NEIGHBOURS RECEIVED: %d\n",neighbourlist.size());
+		/*vector<int>::iterator it;
 		for(it=neighbourlist.begin(); it!=neighbourlist.end(); ++it){
 			printf(" %d",*it);
 		}
@@ -81,7 +81,7 @@ CircularInterfacesPerAtom Tessellation::coverHemisphere(Vector tessellationAxis,
 	
 }
 
-void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<double> &radii, SASAs &sasas, bool split, set<int> &neighbourlist){
+void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<double> &radii, SASAs &sasas, bool split, vector<int> &neighbourlist){
 	CircularInterfacesPerAtom circles;
 	CircularInterfacesPerAtom circlesFrontHemisphere;
 	CircularInterfacesPerAtom circlesBackHemisphere;
@@ -92,6 +92,7 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 	Vector origin;
 	double radius;
 	bool isInsideAnotherSphere;
+	Vector v;
 	
 	
 	origin = atoms[i];
@@ -101,9 +102,26 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 	ti = i;
 	
 	
-	frontTessellationAxis(0) = 1;
-	frontTessellationAxis(1) = 0;
-	frontTessellationAxis(2) = 0;
+	
+	frontTessellationAxis(0) = 1.0;
+	frontTessellationAxis(1) = 0.0;
+	frontTessellationAxis(2) = 0.0;
+	
+	/*
+	v = randu<vec>(3);
+	v(0) = v(0)-0.5;
+	v(1) = v(1)-0.5;
+	v(2) = v(2)-0.5;
+	frontTessellationAxis=v;
+	*/
+	
+	
+	frontTessellationAxis = frontTessellationAxis/norm(frontTessellationAxis,2);
+	
+	
+	
+	printf("TESSELLATION AXIS: %f %f %f\n", frontTessellationAxis(0), frontTessellationAxis(1), frontTessellationAxis(2));
+
 
 	backTessellationAxis = -frontTessellationAxis;
 	SASASegmentList *newSasas;
@@ -406,12 +424,12 @@ Vector Tessellation::calculateInterfaceNormal(const Vector &v_l, const Vector &v
 }
 
 
-bool Tessellation::makeCircularInterfaces(int l,Vector &origin, double r_l, vector<vec> &atoms, vector<double> &radii, vector<CircularInterface> &circles, set<int> &neighbourlist){
+bool Tessellation::makeCircularInterfaces(int l,Vector &origin, double r_l, vector<vec> &atoms, vector<double> &radii, vector<CircularInterface> &circles, vector<int> &neighbourlist){
 	CircularInterface circle;
 	double r_i;
 	double d_i;
 	Vector mu_i;
-	set<int>::iterator it;
+	vector<int>::iterator it;
 	int j;
 	
 
@@ -1088,7 +1106,7 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 	Vector ex(3);
 	Vector ez(3);
 	Vector ey(3);
-	Vector ni(3);
+	Vector ni(3),ni2(3);
 	Vector nij(3);
 	Vector nii(3);
 	double varpi;
@@ -1098,6 +1116,7 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 	reverseIdentity = reverseIdentity * -1;
 	OmegaRotation omega;
 	double dot_ni_nij;
+	bool problem=false;
 	
 	ez(0)=0;
 	ez(1)=0;
@@ -1106,24 +1125,35 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 	ey(1)=1;
 	ey(2)=0;
 	double dotChi_mui, dotmui_muj;
-	double s0,s2;
-	Vector p(3),p2(3);
+	double s0,s2,s3;
+	Vector pp(3),p(3),p2(3);
 	double di;
 	double dij;
 	Vector vi,vij;
 	
 	dotChi_mui = dot(tessellationAxis,mu_i);
 	s2 = 1;
-	if(isWithinNumericalLimits(dotChi_mui,1.0)){
+	if(isWithinStrongNumericalLimits(dotChi_mui,1.0)){
+		/*pp(0) = 0;
+		pp(1) = 0;
+		pp(2) = 1;
+		
+		p = normalise(cross(pp,mu_i));
+		*/
+		
 		p(0) = 0;
 		p(1) = 1;
 		p(2) = 0;
 		
 		ni=normalise(cross(tessellationAxis,p),di);
-		vi=cross(tessellationAxis,p);
+		di=1;
+		problem=true;
+		
+		vi=normalise(cross(tessellationAxis,p));
 		
 		if(dot(ni,mu_j)<0)
 			s2 = -1;
+		
 	}
 	else if(isWithinNumericalLimits(dotChi_mui,-1.0)){
 		p(0) = 0;
@@ -1131,6 +1161,7 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 		p(2) = 0;
 		
 		ni=normalise(cross(tessellationAxis,p),di);
+		di=1;
 		vi=cross(tessellationAxis,p);
 		if(dot(ni,mu_j)<0)
 			s2 = -1;
@@ -1139,6 +1170,8 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 		p = mu_i;
 		ni = normalise(cross(tessellationAxis,p),di);
 		vi=cross(tessellationAxis,p);
+		
+		
 	}
 		
 	
@@ -1150,6 +1183,7 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 		p2(1) = -1;
 		p2(2) = 0;
 		nij = normalise(cross(tessellationAxis,p2),dij);
+		dij=1;
 		vij=cross(tessellationAxis,p2);
 		//exit(-2);
 	}
@@ -1158,6 +1192,7 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 		p2(1) = 1;
 		p2(2) = 0;
 		nij = normalise(cross(tessellationAxis,p2),dij);
+		dij=1;
 		vij=cross(tessellationAxis,p2);
 		//exit(-3);
 	}
@@ -1182,9 +1217,13 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 	
 	s0 = -sgn(dot(nij,tessellationAxis));
 	
+	if(problem){
+		s0=-1;
+	}
+	
+	
 	
 	omega.rotation = s2 * s0 * varpi;
-	
 	
 	
 	if(isnan(omega.rotation)){
