@@ -30,6 +30,6 @@
 #include "triforce/integrator.h"
 #include "triforce/integratorNumerical.h"
 #include "triforce/triforceInterface.h"
-#include "triforce/shellNeighbourList.h"
+#include "triforce/neighbourList.h"
 
 #endif // TRIFORCE_H_
