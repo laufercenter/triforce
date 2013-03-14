@@ -163,12 +163,10 @@ PHIContainer;
 typedef struct
 {
 	double rotation;
-	double g;
 	double d_i;
 	double r_l;
 	double r_i;
-	Vector mu_i;
-	CircularInterfaceForm form;
+	double g;
 }
 LambdaRotation;
 
@@ -283,7 +281,7 @@ typedef struct
 	int id;
 	int index;
 	Vector normal;
-	LambdaRotation lambdaPre;
+	LambdaRotation lambdaRotation;
 	Rotation lambda;
 	Rotation psi;
 	double g;
@@ -299,6 +297,7 @@ typedef struct
 	bool intersect;
 	bool flagged;
 	bool valid;
+	bool hasDerivatives;
 		
 	
 }
@@ -381,9 +380,9 @@ public:
 	Vector calculateInterfaceNormal(const Vector &v_l, const Vector &v_i);
 	Vector calculateInterfaceNormal(const Vector &v_l, const Vector &v_i, double &d);
 	LambdaRotation calculateLambda(int index_i, double d_i, double r_l, double r_i, Vector &mu_i, CircularInterfaceForm &form);
-	Rotation calculateLambdaDerivatives(LambdaRotation &r);
+	Rotation calculateLambdaDerivatives(LambdaRotation &r, CircularInterface &circle);
 	LambdaRotation calculateLambda(double d_i, double r_l, double r_i, Vector &mu_i);
-	Rotation calculatePsi(Vector &tessellationAxis, Vector &mu_i, Matrix &dmu_dx, CircularInterfaceForm form, int index, bool derivatives);
+	Rotation calculatePsi(Vector &tessellationAxis, Vector &mu_i, Matrix &dmu_dx, CircularInterfaceForm form, int index);
 	Rotation calculatePsi(Vector &tessellationAxis, Vector &mu_i);
 	EtaRotation calculateEta(Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j);
 	EtaRotation calculateEta(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j);
@@ -399,7 +398,7 @@ public:
 	double sacos(Vector &a, Vector &b);
 	double sdot(Vector &a, Vector &b);
 	double l(Vector &a);
-	void calculateProjectionDerivatives(CircularInterface &circle);
+	void calculateProjectionAndDerivatives(Vector &tessellationAxis, CircularInterface &circle);
 
 	
 	

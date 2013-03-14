@@ -60,8 +60,9 @@ CircularInterfacesPerAtom Tessellation::coverHemisphere(Vector tessellationAxis,
 	
 	v = tessellationAxis;
 	
-	C.lambdaPre.rotation = M_PI * 0.5;
+	C.lambdaRotation.rotation = M_PI * 0.5;
 	C.lambda.rotation = M_PI * 0.5;
+	C.psi.rotation=0;
 	C.g=0;
 	C.normal = v;
 	C.form = form;
@@ -69,11 +70,16 @@ CircularInterfacesPerAtom Tessellation::coverHemisphere(Vector tessellationAxis,
 	C.a=radius;
 	C.valid = true;
 	C.index = -1;
+	C.hasDerivatives=true;
 	
 	C.dmu_dx = NullMatrix;
 	C.lambda.drotation_dxi = Vector(3).zeros();
 	C.lambda.drotation_dxj = Vector(3).zeros();
 	C.lambda.drotation_dxl = Vector(3).zeros();
+
+	C.psi.drotation_dxi = Vector(3).zeros();
+	C.psi.drotation_dxj = Vector(3).zeros();
+	C.psi.drotation_dxl = Vector(3).zeros();
 	
 	
 	circles.push_back(C);
@@ -108,13 +114,13 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 	frontTessellationAxis(1) = 0.0;
 	frontTessellationAxis(2) = 0.0;
 	
-	
+	/*
 	v = randu<vec>(3);
 	v(0) = v(0)-0.5;
 	v(1) = v(1)-0.5;
 	v(2) = v(2)-0.5;
 	frontTessellationAxis=v;
-	
+	*/
 	
 	
 	frontTessellationAxis = frontTessellationAxis/norm(frontTessellationAxis,2);
@@ -154,11 +160,11 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 		filterCircularInterfaces(frontTessellationAxis,radius, circlesFrontHemisphere);
 		filterCircularInterfaces(backTessellationAxis,radius, circlesBackHemisphere);
 		
-		for(unsigned int j=0;j<circlesFrontHemisphere.size();j++) if(circlesFrontHemisphere[j].form!=SPLITTER) calculateProjectionDerivatives(circlesFrontHemisphere[j]);
-		for(unsigned int j=0;j<circlesBackHemisphere.size();j++) if(circlesBackHemisphere[j].form!=SPLITTER) calculateProjectionDerivatives(circlesBackHemisphere[j]);
+		//for(unsigned int j=0;j<circlesFrontHemisphere.size();j++) if(circlesFrontHemisphere[j].form!=SPLITTER) calculateProjectionDerivatives(circlesFrontHemisphere[j]);
+		//for(unsigned int j=0;j<circlesBackHemisphere.size();j++) if(circlesBackHemisphere[j].form!=SPLITTER) calculateProjectionDerivatives(circlesBackHemisphere[j]);
 		
-		determinePsiRotations(frontTessellationAxis, circlesFrontHemisphere);
-		determinePsiRotations(backTessellationAxis, circlesBackHemisphere);
+		//determinePsiRotations(frontTessellationAxis, circlesFrontHemisphere);
+		//determinePsiRotations(backTessellationAxis, circlesBackHemisphere);
 		
 		reindexCircularInterfaces(circlesFrontHemisphere);
 		reindexCircularInterfaces(circlesBackHemisphere);
@@ -274,12 +280,9 @@ LambdaRotation Tessellation::calculateLambda(int index_i, double d_i, double r_l
 	else form=CONVEX;
 	
 	r.rotation = acos(g);
-	r.g = g;
 	r.d_i = d_i;
 	r.r_l = r_l;
-	r.mu_i = mu_i;
-	r.form = form;
-	
+	r.g = g;
 	
 	return r;
 	
@@ -287,7 +290,7 @@ LambdaRotation Tessellation::calculateLambda(int index_i, double d_i, double r_l
 
 
 
-Rotation Tessellation::calculateLambdaDerivatives(LambdaRotation &r){
+Rotation Tessellation::calculateLambdaDerivatives(LambdaRotation &r, CircularInterface &circle){
 	double g;
 	double dg_dd;
 	double dlambda_dg;
@@ -305,13 +308,16 @@ Rotation Tessellation::calculateLambdaDerivatives(LambdaRotation &r){
 	g = r.g;
 	d_i = r.d_i;
 	r_l = r.r_l;
-	mu_i = r.mu_i;
-	form = r.form;
+	mu_i = circle.normal;
+	form = circle.form;
 
 	if(g > 1.0-MINISCULE) g = 1.0-MINISCULE;
 	if(g < -1.0+MINISCULE) g = -1.0+MINISCULE;
+	
 
 	dlambda_dg = -1/sqrt(1-g*g);
+	
+	
 	
 	
 	if(form==CONVEX){
@@ -322,6 +328,8 @@ Rotation Tessellation::calculateLambdaDerivatives(LambdaRotation &r){
 		dg_dd = -(g/d_i + 1/r_l);
 		q = -1;
 	}
+	
+
 	
 	dd_dxi = q*mu_i;
 	
@@ -335,6 +343,10 @@ Rotation Tessellation::calculateLambdaDerivatives(LambdaRotation &r){
 	lambda.drotation_dxj = Vector(3).zeros();
 	lambda.drotation_dxl = dlambda_dxl;
 	
+	
+	
+	
+	
 	return lambda;
 	
 	
@@ -343,13 +355,14 @@ Rotation Tessellation::calculateLambdaDerivatives(LambdaRotation &r){
 
 
 void Tessellation::determineProjection(Vector &origin, double r_l, CircularInterface &circle){
-	circle.lambdaPre = calculateLambda(circle.index, circle.d, r_l, circle.sphereRadius, circle.normal, circle.form);
+	circle.lambdaRotation = calculateLambda(circle.index, circle.d, r_l, circle.sphereRadius, circle.normal, circle.form);
+	circle.lambda.rotation = circle.lambdaRotation.rotation;
 	circle.valid=true;
 }
 
 
 
-void Tessellation::calculateProjectionDerivatives(CircularInterface &circle){
+void Tessellation::calculateProjectionAndDerivatives(Vector &tessellationAxis, CircularInterface &circle){
 	Matrix Identity(3,3);
 	Matrix dmu_dx(3,3);
 	Matrix fd_dmu_dx(3,3);
@@ -359,7 +372,7 @@ void Tessellation::calculateProjectionDerivatives(CircularInterface &circle){
 	
 	
 
-	circle.lambda = calculateLambdaDerivatives(circle.lambdaPre);
+	circle.lambda = calculateLambdaDerivatives(circle.lambdaRotation, circle);
 	
 	//derivatives
 	if(circle.form==CONVEX)
@@ -370,6 +383,11 @@ void Tessellation::calculateProjectionDerivatives(CircularInterface &circle){
 	circle.dmu_dx = dmu_dx;
 	
 	
+	
+	
+	circle.psi = calculatePsi(tessellationAxis, circle);
+	
+	circle.hasDerivatives=true;
 	
 	
 	
@@ -478,6 +496,7 @@ bool Tessellation::makeCircularInterfaces(int l,Vector &origin, double r_l, vect
 				circle.sphereRadius = r_i;
 				circle.intersect = false;
 				circle.index=j;
+				circle.hasDerivatives=false;
 				circles.push_back(circle);
 			}
 			//in this case, the atom is completely inside another atom and has no SASA
@@ -523,7 +542,7 @@ int Tessellation::filterCircularInterfaces(Vector tessellationAxis, double radiu
 					//convex circle IT is inside of convex circle i
 					if(circles[i].form == CONVEX){
 						
-						if(it->lambdaPre.rotation + angle < circles[i].lambdaPre.rotation){
+						if(it->lambda.rotation + angle < circles[i].lambda.rotation){
 							it = circles.erase(it);
 							erased=true;
 							break;
@@ -531,7 +550,7 @@ int Tessellation::filterCircularInterfaces(Vector tessellationAxis, double radiu
 					}
 					//convex circle is outside of concave circle i
 					else{
-						if(angle-it->lambdaPre.rotation >  circles[i].lambdaPre.rotation){
+						if(angle-it->lambda.rotation >  circles[i].lambda.rotation){
 							it = circles.erase(it);
 							erased=true;
 							break;
@@ -542,7 +561,7 @@ int Tessellation::filterCircularInterfaces(Vector tessellationAxis, double radiu
 				else{
 					//concave circle IT has a free area. This area is covered by convex circle i
 					if(circles[i].form == CONVEX){
-						if(it->lambdaPre.rotation + angle < circles[i].lambdaPre.rotation){
+						if(it->lambda.rotation + angle < circles[i].lambda.rotation){
 							circles.clear();
 							return -1;
 						}
@@ -550,13 +569,13 @@ int Tessellation::filterCircularInterfaces(Vector tessellationAxis, double radiu
 					}
 					else{
 						//concave circle IT is completely inside the occlusion of concave circle i
-						if(it->lambdaPre.rotation > circles[i].lambdaPre.rotation + angle){
+						if(it->lambda.rotation > circles[i].lambda.rotation + angle){
 							it = circles.erase(it);
 							erased=true;
 							break;
 						}
 						//concave circle IT has a free area. This area is covered by concave circle i
-						else if(angle > it->lambdaPre.rotation + circles[i].lambdaPre.rotation){
+						else if(angle > it->lambda.rotation + circles[i].lambda.rotation){
 							circles.clear();
 							return -1;
 							
@@ -631,6 +650,7 @@ void Tessellation::insertArtificialIntersectionPoints(CircularInterface &I, Vect
 	
 	
 	
+	calculateProjectionAndDerivatives(tessellationAxis, I);
 	
 	
 	sasaSegment.id0 = I.id;
@@ -641,6 +661,8 @@ void Tessellation::insertArtificialIntersectionPoints(CircularInterface &I, Vect
 	sasaSegment.index1 = I.index;
 	sasaSegment.index2 = I.index;
 	sasaSegment.lambda = I.lambda;
+	
+	
 	sasaSegment.psi = I.psi;
 	sasaSegment.normalForCircularInterface = I.normal;
 	sasaSegment.form0 = I.form;
@@ -1227,17 +1249,16 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 	
 	
 	
-	dot_ni_nij = dot((ni),(nij));
+	dot_ni_nij = norm_dot(ni,nij);
 	
 
 	
 	
 	
-	double dninij=norm_dot((ni),(nij));
-	if(dninij > 1.0) dninij=1.0;
-	if(dninij < -1.0) dninij=-1.0;
+	if(dot_ni_nij > 1.0) dot_ni_nij=1.0;
+	if(dot_ni_nij < -1.0) dot_ni_nij=-1.0;
 	
-		varpi = acos(dninij);
+	varpi = acos(dot_ni_nij);
 	
 	s0 = -sgn(dot(nij,tessellationAxis));
 	
@@ -1297,6 +1318,7 @@ Rotation Tessellation::calculateOmegaDerivatives(OmegaRotation &r, CircularInter
 	int id_i;
 	int id_j;
 	double s0,s2;
+	double denominator;
 	
 	omega.rotation=r.rotation;
 	
@@ -1360,9 +1382,11 @@ Rotation Tessellation::calculateOmegaDerivatives(OmegaRotation &r, CircularInter
 		if(dot_ni_nij < -1.0+MINISCULE) dot_ni_nij = -1.0+MINISCULE;
 
 	
+		denominator = (sqrt(1-dot_ni_nij*dot_ni_nij));
+		
 	
-		dvarpi_dni = -(nij) / (sqrt(1-dot_ni_nij*dot_ni_nij));
-		dvarpi_dnij = -(ni) / (sqrt(1-dot_ni_nij*dot_ni_nij));
+		dvarpi_dni = -(nij) / denominator;
+		dvarpi_dnij = -(ni) / denominator;
 		
 		
 		//if(norm(dvarpi_dni,2) > 1.0) dvarpi_dni = normalise(dvarpi_dni);
@@ -1616,6 +1640,8 @@ PHIContainer Tessellation::calculatePHI(Vector &tessellationAxis, Vector &mu_i, 
 		p.out=p3.in;
 	}
 
+	
+	
 
 
 	
@@ -1641,6 +1667,8 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 	PHI.drotation_dxj = s*eta.drotation_dxj + omega.drotation_dxj;
 	PHI.drotation_dxl = s*eta.drotation_dxl + omega.drotation_dxl;
 	
+	
+	
 	return PHI;
 	
 			
@@ -1655,22 +1683,22 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 
 
 Rotation Tessellation::calculatePsi(Vector &tessellationAxis, CircularInterface &circle){
-	return calculatePsi(tessellationAxis, circle.normal, circle.dmu_dx, circle.form, circle.index, true);
+	return calculatePsi(tessellationAxis, circle.normal, circle.dmu_dx, circle.form, circle.id-1);
 }
 
 Rotation Tessellation::calculatePsi(Vector &tessellationAxis, Vector &mu_i){
 	Matrix dmu_dx(3,3);
 	CircularInterfaceForm form;
-	int index;
+	int id;
 	
 	dmu_dx.zeros();
 	form = CONVEX;
-	index=0;
+	id=0;
 	
-	return calculatePsi(tessellationAxis, mu_i, dmu_dx, form, index, false);
+	return calculatePsi(tessellationAxis, mu_i, dmu_dx, form, id);
 }
 
-Rotation Tessellation::calculatePsi(Vector &tessellationAxis, Vector &mu_i, Matrix &dmu_dx, CircularInterfaceForm form, int index, bool derivatives){
+Rotation Tessellation::calculatePsi(Vector &tessellationAxis, Vector &mu_i, Matrix &dmu_dx, CircularInterfaceForm form, int index){
 	Vector dpsi_dmui;
 	Rotation r;
 	Vector dpsi_dxi, dpsi_dxl;
@@ -1696,66 +1724,54 @@ Rotation Tessellation::calculatePsi(Vector &tessellationAxis, Vector &mu_i, Matr
 	r.rotation = getAngle(tessellationAxis,mu_i);
 	
 
-	
-	
-	if(derivatives){
-	
-		if(form != SPLITTER){
+	if(form != SPLITTER){
+		
+		
+		dot_mui_chi = dot(mu_i,tessellationAxis);
+
 			
-			
-	
-				
-			if(isWithinNumericalLimits(mu_i(0),1.0) || isWithinNumericalLimits(mu_i(0),-1.0)){
-				dpsi_dmui = Vector(3).zeros();
-				dpsi_dxi = Vector(3).zeros();
-				dpsi_dxl = Vector(3).zeros();
-			}
-			else{
-				
-				//if(mu_i(0) > 1.0-MINISCULE) mu_i(0) = 1.0-MINISCULE;
-				//if(mu_i(0) < -1.0+MINISCULE) mu_i(0) = -1.0+MINISCULE;
-				
-				dot_mui_chi = dot(mu_i,tessellationAxis);
-				if(dot_mui_chi > 1.0-MINISCULE) dot_mui_chi = 1.0-MINISCULE;
-				if(dot_mui_chi < -1.0+MINISCULE) dot_mui_chi = -1.0+MINISCULE;
-				
-				dpsi_dmui = -tessellationAxis/(sqrt(1-dot_mui_chi*dot_mui_chi));
-				
-				
-				dpsi_dxi = (dpsi_dmui.t() * dmu_dx).t();
-				//smoothing
-				//if(norm(dpsi_dxi,2)>1.0) dpsi_dxi = normalise(dpsi_dxi);
-				
-				dpsi_dxl = -dpsi_dxi;
-			}
-			
-			
-			r.drotation_dxi = dpsi_dxi;
-			r.drotation_dxj = Vector(3).zeros();
-			r.drotation_dxl = dpsi_dxl;
+		if(isWithinNumericalLimits(dot_mui_chi,1.0) || isWithinNumericalLimits(dot_mui_chi,-1.0)){
+			dpsi_dmui = Vector(3).zeros();
+			dpsi_dxi = Vector(3).zeros();
+			dpsi_dxl = Vector(3).zeros();
 		}
 		else{
-			//the splitter is immovable
-			r.drotation_dxi = Vector(3).zeros();
-			r.drotation_dxj = Vector(3).zeros();
-			r.drotation_dxl = Vector(3).zeros();
+			
+			//if(mu_i(0) > 1.0-MINISCULE) mu_i(0) = 1.0-MINISCULE;
+			//if(mu_i(0) < -1.0+MINISCULE) mu_i(0) = -1.0+MINISCULE;
+			
+			if(dot_mui_chi > 1.0-MINISCULE) dot_mui_chi = 1.0-MINISCULE;
+			if(dot_mui_chi < -1.0+MINISCULE) dot_mui_chi = -1.0+MINISCULE;
+			
+			dpsi_dmui = -tessellationAxis/(sqrt(1-dot_mui_chi*dot_mui_chi));
+			
+			
+			dpsi_dxi = (dpsi_dmui.t() * dmu_dx).t();
+			//smoothing
+			//if(norm(dpsi_dxi,2)>1.0) dpsi_dxi = normalise(dpsi_dxi);
+			
+			dpsi_dxl = -dpsi_dxi;
 		}
 		
-	
-
 		
-	
-		
+		r.drotation_dxi = dpsi_dxi;
+		r.drotation_dxj = Vector(3).zeros();
+		r.drotation_dxl = dpsi_dxl;
+	}
+	else{
+		//the splitter is immovable
+		//r.drotation_dxi = Vector(3).zeros();
+		//r.drotation_dxj = Vector(3).zeros();
+		//r.drotation_dxl = Vector(3).zeros();
 	}
 	
+
 	
 	
 	
 	return r;
 	
 }
-
-
 
 
 
@@ -1973,10 +1989,18 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 				sasaSegment.index0 = circles[it->second.id-1].index;
 				sasaSegment.index1 = circles[I->id-1].index;
 				sasaSegment.index2 = circles[it2->second.id-1].index;
-				sasaSegment.rotation0 = calculatePHIDerivatives(it->second.PHI, circles, tessellationAxis);
-				sasaSegment.rotation1 = calculatePHIDerivatives(it2->second.PHI, circles, tessellationAxis);
+				
+				if(!circles[it->second.id-1].hasDerivatives) calculateProjectionAndDerivatives(tessellationAxis, circles[it->second.id-1]);
+				if(!circles[I->id-1].hasDerivatives) calculateProjectionAndDerivatives(tessellationAxis, circles[I->id-1]);
+				if(!circles[it2->second.id-1].hasDerivatives) calculateProjectionAndDerivatives(tessellationAxis, circles[it2->second.id-1]);
+				
 				sasaSegment.lambda = circles[I->id-1].lambda;
 				sasaSegment.psi = circles[I->id-1].psi;
+				
+				
+				
+				sasaSegment.rotation0 = calculatePHIDerivatives(it->second.PHI, circles, tessellationAxis);
+				sasaSegment.rotation1 = calculatePHIDerivatives(it2->second.PHI, circles, tessellationAxis);
 				sasaSegment.normalForCircularInterface = circles[I->id-1].normal;
 				sasaSegment.form0 = circles[it->second.id-1].form;
 				sasaSegment.form1 = circles[I->id-1].form;
@@ -1984,6 +2008,9 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 				
 				sasaSegment.tessellationAxis = tessellationAxis;
 				sasaSegment.hemisphere = hemisphere;
+				
+			
+				
 				
 				sasa.push_back(sasaSegment);
 				
