@@ -273,6 +273,13 @@ struct IteratorComparator: public std::binary_function<IntersectionBranches::ite
 	}
 };
 
+typedef struct
+{
+	int id;
+	double rho;
+	double dot_mui_muj;
+}
+RhoContainer;
 
 
 
@@ -285,12 +292,10 @@ typedef struct
 	Rotation lambda;
 	Rotation psi;
 	double g;
-	double a;
 	double sphereRadius;
 	double d;
-//	double radius;
 	Matrix dmu_dx;
-	map<int,CircularIntersection> circularIntersections;
+	vector<RhoContainer> circularIntersections;
 	IntersectionBranches intersectionBranches;
 	
 	CircularInterfaceForm form;
@@ -302,6 +307,8 @@ typedef struct
 	
 }
 CircularInterface;
+
+
 
 typedef vector<CircularInterface> CircularInterfacesPerAtom;
 
@@ -384,14 +391,14 @@ public:
 	LambdaRotation calculateLambda(double d_i, double r_l, double r_i, Vector &mu_i);
 	Rotation calculatePsi(Vector &tessellationAxis, Vector &mu_i, Matrix &dmu_dx, CircularInterfaceForm form, int index);
 	Rotation calculatePsi(Vector &tessellationAxis, Vector &mu_i);
-	EtaRotation calculateEta(Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j);
-	EtaRotation calculateEta(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j);
+	EtaRotation calculateEta(Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, RhoContainer &rhoContainer);
+	EtaRotation calculateEta(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, RhoContainer &rhoContainer);
 	Rotation calculateEtaDerivatives(EtaRotation &r, CircularInterfacesPerAtom &circles);
-	OmegaRotation calculateOmega(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j);
-	OmegaRotation calculateOmega(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j);
+	OmegaRotation calculateOmega(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, RhoContainer &rhoContainer);
+	OmegaRotation calculateOmega(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, RhoContainer &rhoContainer);
 	Rotation calculateOmegaDerivatives(OmegaRotation &r, CircularInterfacesPerAtom &circles, Vector &tessellationAxis);
-	PHIContainer calculatePHI(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j);
-	PHIContainer calculatePHI(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j);
+	PHIContainer calculatePHI(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, RhoContainer &rhoContainer);
+	PHIContainer calculatePHI(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, RhoContainer &rhoContainer);
 	Rotation calculatePHIDerivatives(PHIRotation &r, CircularInterfacesPerAtom &circles, Vector &tessellationAxis);
 	double calculateRho(Vector &mu_i, Vector &mu_j);
 	double calculateRho(Vector &mu_i, Vector &mu_j, bool derivatives);
@@ -443,9 +450,9 @@ private:
 	void depleteCircularInterfaces(Vector tessellationAxis, double radius, vector<CircularInterface> &circles);
 	bool isWithinNumericalLimits(double x, double l);
 	bool isWithinStrongNumericalLimits(double x, double l);
-	OmegaRotation calculateOmega(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J);
-	EtaRotation calculateEta(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J);
-	PHIContainer calculatePHI(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J, double radius);
+	OmegaRotation calculateOmega(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J, RhoContainer &rhoContainer);
+	EtaRotation calculateEta(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J, RhoContainer &rhoContainer);
+	PHIContainer calculatePHI(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J, double radius, RhoContainer &rhoContainer);
 	void determinePsiRotations(Vector &tessellationAxis, CircularInterfacesPerAtom &circles);
 	Rotation calculatePsi(Vector &tessellationAxis, CircularInterface &circle);
 	Matrix matrixCross(Matrix &m, Vector &v);
