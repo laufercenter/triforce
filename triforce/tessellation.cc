@@ -67,7 +67,6 @@ CircularInterfacesPerAtom Tessellation::coverHemisphere(Vector tessellationAxis,
 	C.normal = v;
 	C.form = form;
 	C.id = circles.size()+1;
-	C.a=radius;
 	C.valid = true;
 	C.index = -1;
 	C.hasDerivatives=true;
@@ -767,25 +766,26 @@ int Tessellation::sgn(double d){
 
 void Tessellation::determineCircularIntersections(CircularInterfacesPerAtom &circles){
 	double angle;
-	CircularIntersection c;
+	RhoContainer c;
 	
-	
-	//this needs to be optimised
+	//this doesn't really need to be optimised. The reason is, that the number of excluded interface-interface intersections is much smaller and at most equal to the number of included intersections
 	for(unsigned k=0;k<circles.size();k++)
 		for(unsigned j=k+1;j<circles.size();j++){
 			if(k!=j){
 				//determine if there will be intersections
 				angle = getAngle(circles[k].normal,circles[j].normal);
-				if(angle < circles[k].lambda.rotation + circles[j].lambda.rotation)
+				if(angle < circles[k].lambda.rotation + circles[j].lambda.rotation){
 					if(angle + circles[k].lambda.rotation > circles[j].lambda.rotation && angle + circles[j].lambda.rotation > circles[k].lambda.rotation){
-						c.d=angle;
-						c.visited=false;
-						circles[j].circularIntersections[k]=c;
-						circles[k].circularIntersections[j]=c;
-						
+						c.rho=angle;
+						c.id = k;
+						circles[j].circularIntersections.push_back(c);
+						c.id = j;
+						circles[k].circularIntersections.push_back(c);
 					}
+				}
 			}
 		}
+		
 	
 }
 
@@ -1136,19 +1136,19 @@ double Tessellation::l(Vector &a){
 }
 
 
-OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J){
-	return calculateOmega(tessellationAxis, I.normal, J.normal, I.id-1, J.id-1, I.form, J.form);
+OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J, RhoContainer &rhoContainer){
+	return calculateOmega(tessellationAxis, I.normal, J.normal, I.id-1, J.id-1, I.form, J.form, rhoContainer);
 
 }
 
 
-OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j){
-	return calculateOmega(tessellationAxis, mu_i, mu_j, 0, 0, CONVEX, CONVEX);
+OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, RhoContainer &rhoContainer){
+	return calculateOmega(tessellationAxis, mu_i, mu_j, 0, 0, CONVEX, CONVEX, rhoContainer);
 }
 
 
 
-OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j){
+OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, RhoContainer &rhoContainer){
 	Vector ex(3);
 	Vector ez(3);
 	Vector ey(3);
@@ -1175,9 +1175,9 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 	Vector pp(3),p(3),p2(3);
 	double di;
 	double dij;
-	Vector vi,vij;
 	
 	dotChi_mui = dot(tessellationAxis,mu_i);
+	
 	s2 = 1;
 	if(isWithinStrongNumericalLimits(dotChi_mui,1.0)){
 		/*pp(0) = 0;
@@ -1195,8 +1195,6 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 		di=1;
 		problem=true;
 		
-		vi=normalise(cross(tessellationAxis,p));
-		
 		if(dot(ni,mu_j)<0)
 			s2 = -1;
 		
@@ -1208,14 +1206,12 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 		
 		ni=normalise(cross(tessellationAxis,p),di);
 		di=1;
-		vi=cross(tessellationAxis,p);
 		if(dot(ni,mu_j)<0)
 			s2 = -1;
 	}
 	else{
 		p = mu_i;
 		ni = normalise(cross(tessellationAxis,p),di);
-		vi=cross(tessellationAxis,p);
 		
 		
 	}
@@ -1223,14 +1219,13 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 	
 	
 	
-	dotmui_muj = dot(mu_i, mu_j);
+	dotmui_muj = rhoContainer.dot_mui_muj;
 	if(isWithinNumericalLimits(dotmui_muj,1.0)){
 		p2(0) = 0;
 		p2(1) = -1;
 		p2(2) = 0;
 		nij = normalise(cross(tessellationAxis,p2),dij);
 		dij=1;
-		vij=cross(tessellationAxis,p2);
 		//exit(-2);
 	}
 	else if(isWithinNumericalLimits(dotmui_muj,-1.0)){
@@ -1239,17 +1234,15 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 		p2(2) = 0;
 		nij = normalise(cross(tessellationAxis,p2),dij);
 		dij=1;
-		vij=cross(tessellationAxis,p2);
 		//exit(-3);
 	}
 	else{
 		nij = normalise(cross(mu_i, mu_j),dij);
-		vij=cross(mu_i, mu_j);
 	}
 	
 	
 	
-	dot_ni_nij = norm_dot(ni,nij);
+	dot_ni_nij = dot(ni,nij);
 	
 
 	
@@ -1428,20 +1421,20 @@ double Tessellation::calculateRho(Vector &mu_i, Vector &mu_j, bool derivatives){
 }
 
 
-EtaRotation Tessellation::calculateEta(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J){
-	return calculateEta(tessellationAxis, I.normal, J.normal, I.lambda, J.lambda, I.id-1, J.id-1, I.form, J.form);
+EtaRotation Tessellation::calculateEta(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J, RhoContainer &rhoContainer){
+	return calculateEta(tessellationAxis, I.normal, J.normal, I.lambda, J.lambda, I.id-1, J.id-1, I.form, J.form, rhoContainer);
 }
 
 
-EtaRotation Tessellation::calculateEta(Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j){
+EtaRotation Tessellation::calculateEta(Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, RhoContainer &rhoContainer){
 	Vector tessellationAxis(3);
 	
 	tessellationAxis.zeros();
-	return calculateEta(tessellationAxis, mu_i, mu_j, lambda_i, lambda_j, 0, 0, CONVEX, CONVEX);
+	return calculateEta(tessellationAxis, mu_i, mu_j, lambda_i, lambda_j, 0, 0, CONVEX, CONVEX, rhoContainer);
 }
 
 
-EtaRotation Tessellation::calculateEta(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j){
+EtaRotation Tessellation::calculateEta(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, RhoContainer &rhoContainer){
 	double rho;
 	double dot_IJ;
 	double sig0,sig1,sig2;
@@ -1450,9 +1443,9 @@ EtaRotation Tessellation::calculateEta(Vector &tessellationAxis, Vector &mu_i, V
 	
 	
 	
-	dot_IJ = norm_dot(mu_i,mu_j);
+	dot_IJ = rhoContainer.dot_mui_muj;
 	
-	rho = acos(dot_IJ);
+	rho = rhoContainer.rho;
 	
 	
 	
@@ -1583,18 +1576,18 @@ Rotation Tessellation::calculateEtaDerivatives(EtaRotation &r, CircularInterface
 	return eta;
 }
 
-PHIContainer Tessellation::calculatePHI(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J, double radius){
-	return calculatePHI(tessellationAxis, I.normal, J.normal, I.lambda, J.lambda, I.id-1, J.id-1, I.form, J.form);
+PHIContainer Tessellation::calculatePHI(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J, double radius, RhoContainer &rhoContainer){
+	return calculatePHI(tessellationAxis, I.normal, J.normal, I.lambda, J.lambda, I.id-1, J.id-1, I.form, J.form, rhoContainer);
 	
 }
 
 
-PHIContainer Tessellation::calculatePHI(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j){
-	return calculatePHI(tessellationAxis, mu_i, mu_j, lambda_i, lambda_j, 0, 0, CONVEX, CONVEX);
+PHIContainer Tessellation::calculatePHI(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, RhoContainer &rhoContainer){
+	return calculatePHI(tessellationAxis, mu_i, mu_j, lambda_i, lambda_j, 0, 0, CONVEX, CONVEX, rhoContainer);
 }
 
 
-PHIContainer Tessellation::calculatePHI(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j){
+PHIContainer Tessellation::calculatePHI(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, RhoContainer &rhoContainer){
 	PHIContainer p,p2,p3;
 	
 	EtaRotation eta;
@@ -1602,8 +1595,8 @@ PHIContainer Tessellation::calculatePHI(Vector &tessellationAxis, Vector &mu_i, 
 	int q;
 	
 
-	eta = calculateEta(tessellationAxis, mu_i, mu_j, lambda_i, lambda_j, id_i, id_j, form_i, form_j);
-	omega = calculateOmega(tessellationAxis, mu_i, mu_j, id_i, id_j, form_i, form_j);
+	eta = calculateEta(tessellationAxis, mu_i, mu_j, lambda_i, lambda_j, id_i, id_j, form_i, form_j, rhoContainer);
+	omega = calculateOmega(tessellationAxis, mu_i, mu_j, id_i, id_j, form_i, form_j, rhoContainer);
 	
 	
 	
@@ -1882,7 +1875,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 	
 	unsigned int j;
 	CircularInterface *I, *J;
-	map<int,CircularIntersection>::iterator it_j;
+	vector<RhoContainer>::iterator it_j;
 	
 	
 	Interfaces interfacesJ, interfacesI;
@@ -1892,6 +1885,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 	int searchMode;
 	bool erased;
 	bool done;
+	RhoContainer rhoContainer;
 	
 	
 	//iterate through all circles and add them to the intersectiongraph, one by one
@@ -1906,12 +1900,13 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 		
 		
 		for(it_j=I->circularIntersections.begin(); it_j != I->circularIntersections.end(); ++it_j){
-			j=(*it_j).first;
+			j=it_j->id;
+			rhoContainer = *it_j;
 			J = &circles[j];
 			
 			//retrieve external and internal interfaces (respectively)
-			PHIJ = calculatePHI(tessellationAxis, *J, *I, radius);
-			PHII = calculatePHI(tessellationAxis, *I, *J, radius);
+			PHIJ = calculatePHI(tessellationAxis, *J, *I, radius, rhoContainer);
+			PHII = calculatePHI(tessellationAxis, *I, *J, radius, rhoContainer);
 			
 			createIntersectionBranch(PHII, PHIJ, *I, *J);
 			
