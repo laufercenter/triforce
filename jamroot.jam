@@ -36,7 +36,8 @@ topology.cc
 integrator.cc
 integratorNumerical.cc
 triforceInterface.cc
-neighbourList.cc ;
+neighbourList.cc 
+multiLayeredDepthBuffer.cc ;
 
 
 HEADERS = 
@@ -50,7 +51,8 @@ topology.h
 integrator.h
 integratorNumerical.h
 triforceInterface.h
-neighbourList.h ;
+neighbourList.h
+multiLayeredDepthBuffer.h ;
 
 
 

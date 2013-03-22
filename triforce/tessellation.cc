@@ -1439,9 +1439,12 @@ EtaRotation Tessellation::calculateEta(Vector &tessellationAxis, Vector &mu_i, V
 	double dot_IJ;
 	double sig0,sig1,sig2;
 	EtaRotation eta;
-	
-	
-	
+	double csc_lambda_i;
+	double cos_lambda_i;
+	double cot_lambda_i;
+	double csc_rho;
+	double cos_rho;
+	double cot_rho;
 	
 	dot_IJ = rhoContainer.dot_mui_muj;
 	
@@ -1453,9 +1456,19 @@ EtaRotation Tessellation::calculateEta(Vector &tessellationAxis, Vector &mu_i, V
 		eta.rotation = 0;
 	}
 	else{
-	
-		sig0 = cot(lambda_i.rotation) * cot(rho);
-		sig1 = cos(lambda_j.rotation)*csc(lambda_i.rotation)*csc(rho);
+		csc_lambda_i = 1.0/sin(lambda_i.rotation);
+		cos_lambda_i = cos(lambda_i.rotation);
+		cot_lambda_i = cos_lambda_i * csc_lambda_i;
+
+		csc_rho = 1.0/sin(rho);
+		cos_rho = cos(rho);
+		cot_rho = cos_rho * csc_rho;
+		
+		
+		//sig0 = cot(lambda_i.rotation) * cot(rho);
+		//sig1 = cos(lambda_j.rotation)*csc(lambda_i.rotation)*csc(rho);
+		sig0 = cot_lambda_i * cot_rho;
+		sig1 = cos(lambda_j.rotation)*csc_lambda_i*csc_rho;
 		sig2 = sig0-sig1;
 		
 		
@@ -1888,10 +1901,11 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 	RhoContainer rhoContainer;
 	
 	
+	
 	//iterate through all circles and add them to the intersectiongraph, one by one
 	for(unsigned int i=0; i < circles.size(); ++i){
 		I = &circles[i];
-		
+		I->cnt = 0;
 		
 		if(I->circularIntersections.size()==0){
 			insertArtificialIntersectionPoints(*I,tessellationAxis,hemisphere,sasa);			
@@ -1907,6 +1921,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 			//retrieve external and internal interfaces (respectively)
 			PHIJ = calculatePHI(tessellationAxis, *J, *I, radius, rhoContainer);
 			PHII = calculatePHI(tessellationAxis, *I, *J, radius, rhoContainer);
+			I->cnt++;
 			
 			createIntersectionBranch(PHII, PHIJ, *I, *J);
 			
@@ -1968,9 +1983,11 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 	}
 	
 	
-	
 	for(unsigned int i=0; i < circles.size(); ++i){
 		I = &circles[i];
+		
+		int cnt=0;
+		
 		
 		for(it = I->intersectionBranches.begin(); it != I->intersectionBranches.end(); ++it){
 			if(it->second.direction==IN){
@@ -2004,19 +2021,20 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 				sasaSegment.tessellationAxis = tessellationAxis;
 				sasaSegment.hemisphere = hemisphere;
 				
-			
+				cnt++;
 				
 				
 				sasa.push_back(sasaSegment);
 				
 			}
-				
-				
-				
-				
+			
+			
 				
 				
 		}
+		
+		fprintf(stderr,"%d %d\n",I->cnt,cnt);
+		
 		
 		
 	}

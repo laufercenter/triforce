@@ -304,7 +304,7 @@ typedef struct
 	bool valid;
 	bool hasDerivatives;
 		
-	
+	int cnt;
 }
 CircularInterface;
 
