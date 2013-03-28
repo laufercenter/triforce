@@ -77,7 +77,7 @@ Data3D* DataFile::digest3DBinaryTable(){
 	
 	//printf("dimensions: %d, rows in header: %d, maxdim: %d\n",numberDimensions,nrowsHeader,maxdim); 
 	
-	tbl = new Data3D(parameter0Dim, parameter1Dim, parameter2Dim, derivativeLevel, containsphiValues==1);
+	tbl = new Data3D(parameter0Dim, parameter1Dim, parameter2Dim, derivativeLevel, containsphiValues);
 	
 	//read PHI header
 	buffer=new char[parameter0Dim*BINARY_DATA_BLOCK_SIZE];
