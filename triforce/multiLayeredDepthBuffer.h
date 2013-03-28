@@ -25,7 +25,7 @@
 
 #include <armadillo>
 
-#include "data3d.h"
+#include "depth3d.h"
 
 
 using namespace std;
@@ -41,8 +41,12 @@ enum LineType{
 
 
 
+
+
+
 typedef multimap<double, LineType> DepthBufferLine;
 typedef vector<DepthBufferLine>DepthBuffer;
+typedef vector<ScanlineMode>DepthBufferMode;
 
 
 class MultiLayeredDepthBuffer{
@@ -60,12 +64,15 @@ public:
 	bool wouldChangeLineBuffer(DepthBufferLine &line, double front, double back);
 	void addSphere(Vector &v, double lambda);
 	bool passesBuffer(Vector &v, double lambda);
+	void print();
 
 	
 
 private:
 	int len;
+	Depth3D data;
 	DepthBuffer dbuffer;
+	DepthBufferMode dmode;
 	
 	
 };

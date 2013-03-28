@@ -1,5 +1,5 @@
 #include "tessellation.h"
-
+#include "multiLayeredDepthBuffer.h"
 
 Tessellation::Tessellation(Molecule &m){
 	molecule = m;
@@ -43,7 +43,7 @@ void Tessellation::build(bool split){
 			}
 		}
 		*/
-
+		exit(0);
 	}
 	
 	
@@ -88,7 +88,7 @@ CircularInterfacesPerAtom Tessellation::coverHemisphere(Vector tessellationAxis,
 }
 
 void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<double> &radii, SASAs &sasas, bool split, vector<int> &neighbourlist){
-	CircularInterfacesPerAtom circles;
+	CircularInterfacesPerAtom circles,precircles;
 	CircularInterfacesPerAtom circlesFrontHemisphere;
 	CircularInterfacesPerAtom circlesBackHemisphere;
 	
@@ -99,6 +99,7 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 	double radius;
 	bool isInsideAnotherSphere;
 	Vector v;
+	MultiLayeredDepthBuffer depthBuffer(20);
 	
 	
 	origin = atoms[i];
@@ -140,13 +141,27 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 	
 
 
-	isInsideAnotherSphere = makeCircularInterfaces(i,origin, radius, atoms, radii, circles, neighbourlist);
+	isInsideAnotherSphere = makeCircularInterfaces(i,origin, radius, atoms, radii, precircles, neighbourlist);
 	
 	if(isInsideAnotherSphere) return;
 	
-	for(unsigned int j=0;j<circles.size();j++){
-		determineProjection(origin, radius, circles[j]);
+	for(unsigned int j=0;j<precircles.size();j++){
+		determineProjection(origin, radius, precircles[j]);
 	}
+	
+	for(unsigned int j=0;j<precircles.size();j++){
+		depthBuffer.addSphere(precircles[j].normal, precircles[j].lambda.rotation);
+	}
+	
+	for(unsigned int j=0;j<precircles.size();j++){
+		if(depthBuffer.passesBuffer(precircles[j].normal, precircles[j].lambda.rotation)){
+			//printf("CIRCLE %d PASSES\n",precircles[j].index);
+			circles.push_back(precircles[j]);
+		}
+	}
+	
+	depthBuffer.print();
+	
 	
 	//there is room for optimisation here...
 	
@@ -1905,7 +1920,6 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 	//iterate through all circles and add them to the intersectiongraph, one by one
 	for(unsigned int i=0; i < circles.size(); ++i){
 		I = &circles[i];
-		I->cnt = 0;
 		
 		if(I->circularIntersections.size()==0){
 			insertArtificialIntersectionPoints(*I,tessellationAxis,hemisphere,sasa);			
@@ -1921,7 +1935,6 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 			//retrieve external and internal interfaces (respectively)
 			PHIJ = calculatePHI(tessellationAxis, *J, *I, radius, rhoContainer);
 			PHII = calculatePHI(tessellationAxis, *I, *J, radius, rhoContainer);
-			I->cnt++;
 			
 			createIntersectionBranch(PHII, PHIJ, *I, *J);
 			
@@ -1986,7 +1999,6 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 	for(unsigned int i=0; i < circles.size(); ++i){
 		I = &circles[i];
 		
-		int cnt=0;
 		
 		
 		for(it = I->intersectionBranches.begin(); it != I->intersectionBranches.end(); ++it){
@@ -1994,13 +2006,19 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 				it2=increaseBranchInterator(it,*I);
 				
 				
+				
 				sasaSegment.id0 = it->second.id;
 				sasaSegment.id1 = I->id;
 				sasaSegment.id2 = it2->second.id;
 				
+				
 				sasaSegment.index0 = circles[it->second.id-1].index;
 				sasaSegment.index1 = circles[I->id-1].index;
 				sasaSegment.index2 = circles[it2->second.id-1].index;
+				
+				
+				printf("SEGMENT %d-%d-%d\n", sasaSegment.index0, sasaSegment.index1, sasaSegment.index2);
+				
 				
 				if(!circles[it->second.id-1].hasDerivatives) calculateProjectionAndDerivatives(tessellationAxis, circles[it->second.id-1]);
 				if(!circles[I->id-1].hasDerivatives) calculateProjectionAndDerivatives(tessellationAxis, circles[I->id-1]);
@@ -2021,7 +2039,6 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 				sasaSegment.tessellationAxis = tessellationAxis;
 				sasaSegment.hemisphere = hemisphere;
 				
-				cnt++;
 				
 				
 				sasa.push_back(sasaSegment);
@@ -2033,7 +2050,6 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 				
 		}
 		
-		fprintf(stderr,"%d %d\n",I->cnt,cnt);
 		
 		
 		

@@ -28,16 +28,27 @@ Data3D::Data3D(int parameter0Dim, int parameter1Dim, int parameter2Dim, int deri
 	headerParameter1 = new Table1dDouble(boost::extents[parameter1Dim]);
 	headerParameter2 = new Table1dDouble(boost::extents[parameter2Dim]);
 	data = new Table3dDouble(boost::extents[parameter0Dim][parameter1Dim][parameter2Dim]);
-	auxiliary = new Table3dDouble(boost::extents[parameter0Dim][parameter1Dim][parameter2Dim]);
-	gradient = new Table3dVector(boost::extents[parameter0Dim][parameter1Dim][parameter2Dim]);
-	hessian = new Table3dMatrix(boost::extents[parameter0Dim][parameter1Dim][parameter2Dim]);
-	for(int x=0; x<parameter0Dim; x++)
-		for(int y=0; y<parameter1Dim; y++)
-			for(int z=0; z<parameter2Dim; z++){
-				boost::array<Table3dVector::index,3> idx = {{x,y,z}};
-				(*gradient)(idx) = Vector(3);
-				(*hessian)(idx) = Matrix(3,3);
-			}
+	if(containsAuxiliaryData==1){
+		auxiliary = new Table3dDouble(boost::extents[parameter0Dim][parameter1Dim][parameter2Dim]);
+	}
+	if(derivativeLevel>=2){
+		gradient = new Table3dVector(boost::extents[parameter0Dim][parameter1Dim][parameter2Dim]);
+		if(derivativeLevel>=3){
+			hessian = new Table3dMatrix(boost::extents[parameter0Dim][parameter1Dim][parameter2Dim]);
+		}
+		
+		for(int x=0; x<parameter0Dim; x++)
+			for(int y=0; y<parameter1Dim; y++)
+				for(int z=0; z<parameter2Dim; z++){
+					boost::array<Table3dVector::index,3> idx = {{x,y,z}};
+					(*gradient)(idx) = Vector(3);
+					if(derivativeLevel>=3){
+						(*hessian)(idx) = Matrix(3,3);
+					}
+				}
+		
+		
+	}
 }
 
 

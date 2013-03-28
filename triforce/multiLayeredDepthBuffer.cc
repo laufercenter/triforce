@@ -3,64 +3,15 @@
 
 
 
-MultiLayeredDepthBuffer::MultiLayeredDepthBuffer(int detail){
-	this->len = detail;
+MultiLayeredDepthBuffer::MultiLayeredDepthBuffer(Depth3D data){
+	this->data=data;
+	this->len = data.parameter0Dim;
 	//create buffer
 	dbuffer.resize(len, DepthBufferLine());
+	dmode.resize(len, EMPTY);
 
 }
 
-
-
-Vector MultiLayeredDepthBuffer::sphericalVector(double phi, double theta){
-	Vector v(3);
-	v(0) = 1;
-	v(1) = theta;
-	v(2) = phi;
-	v = spherical2cartesian(v);
-	
-	return v;
-}
-
-Vector MultiLayeredDepthBuffer::spherical2cartesian(Vector s) {
-	Vector v(3);
-	v(0) = s(0) * cos(s(1)) * sin(s(2));
-	v(1) = s(0) * sin(s(1)) * sin(s(2));
-	v(2) = s(0) * cos(s(2));
-	return v;
-}
-
-
-Vector MultiLayeredDepthBuffer::cartesian2spherical(Vector v) {
-	Vector s(3);
-	s(0) = norm(v,2);
-	s(1) = atan(v(1)/v(0));
-	s(2) = acos(v(3)/s(0));
-	return s;
-}
-
-bool MultiLayeredDepthBuffer::circlef(double pos, Vector &c, double lambda, double &front, double &back){
-	double y;
-	double y_offset;
-	double theta;
-	double phi;
-	double x;
-	
-	theta = c(1);
-	phi = c(2);
-	y_offset = phi;
-	x = pos-theta;
-	
-	if(abs(x)>lambda) return false;
-	
-	y = sqrt(lambda*lambda - x*x);
-	
-	front = y_offset - y;
-	back = y_offset + y;
-	
-	return true;
-	
-}
 
 
 
@@ -124,7 +75,8 @@ bool MultiLayeredDepthBuffer::wouldChangeLineBuffer(DepthBufferLine &line, doubl
 	
 	wouldChange=false;
 	
-	if(it!=line.begin()){
+	it = it0;
+	if(it!=line.begin() && line.size()!=0){
 		--it;
 		if(it->second==BACK) wouldChange=true;
 	}
@@ -132,7 +84,7 @@ bool MultiLayeredDepthBuffer::wouldChangeLineBuffer(DepthBufferLine &line, doubl
 
 	it = it1;
 	++it;
-	if(it!=line.end()){
+	if(it!=line.end() && line.size()!=0){
 		if(it->second==FRONT) wouldChange=true;
 	}
 	else wouldChange=true;
@@ -145,31 +97,52 @@ bool MultiLayeredDepthBuffer::wouldChangeLineBuffer(DepthBufferLine &line, doubl
 }
 
 
-void MultiLayeredDepthBuffer::addSphere(Vector &v, double lambda){
+
+Vector MultiLayeredDepthBuffer::normalise(Vector x){
+	double l;
+	Vector v(3);
+	l = norm(x,2);
+	v = x/l;
+	return v;
+	
+}
+
+
+void MultiLayeredDepthBuffer::addSphere(Vector tessellationPlaneNormal, Vector tessellationAxisAuxiliary, Vector tessellationAxis, Vector &v, double psi, double lambda){
 	Vector c;
 	double x;
 	double front,back;
+	DepthInformation dat;
+	Vector n;
+	double kappa;
 	
-	lambda-=0.01;
 	
-	c = cartesian2spherical(v);
+	printf("ADDING SPHERE: %f sph(%f %f) cart(%f %f %f)\n",lambda, c(1), c(2), v(0), v(1), v(2));
+	
+	
+	//construct normal
+	n2=cross(v, tessellationAxis);
+	n=normalise(cross(tessellationAxis,n2));
+	s = sign(dot(n,tessellationPlaneNormal));
+	
+	kappa = acos(dot(n,tessellationAxisAuxiliary));
+	if(s>0) kappa+=2*M_PI;
+	
+
+	dat = data.getScanlines(kappa, psi, lambda);
 	
 	for(int i=0; i<len; ++i){
-		x = i*((2*M_PI) / len);
-		if(circlef(x, c, lambda, front, back)){
-			if(front < 0){
-				insertIntoLineBuffer(dbuffer[i],0,back);
-				insertIntoLineBuffer(dbuffer[i],2*M_PI+front,2*M_PI);
+		if(dmode[i]!=OCCUPIED){
+			if(dat.mode[i]==OCCLUDED){
+				dmode[i]=OCCUPIED;
 			}
-			else if(back > 2*M_PI){
-				insertIntoLineBuffer(dbuffer[i],front,2*M_PI);
-				insertIntoLineBuffer(dbuffer[i],0,2*M_PI-back);
-			}
-			else{
-				insertIntoLineBuffer(dbuffer[i],front,back);
+			else if(dat.mode[i]==PARTIAL){
+				insertIntoLineBuffer(dbuffer[i], dat.scanline0, dat.scanline1);
 			}
 		}
 	}
+	
+	print();
 	
 	
 }
@@ -185,29 +158,45 @@ bool MultiLayeredDepthBuffer::passesBuffer(Vector &v, double lambda){
 	
 	
 	for(int i=0; i<len; ++i){
-		x = i*((2*M_PI) / len);
-		if(circlef(x, c, lambda, front, back)){
-			if(front < 0){
-				if(wouldChangeLineBuffer(dbuffer[i],0,back)) return false;
-				if(wouldChangeLineBuffer(dbuffer[i],2*M_PI+front,2*M_PI)) return false;
-			}
-			else if(back > 2*M_PI){
-				if(wouldChangeLineBuffer(dbuffer[i],front,2*M_PI)) return false;
-				if(wouldChangeLineBuffer(dbuffer[i],0,2*M_PI-back)) return false;
-			}
-			else{
-				if(wouldChangeLineBuffer(dbuffer[i],front,back)) return false;
-			}
-		}
 		
 	}
 	
-	return true;
+	return false;
 }
 
 
 
-
+void MultiLayeredDepthBuffer::print(){
+	DepthBufferLine::iterator it;
+	vector<int> line;
+	int pos;
+	printf("----------------------------------------------------------------\n");
+	
+	for(int i=0; i<len; ++i){
+		for(it=dbuffer[i].begin(); it!=dbuffer[i].end(); ++it){
+			printf("(%f %d) ",it->first,it->second);
+		}
+		printf("\n");
+	}
+	
+	
+	for(int i=0; i<len; ++i){
+		line.clear();
+		line.resize(len+1,-1);
+		for(it=dbuffer[i].begin(); it!=dbuffer[i].end(); ++it){
+			pos=it->first*(double)len/(2.0*M_PI);
+			line[pos]=it->second;
+		}
+		
+		for(int j=0; j<len+1; ++j){
+			if(line[j]>=0) printf("%d",line[j]);
+			else printf("*");
+		}
+		printf("\n");
+	}
+	printf("----------------------------------------------------------------\n");
+		
+}
 
 
 
