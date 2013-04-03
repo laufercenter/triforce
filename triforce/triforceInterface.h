@@ -20,6 +20,7 @@
 
 #include "datafile.h"
 #include "data3d.h"
+#include "depth3d.h"
 #include "surface3d.h"
 #include "interpolation.h"
 #include "integrator.h"
@@ -41,16 +42,19 @@ protected:
 	DataFile *df1;
 	DataFile *df2;
 	DataFile *df3;
+	DataFile *df4;
 	
 	Data3D *dat0;
 	Data3D *dat1;
 	Data3D *dat2;
 	Data3D *dat3;
+	Data3D *dat4;
 
 	Surface3D* surf0;
 	Surface3D* surf1;
 	Surface3D* surf2;
 	Surface3D* surf3;
+	Depth3D* depth0;
 
 	Interpolation *interpolator0;
 	Interpolation *interpolator1;

@@ -25,6 +25,7 @@
 
 #include <armadillo>
 
+#include "tessellation.h"
 #include "depth3d.h"
 
 
@@ -55,15 +56,9 @@ public:
 
 
 
-	MultiLayeredDepthBuffer(int detail);
-	Vector sphericalVector(double phi, double theta);
-	Vector spherical2cartesian(Vector s);
-	Vector cartesian2spherical(Vector v);
-	bool circlef(double pos, Vector &c, double lambda, double &front, double &back);
-	void insertIntoLineBuffer(DepthBufferLine &line, double front, double back);
-	bool wouldChangeLineBuffer(DepthBufferLine &line, double front, double back);
-	void addSphere(Vector &v, double lambda);
-	bool passesBuffer(Vector &v, double lambda);
+	MultiLayeredDepthBuffer(Depth3D &data, int m);
+	void addSphere(CircularInterface &circle);
+	bool passesBuffer(CircularInterface &circle);
 	void print();
 
 	
@@ -74,7 +69,17 @@ private:
 	DepthBuffer dbuffer;
 	DepthBufferMode dmode;
 	
+	Vector normalise(Vector x);
+	int sgn(double d);
+	Vector tessellationPlaneNormal,  tessellationAxisAuxiliary,  tessellationAxis;
 	
+	
+	ScanlineMode insertIntoLineBuffer(DepthBufferLine &line, double front, double back);
+	bool wouldChangeLineBuffer(DepthBufferLine &line, double front, double back);
+	DepthBufferLine::iterator increaseLineInterator(DepthBufferLine::iterator it, DepthBufferLine &line);
+	DepthBufferLine::iterator decreaseLineInterator(DepthBufferLine::iterator it, DepthBufferLine &line);
+	
+
 };
 
 #endif //MULTI_LAYERED_DEPTH_BUFFER_H_

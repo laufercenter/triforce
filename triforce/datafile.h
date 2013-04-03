@@ -52,6 +52,7 @@ public:
 	Topology* digestTOP(TopologyMode topm);
 	Molecule *digestGRO(Topology &top);
 	Molecule *digestPDB(Topology &top);
+	Molecule *digestXYZR();
 
 		
 private:

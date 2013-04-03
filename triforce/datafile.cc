@@ -719,5 +719,42 @@ Molecule *DataFile::digestPDB(Topology &top){
 
 
 
+Molecule *DataFile::digestXYZR(){
+	ifstream *ifs;
+	string line;
+	int i;
+	Molecule *mol;
+	double x,y,z,r;
+	string ident;
+	vector<string> *content;
+	
+	
+	mol = new Molecule();
+	
+	ifs = new ifstream(name.c_str(),ifstream::in);
+	
+	
+
+	i = 0;
+	while(ifs->good()){
+		std::getline(*ifs,line);
+		content=split(line,' ');
+		if(content->size()>=3){
+			x = string2double((*content)[0]);
+			y = string2double((*content)[1]);
+			z = string2double((*content)[2]);
+			r = string2double((*content)[3]);
+			ident = int2string(i);
+			mol->addInternallyStoredAtom(x, y, z, r, ident);
+			++i;
+		}
+	}
+	
+	ifs->close();
+	
+	return mol;
+}
+
+
 
 
