@@ -37,7 +37,8 @@ integrator.cc
 integratorNumerical.cc
 triforceInterface.cc
 neighbourList.cc 
-multiLayeredDepthBuffer.cc ;
+multiLayeredDepthBuffer.cc
+depth3d.cc ;
 
 
 HEADERS = 
@@ -52,7 +53,8 @@ integrator.h
 integratorNumerical.h
 triforceInterface.h
 neighbourList.h
-multiLayeredDepthBuffer.h ;
+multiLayeredDepthBuffer.h
+depth3d.h ;
 
 
 

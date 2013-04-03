@@ -1,8 +1,10 @@
 #include "tessellation.h"
 #include "multiLayeredDepthBuffer.h"
+#include "depth3d.h"
 
-Tessellation::Tessellation(Molecule &m){
+Tessellation::Tessellation(Molecule &m, Depth3D &depthData){
 	molecule = m;
+	this->depthData = depthData;
 }
 
 
@@ -10,17 +12,19 @@ Tessellation::Tessellation(Molecule &m){
 void Tessellation::build(bool split){
 	CircularInterfacesPerAtom circlesPerAtom;
 	vector<int> neighbourlist;
-	sasasForMolecule.clear();
 	
 	//molecule.update();
 	atoms = molecule.fetchCoordinates();
 	radii = molecule.fetchRadii();
 	
 	
+	clock_t start=ms();
+	//for(int j=0; j<=10; ++j){
+	sasasForMolecule.clear();
 	
 	//iterate over all atoms and build the tessellation for each of them
 	for(unsigned int i=0; i<atoms.size(); ++i){
-		//int i=12;{
+		//int i=12;{Tessellation
 		neighbourlist = molecule.getNeighborListFor(i);
 
 		
@@ -43,13 +47,23 @@ void Tessellation::build(bool split){
 			}
 		}
 		*/
-		exit(0);
+		//exit(0);
 	}
+	
+	//}
+	
+	clock_t end=ms();
+	
+	printf("TIME: %f\n",(end-start)/1.0);
 	
 	
 	
 }
 
+
+clock_t Tessellation::ms(){
+	return clock() / (CLOCKS_PER_SEC / 1000);
+}
 
 
 CircularInterfacesPerAtom Tessellation::coverHemisphere(Vector tessellationAxis, double radius, CircularInterfacesPerAtom circles, CircularInterfaceForm form){
@@ -92,6 +106,7 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 	CircularInterfacesPerAtom circlesFrontHemisphere;
 	CircularInterfacesPerAtom circlesBackHemisphere;
 	
+	printf("BUILDING PATH %d\n",i);
 	
 	Vector frontTessellationAxis(3);
 	Vector backTessellationAxis(3);
@@ -99,7 +114,10 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 	double radius;
 	bool isInsideAnotherSphere;
 	Vector v;
-	MultiLayeredDepthBuffer depthBuffer(20);
+	MultiLayeredDepthBuffer depthBuffer0(depthData,0);
+	MultiLayeredDepthBuffer depthBuffer1(depthData,1);
+	
+	SEGMENTS.clear();
 	
 	
 	origin = atoms[i];
@@ -145,22 +163,32 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 	
 	if(isInsideAnotherSphere) return;
 	
+	
 	for(unsigned int j=0;j<precircles.size();j++){
 		determineProjection(origin, radius, precircles[j]);
 	}
 	
 	for(unsigned int j=0;j<precircles.size();j++){
-		depthBuffer.addSphere(precircles[j].normal, precircles[j].lambda.rotation);
+		depthBuffer0.addSphere(precircles[j]);
+		depthBuffer1.addSphere(precircles[j]);
 	}
-	
 	for(unsigned int j=0;j<precircles.size();j++){
-		if(depthBuffer.passesBuffer(precircles[j].normal, precircles[j].lambda.rotation)){
-			//printf("CIRCLE %d PASSES\n",precircles[j].index);
+		if(depthBuffer0.passesBuffer(precircles[j]) || depthBuffer1.passesBuffer(precircles[j])){
+			printf("CIRCLE %d PASSES\n",precircles[j].index);
+			SEGMENTS[precircles[j].index]=true;
 			circles.push_back(precircles[j]);
 		}
+		else printf("CIRCLE %d FAILS\n",precircles[j].index);
+
+	
+		//circles.push_back(precircles[j]);
+		
 	}
 	
-	depthBuffer.print();
+	if(circles.size()==0) return;
+	
+	//depthBuffer0.print();
+	//depthBuffer1.print();
 	
 	
 	//there is room for optimisation here...
@@ -2018,6 +2046,18 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 				
 				
 				printf("SEGMENT %d-%d-%d\n", sasaSegment.index0, sasaSegment.index1, sasaSegment.index2);
+				if(SEGMENTS.find(sasaSegment.index0)==SEGMENTS.end() && sasaSegment.index0>=0){
+					printf("SEGMENT %d MISSING FROM BUFFER\n",sasaSegment.index0);
+					//exit(-2);
+				}
+				if(SEGMENTS.find(sasaSegment.index1)==SEGMENTS.end() && sasaSegment.index1>=0){
+					printf("SEGMENT %d MISSING FROM BUFFER\n",sasaSegment.index1);
+					//exit(-2);
+				}
+				if(SEGMENTS.find(sasaSegment.index2)==SEGMENTS.end() && sasaSegment.index2>=0){
+					printf("SEGMENT %d MISSING FROM BUFFER\n",sasaSegment.index2);
+					//exit(-2);
+				}
 				
 				
 				if(!circles[it->second.id-1].hasDerivatives) calculateProjectionAndDerivatives(tessellationAxis, circles[it->second.id-1]);

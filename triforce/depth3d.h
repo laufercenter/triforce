@@ -21,10 +21,19 @@
 #include "data3d.h"
 
 
+
+enum CircularInterfaceForm{
+	CONCAVE,
+	CONVEX,
+	SPLITTER
+};
+
+
+
 enum ScanlineMode{
-	OCCLUDED,
-	EMPTY,
-	PARTIAL
+	SCANLINE_FULL,
+	SCANLINE_EMPTY,
+	SCANLINE_PARTIAL
 };
 
 
@@ -41,8 +50,14 @@ DepthInformation;
 class Depth3D: public Data3D{
 	
 public:
+	Depth3D();
 	Depth3D(Data3D* d);
 	
+	void closestGridPoint(Vector &x, VectorInt &p, Vector &l);
+	
+DepthInformation getFloorScanlines(double kappa, double psi, double lambda, CircularInterfaceForm form);
+DepthInformation getCeilScanlines(double kappa, double psi, double lambda, CircularInterfaceForm form);
+DepthInformation getScanlines(double kappa, double psi, double lambda, CircularInterfaceForm form, VectorInt &p);
 	
 	
 private:

@@ -77,7 +77,7 @@ public:
 	void printGradientCell(int i, int j, int k);
 	void printHessianCell(int i, int j, int k);
 	
-	void closestGridPoint(Vector &x, VectorInt &p, Vector &l);
+	virtual void closestGridPoint(Vector &x, VectorInt &p, Vector &l);
 	virtual void surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Vector &lengths);
 	bool isWithinNumericalLimits(double x, double t);
 	void init();

@@ -28,10 +28,11 @@
 #include <list>
 #include <set>
 #include <stdio.h>
+#include <ctime>
 
 #include "molecule.h"
 #include "interpolation.h"
-
+#include "depth3d.h"
 
 
 using namespace std;
@@ -61,13 +62,6 @@ enum OcclusionState{
 	OCCLUDED,
 	UNOBSTRUCTED,
 	UNDEFINED
-};
-
-
-enum CircularInterfaceForm{
-	CONCAVE,
-	CONVEX,
-	SPLITTER
 };
 
 
@@ -161,6 +155,7 @@ PHIContainer;
 
 
 typedef struct
+
 {
 	double rotation;
 	double d_i;
@@ -372,11 +367,10 @@ enum OcclusionType{
 
 
 
-
 class Tessellation{
 	
 public:
-	Tessellation(Molecule &m);
+	Tessellation(Molecule &m, Depth3D &depthData);
 	
 	void build(bool split);
 	SASAs &sasas();
@@ -409,6 +403,7 @@ public:
 	
 private:
 	
+	Depth3D depthData;
 	Molecule molecule;
 	vector<Vector> atoms;
 	vector<double> radii;
@@ -418,6 +413,7 @@ private:
 	//#atoms #circularregions
 	//#atoms #sasas #circularregions
 	SASAs sasasForMolecule;
+	map<int,bool> SEGMENTS;
 
 	CircularInterfacesPerAtom coverHemisphere(Vector tessellationAxis, double radius, CircularInterfacesPerAtom circles, CircularInterfaceForm form);
 	void buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<double> &radii, SASAs &sasas, bool split, vector<int> &neighbourlist);
@@ -458,6 +454,7 @@ private:
 	Vector normalise(Vector x, double &l);
 
 
+	clock_t ms();
 	
 	
 };

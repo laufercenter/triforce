@@ -32,5 +32,6 @@
 #include "triforce/triforceInterface.h"
 #include "triforce/neighbourList.h"
 #include "triforce/multiLayeredDepthBuffer.h"
+#include "triforce/depth3d.h"
 
 #endif // TRIFORCE_H_
