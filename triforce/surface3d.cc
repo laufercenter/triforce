@@ -40,7 +40,7 @@ Surface3D::Surface3D(Data3D* d)
 void Surface3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Vector &lengths){
 	VectorInt v2(3);
 	VectorInt v(3);
-	int discontinuity;
+	unsigned int discontinuity;
 	double vpsi,vlambda;
 	closestGridPoint(x, v, lengths);
 	

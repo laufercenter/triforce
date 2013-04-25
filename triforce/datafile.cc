@@ -24,54 +24,148 @@ DataFile::DataFile(string name){
 
 
 
-Data3D* DataFile::digest3DBinaryTable(){
-	char buffer0[4];
-	char buffer1[1];
-	char buffer2[8];
+
+
+Data1D* DataFile::digest1DBinaryTable(){
+	unsigned char buffer0[4];
+	unsigned char buffer1[1];
+	unsigned char buffer2[2];
 	char *buffer;
-	int numberDimensions;
+	unsigned int numberDimensions;
 	vector<double> tmp;
-	Data3D *tbl;
-	vector<int> dimensions;
-	int totalCells;
-	int parameter0Dim;
-	int parameter1Dim;
-	int parameter2Dim;
-	int derivativeLevel, containsphiValues;
+	Data1D *tbl;
+	vector<unsigned int> dimensions;
+	unsigned int totalCells;
+	unsigned int parameter0Dim;
+	unsigned int derivativeLevel;
+	bool containsAuxiliaryData;
 	
 	//printf("digesting...\n");
 	
 	fstream f(name.c_str(),ios::binary|ios::in);
 	
 	//first 4 bytes should be "NILS" : 78, 73, 76, 83
-	f.read(buffer0,4);
+	f.read((char*)buffer0,4);
+	if(buffer0[0] != 78 || buffer0[1] != 73 || buffer0[2] != 76 || buffer0[3] != 83){
+		printf("invalid data file\n");
+		exit(-1);
+	}
+
+	//level of derivatives
+	f.read((char*)buffer1,1);
+	derivativeLevel = static_cast<unsigned int>(buffer1[0]);
+
+	//contains auxiliary values
+	f.read((char*)buffer1,1);
+	containsAuxiliaryData = (static_cast<unsigned int>(buffer1[0])==1);
+	
+	//this byte gives number of dimensions (should be 1)
+	f.read((char*)buffer1,1);
+	numberDimensions = static_cast<unsigned int>(buffer1[0]);
+	if(numberDimensions!=1) exit(-1);
+	
+	//read headers
+	f.read((char*)buffer2,2);
+	//zeroth byte is how many dimensions the header has. should be 1
+	//first byte is number of header entries
+	parameter0Dim = (unsigned int)buffer2[1];
+	
+	
+	tbl = new Data1D(parameter0Dim,containsAuxiliaryData);
+	
+	//read header
+	buffer=new char[parameter0Dim*BINARY_DATA_BLOCK_SIZE];
+	f.read(buffer,parameter0Dim*BINARY_DATA_BLOCK_SIZE);
+	for(unsigned int i=0; i<parameter0Dim; i++){
+		double v = charArray2Double(buffer+i*BINARY_DATA_BLOCK_SIZE);
+		tbl->setHeaderParameter0Cell(i,v);
+	}
+	delete buffer;
+	
+	//read data
+	totalCells = parameter0Dim;
+	buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
+	f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
+	for(unsigned int x=0; x<parameter0Dim; x++){
+		double v = charArray2Double(buffer+x*BINARY_DATA_BLOCK_SIZE);
+		tbl->setDataCell(x,v);
+	}
+	
+	delete buffer;
+	
+	
+	if(containsAuxiliaryData){
+		//read data
+		totalCells = parameter0Dim;
+		buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
+		f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
+		for(unsigned int x=0; x<parameter0Dim; x++){
+			double v = charArray2Double(buffer+x*BINARY_DATA_BLOCK_SIZE);
+			tbl->setAuxiliaryCell(x,v);
+		}
+		
+		delete buffer;
+	}
+
+	
+	tbl->init();
+	
+
+	return tbl;
+}	
+
+
+
+
+
+Data3D* DataFile::digest3DBinaryTable(){
+	unsigned char buffer0[4];
+	unsigned char buffer1[1];
+	unsigned char buffer2[8];
+	char *buffer;
+	unsigned int numberDimensions;
+	vector<double> tmp;
+	Data3D *tbl;
+	vector<unsigned int> dimensions;
+	unsigned int totalCells;
+	unsigned int parameter0Dim;
+	unsigned int parameter1Dim;
+	unsigned int parameter2Dim;
+	unsigned int derivativeLevel, containsphiValues;
+	
+	//printf("digesting...\n");
+	
+	fstream f(name.c_str(),ios::binary|ios::in);
+	
+	//first 4 bytes should be "NILS" : 78, 73, 76, 83
+	f.read((char*)buffer0,4);
 	if(buffer0[0] != 78 || buffer0[1] != 73 || buffer0[2] != 76 || buffer0[3] != 83) exit(-1);
 
 	//level of derivatives
-	f.read(buffer1,1);
-	derivativeLevel = static_cast<int>(buffer1[0]);
+	f.read((char*)buffer1,1);
+	derivativeLevel = static_cast<unsigned int>(buffer1[0]);
 
 	//contains phi values
-	f.read(buffer1,1);
-	containsphiValues = static_cast<int>(buffer1[0]);
+	f.read((char*)buffer1,1);
+	containsphiValues = static_cast<unsigned int>(buffer1[0]);
 	
 	//this byte gives number of dimensions (should be 3)
-	f.read(buffer1,1);
-	numberDimensions = static_cast<int>(buffer1[0]);
+	f.read((char*)buffer1,1);
+	numberDimensions = static_cast<unsigned int>(buffer1[0]);
 	if(numberDimensions!=3) exit(-1);
 	
 	//read headers
 	//header for PHI
-	f.read(buffer2,6);
+	f.read((char*)buffer2,6);
 	//zeroth byte is how many dimensions the PHI header has. should be 1
 	//first byte is number of PHI entries
-	parameter0Dim = static_cast<int>(buffer2[1]);
+	parameter0Dim = static_cast<unsigned int>(buffer2[1]);
 	//2nd byte is number of psi dimensions (should be 1)
 	//3rd byte is number of psi entries
 	//4th byte is number of lambda dimensions (should be 1)
 	//5th byte is number of lambda entries
-	parameter1Dim = static_cast<int>(buffer2[3]);
-	parameter2Dim = static_cast<int>(buffer2[5]);
+	parameter1Dim = static_cast<unsigned int>(buffer2[3]);
+	parameter2Dim = static_cast<unsigned int>(buffer2[5]);
 	
 
 	
@@ -82,7 +176,7 @@ Data3D* DataFile::digest3DBinaryTable(){
 	//read PHI header
 	buffer=new char[parameter0Dim*BINARY_DATA_BLOCK_SIZE];
 	f.read(buffer,parameter0Dim*BINARY_DATA_BLOCK_SIZE);
-	for(int i=0; i<parameter0Dim; i++){
+	for(unsigned int i=0; i<parameter0Dim; i++){
 		double v = charArray2Double(buffer+i*BINARY_DATA_BLOCK_SIZE);
 		tbl->setHeaderParameter0Cell(i,v);
 	}
@@ -90,7 +184,7 @@ Data3D* DataFile::digest3DBinaryTable(){
 	//read psi header
 	buffer=new char[parameter1Dim*BINARY_DATA_BLOCK_SIZE];
 	f.read(buffer,parameter1Dim*BINARY_DATA_BLOCK_SIZE);
-	for(int i=0; i<parameter1Dim; i++){
+	for(unsigned int i=0; i<parameter1Dim; i++){
 		double v = charArray2Double(buffer+i*BINARY_DATA_BLOCK_SIZE);
 		tbl->setHeaderParameter1Cell(i,v);
 	}
@@ -98,7 +192,7 @@ Data3D* DataFile::digest3DBinaryTable(){
 	//read lambda header
 	buffer=new char[parameter2Dim*BINARY_DATA_BLOCK_SIZE];
 	f.read(buffer,parameter2Dim*BINARY_DATA_BLOCK_SIZE);
-	for(int i=0; i<parameter2Dim; i++){
+	for(unsigned int i=0; i<parameter2Dim; i++){
 		double v = charArray2Double(buffer+i*BINARY_DATA_BLOCK_SIZE);
 		tbl->setHeaderParameter2Cell(i,v);
 	}
@@ -108,9 +202,9 @@ Data3D* DataFile::digest3DBinaryTable(){
 	totalCells = parameter0Dim*parameter1Dim*parameter2Dim;
 	buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
 	f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
-	for(int z=0; z<parameter2Dim; z++)
-		for(int y=0; y<parameter1Dim; y++)
-			for(int x=0; x<parameter0Dim; x++){
+	for(unsigned int z=0; z<parameter2Dim; z++)
+		for(unsigned int y=0; y<parameter1Dim; y++)
+			for(unsigned int x=0; x<parameter0Dim; x++){
 				double v = charArray2Double(buffer+((z*parameter1Dim+y)*parameter0Dim+x)*BINARY_DATA_BLOCK_SIZE);
 				tbl->setDataCell(x,y,z,v);
 			}
@@ -123,10 +217,10 @@ Data3D* DataFile::digest3DBinaryTable(){
 		totalCells = parameter0Dim*parameter1Dim*parameter2Dim*3;
 		buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
 		f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
-		for(int z=0; z<parameter2Dim; z++)
-			for(int y=0; y<parameter1Dim; y++)
-				for(int x=0; x<parameter0Dim; x++)
-					for(int i=0; i<3; i++){
+		for(unsigned int z=0; z<parameter2Dim; z++)
+			for(unsigned int y=0; y<parameter1Dim; y++)
+				for(unsigned int x=0; x<parameter0Dim; x++)
+					for(unsigned int i=0; i<3; i++){
 						double v = charArray2Double(buffer+(((z*parameter1Dim+y)*parameter0Dim+x)*3+i)*BINARY_DATA_BLOCK_SIZE);
 						tbl->setGradientCell(x,y,z,i,v);
 					}
@@ -139,11 +233,11 @@ Data3D* DataFile::digest3DBinaryTable(){
 		totalCells = parameter0Dim*parameter1Dim*parameter2Dim*3*3;
 		buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
 		f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
-		for(int z=0; z<parameter2Dim; z++)
-			for(int y=0; y<parameter1Dim; y++)
-				for(int x=0; x<parameter0Dim; x++)
-					for(int j=0; j<3; j++)
-						for(int i=0; i<3; i++){
+		for(unsigned int z=0; z<parameter2Dim; z++)
+			for(unsigned int y=0; y<parameter1Dim; y++)
+				for(unsigned int x=0; x<parameter0Dim; x++)
+					for(unsigned int j=0; j<3; j++)
+						for(unsigned int i=0; i<3; i++){
 							double v = charArray2Double(buffer+((((z*parameter1Dim+y)*parameter0Dim+x)*3+j)*3+i)*BINARY_DATA_BLOCK_SIZE);
 							tbl->setHessianCell(x,y,z,j,i,v);
 						}
@@ -156,9 +250,9 @@ Data3D* DataFile::digest3DBinaryTable(){
 		totalCells = parameter0Dim*parameter1Dim*parameter2Dim;
 		buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
 		f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
-		for(int z=0; z<parameter2Dim; z++)
-			for(int y=0; y<parameter1Dim; y++)
-				for(int x=0; x<parameter0Dim; x++){
+		for(unsigned int z=0; z<parameter2Dim; z++)
+			for(unsigned int y=0; y<parameter1Dim; y++)
+				for(unsigned int x=0; x<parameter0Dim; x++){
 					double v = charArray2Double(buffer+((z*parameter1Dim+y)*parameter0Dim+x)*BINARY_DATA_BLOCK_SIZE);
 					tbl->setAuxiliaryCell(x,y,z,v);
 				}
@@ -181,7 +275,7 @@ Data3D* DataFile::digest3DBinaryTable(){
 
 /*
 void DataFile::double2charArray(double x, char* data){
-	int exponent;
+	unsigned int exponent;
 	double significand;
 	int32_t significandInt32, exponentInt32;
 	
@@ -266,7 +360,7 @@ int32_t DataFile::charArray2FixedSignedInt32(char *data){
 }	
 
 /*
-int32_t DataFile::double2FixedSignedInt32(double x, unsigned short fraction){
+int32_t DataFile::double2FixedSignedInt32(double x, short fraction){
 	int32_t d;
 	int32_t factor= 1 << fraction;
 	d = static_cast<int32_t>(x*factor);
@@ -286,7 +380,7 @@ double DataFile::fixedSignedInt322Double(int32_t x, unsigned short fraction){
 }
 
 /*
-int32_t DataFile::int2FixedSignedInt32(int x){
+int32_t DataFile::int2FixedSignedInt32(unsigned int x){
 	int32_t d;
 	d = static_cast<int32_t>(x);
 	return d;
@@ -368,7 +462,7 @@ Topology* DataFile::digestMapCSV(){
 	string line;
 	vector<double> v;
 	string ident;
-	int i;
+	unsigned int i;
 	Topology *data;
 	
 	ifs = new ifstream(name.c_str(),ifstream::in);
@@ -414,7 +508,7 @@ Topology* DataFile::digestTOP(TopologyMode topm){
 	string block;
 	Parameters p;
 	string prefix=string("");
-	int chain;
+	unsigned int chain;
 	string chainstr;
 	int residuenum;
 	int prev_residuenum;
@@ -516,8 +610,8 @@ Topology* DataFile::digestTOP(TopologyMode topm){
 Molecule *DataFile::digestGRO(Topology &top){
 	ifstream *ifs;
 	string line;
-	int numbAtoms;
-	int i;
+	unsigned int numbAtoms;
+	unsigned int i;
 	string block;
 	Molecule *mol;
 	double x,y,z;
@@ -526,11 +620,11 @@ Molecule *DataFile::digestGRO(Topology &top){
 	string residue;
 	string atom;
 	string xstr,ystr,zstr;
-	int chain;
+	unsigned int chain;
 	string chainstr;
 	string residuenumstr;
-	int residuenum;
-	int prev_residuenum;
+	unsigned int residuenum;
+	unsigned int prev_residuenum;
 	
 	disregardingHydrogens=false;
 	
@@ -549,7 +643,7 @@ Molecule *DataFile::digestGRO(Topology &top){
 	
 	chain=0;
 	chainstr=string("0");
-	prev_residuenum=std::numeric_limits<int>::min();
+	prev_residuenum=std::numeric_limits<unsigned int>::min();
 
 		
 	while(ifs->good() && i<numbAtoms){
@@ -623,8 +717,8 @@ Molecule *DataFile::digestGRO(Topology &top){
 Molecule *DataFile::digestPDB(Topology &top){
 	ifstream *ifs;
 	string line;
-	int numbAtoms;
-	int i;
+	unsigned int numbAtoms;
+	unsigned int i;
 	string block;
 	Molecule *mol;
 	double x,y,z;
@@ -633,11 +727,11 @@ Molecule *DataFile::digestPDB(Topology &top){
 	string residue;
 	string atom;
 	string xstr,ystr,zstr;
-	int chain;
+	unsigned int chain;
 	string chainstr;
 	string residuenumstr;
-	int residuenum;
-	int prev_residuenum;
+	unsigned int residuenum;
+	unsigned int prev_residuenum;
 	
 	disregardingHydrogens=false;
 	
@@ -650,7 +744,7 @@ Molecule *DataFile::digestPDB(Topology &top){
 	
 	chain=0;
 	chainstr=string("0");
-	prev_residuenum=std::numeric_limits<int>::min();
+	prev_residuenum=std::numeric_limits<unsigned int>::min();
 
 		
 	while(ifs->good()){
@@ -722,7 +816,7 @@ Molecule *DataFile::digestPDB(Topology &top){
 Molecule *DataFile::digestXYZR(){
 	ifstream *ifs;
 	string line;
-	int i;
+	unsigned int i;
 	Molecule *mol;
 	double x,y,z,r;
 	string ident;

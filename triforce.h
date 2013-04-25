@@ -22,6 +22,7 @@
 
 #include "triforce/tessellation.h"
 #include "triforce/data3d.h"
+#include "triforce/data1d.h"
 #include "triforce/surface3d.h"
 #include "triforce/datafile.h"
 #include "triforce/molecule.h"

@@ -15,7 +15,7 @@ using namespace boost;
 Data3D::Data3D(){
 }
 
-Data3D::Data3D(int parameter0Dim, int parameter1Dim, int parameter2Dim, int derivativeLevel, bool containsAuxiliaryData){
+Data3D::Data3D(unsigned int parameter0Dim, unsigned int parameter1Dim, unsigned int parameter2Dim, unsigned int derivativeLevel, bool containsAuxiliaryData){
 	this->parameter0Dim = parameter0Dim;
 	this->parameter1Dim = parameter1Dim;
 	this->parameter2Dim = parameter2Dim;
@@ -28,7 +28,7 @@ Data3D::Data3D(int parameter0Dim, int parameter1Dim, int parameter2Dim, int deri
 	headerParameter1 = new Table1dDouble(boost::extents[parameter1Dim]);
 	headerParameter2 = new Table1dDouble(boost::extents[parameter2Dim]);
 	data = new Table3dDouble(boost::extents[parameter0Dim][parameter1Dim][parameter2Dim]);
-	if(containsAuxiliaryData==1){
+	if(containsAuxiliaryData){
 		auxiliary = new Table3dDouble(boost::extents[parameter0Dim][parameter1Dim][parameter2Dim]);
 	}
 	if(derivativeLevel>=2){
@@ -37,9 +37,9 @@ Data3D::Data3D(int parameter0Dim, int parameter1Dim, int parameter2Dim, int deri
 			hessian = new Table3dMatrix(boost::extents[parameter0Dim][parameter1Dim][parameter2Dim]);
 		}
 		
-		for(int x=0; x<parameter0Dim; x++)
-			for(int y=0; y<parameter1Dim; y++)
-				for(int z=0; z<parameter2Dim; z++){
+		for(unsigned int x=0; x<parameter0Dim; x++)
+			for(unsigned int y=0; y<parameter1Dim; y++)
+				for(unsigned int z=0; z<parameter2Dim; z++){
 					boost::array<Table3dVector::index,3> idx = {{x,y,z}};
 					(*gradient)(idx) = Vector(3);
 					if(derivativeLevel>=3){
@@ -63,35 +63,47 @@ void Data3D::init(){
 }
 
 
-void Data3D::setHeaderParameter0Cell(int x, double value){
+void Data3D::setHeaderParameter0Cell(unsigned int x, double value){
 	(*headerParameter0)[x] = value;
 }
 
-void Data3D::setHeaderParameter1Cell(int x, double value){
+void Data3D::setHeaderParameter1Cell(unsigned int x, double value){
 	(*headerParameter1)[x] = value;
 }
 
-void Data3D::setHeaderParameter2Cell(int x, double value){
+void Data3D::setHeaderParameter2Cell(unsigned int x, double value){
 	(*headerParameter2)[x] = value;
 }
 
+double Data3D::getHeaderParameter0Cell(unsigned int x){
+	return (*headerParameter0)[x];
+}
 
-void Data3D::setDataCell(int x, int y, int z, double value){
+double Data3D::getHeaderParameter1Cell(unsigned int x){
+	return (*headerParameter1)[x];
+}
+
+double Data3D::getHeaderParameter2Cell(unsigned int x){
+	return (*headerParameter2)[x];
+}
+
+
+void Data3D::setDataCell(unsigned int x, unsigned int y, unsigned int z, double value){
 	(*data)[x][y][z] = value;
 }
 
-void Data3D::setAuxiliaryCell(int x, int y, int z, double value){
+void Data3D::setAuxiliaryCell(unsigned int x, unsigned int y, unsigned int z, double value){
 	(*auxiliary)[x][y][z] = value;
 }
 
-void Data3D::setGradientCell(int x, int y, int z, int i, double value){
+void Data3D::setGradientCell(unsigned int x, unsigned int y, unsigned int z, unsigned int i, double value){
 	(*gradient)[x][y][z](i) = value;
 }
-void Data3D::setHessianCell(int x, int y, int z, int i, int j, double value){
+void Data3D::setHessianCell(unsigned int x, unsigned int y, unsigned int z, unsigned int i, unsigned int j, double value){
 	(*hessian)[x][y][z](i,j) = value;
 }
 
-Vector Data3D::getHeaderVector(int parameter0, int parameter1, int parameter2){
+Vector Data3D::getHeaderVector(unsigned int parameter0, unsigned int parameter1, unsigned int parameter2){
 	//printf("HEADER VECTOR: %d %d %d\n",parameter0,parameter1,parameter2);
 	Vector v=Vector(3);
 	v(0) = (*headerParameter0)[parameter0];
@@ -107,29 +119,29 @@ double Data3D::parameter2GridLength(){
 	return abs((*headerParameter2)[parameter2Dim-1]-(*headerParameter2)[0]);
 }
 
-double Data3D::parameter1GridLength(int parameter2){
+double Data3D::parameter1GridLength(unsigned int parameter2){
 	return abs((*headerParameter1)[parameter1Dim-1]-(*headerParameter1)[0]);
 }
 
-double Data3D::parameter0GridLength(int parameter1, int parameter2){
+double Data3D::parameter0GridLength(unsigned int parameter1, unsigned int parameter2){
 	return abs((*headerParameter0)[parameter0Dim-1]-(*headerParameter0)[0]);
 }
 
 
 
-double Data3D::getDataCell(int x, int y, int z){
+double Data3D::getDataCell(unsigned int x, unsigned int y, unsigned int z){
 	return (*data)[x][y][z];
 }
 
-double Data3D::getAuxiliaryCell(int x, int y, int z){
+double Data3D::getAuxiliaryCell(unsigned int x, unsigned int y, unsigned int z){
 	return (*auxiliary)[x][y][z];
 }
 
-Vector &Data3D::getGradient(int x, int y, int z){
+Vector &Data3D::getGradient(unsigned int x, unsigned int y, unsigned int z){
 	return (*gradient)[x][y][z];
 }
 
-Matrix &Data3D::getHessian(int x, int y, int z){
+Matrix &Data3D::getHessian(unsigned int x, unsigned int y, unsigned int z){
 	return (*hessian)[x][y][z];
 }
 
@@ -143,9 +155,9 @@ bool Data3D::isWithinNumericalLimits(double x, double t){
 
 
 void Data3D::closestGridPoint(Vector &x, VectorInt &p, Vector &l){
-	int i_parameter0;
-	int i_parameter1;
-	int i_parameter2;
+	unsigned int i_parameter0;
+	unsigned int i_parameter1;
+	unsigned int i_parameter2;
 	
 	l(0) = cellLengthParameter0;
 	l(1) = cellLengthParameter1;
@@ -155,11 +167,11 @@ void Data3D::closestGridPoint(Vector &x, VectorInt &p, Vector &l){
 	
 	//printf("X: %f %f %f, l: %f %f %f, min: %f %f %f, celll: %f %f %f\n",x(0),x(1),x(2),l(0),l(1),l(2),minParameter0, minParameter1, minParameter2, cellLengthParameter0, cellLengthParameter1, cellLengthParameter2);
 	
-	i_parameter0 = static_cast<int>(floor((x(0)-minParameter0)/cellLengthParameter0));
+	i_parameter0 = static_cast<unsigned int>(floor((x(0)-minParameter0)/cellLengthParameter0));
 	
-	i_parameter1 = static_cast<int>(floor((x(1)-minParameter1)/cellLengthParameter1));
+	i_parameter1 = static_cast<unsigned int>(floor((x(1)-minParameter1)/cellLengthParameter1));
 	
-	i_parameter2 = static_cast<int>(floor((x(2)-minParameter2)/cellLengthParameter2));
+	i_parameter2 = static_cast<unsigned int>(floor((x(2)-minParameter2)/cellLengthParameter2));
 	
 	//printf("CLOSESTGRRRID: %f %f %f\n",x(2),x(2)-minParameter2,(x(2)-minParameter2)/cellLengthParameter2);
 	
@@ -172,7 +184,7 @@ void Data3D::closestGridPoint(Vector &x, VectorInt &p, Vector &l){
 
 void Data3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Vector &lengths){
 	VectorInt v2(3);
-	int i,j,k;
+	unsigned int i,j,k;
 	VectorInt v(3);
 	
 	closestGridPoint(x, v, lengths);
@@ -202,16 +214,25 @@ void Data3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Ve
 			
 }
 
+void Data3D::print(){
+	printf("header dim0");
+	for(unsigned int i=0; i<parameter0Dim; ++i) printf("\t%f",(*headerParameter0)[i]);
+	printf("\nheader dim1");
+	for(unsigned int j=0; j<parameter1Dim; ++j) printf("\t%f",(*headerParameter1)[j]);
+	printf("\nheader dim2");
+	for(unsigned int k=0; k<parameter2Dim; ++k) printf("\t%f",(*headerParameter2)[k]);
+}
 
-void Data3D::printDataCell(int i, int j, int k){
+
+void Data3D::printDataCell(unsigned int i, unsigned int j, unsigned int k){
 	printf("Cell[%d,%d,%d]: %f\n",i,j,k,(*data)[i][j][k]);
 }
 
-void Data3D::printGradientCell(int i, int j, int k){
+void Data3D::printGradientCell(unsigned int i, unsigned int j, unsigned int k){
 	printf("Gradient[%d,%d,%d]: (%f, %f, %f)\n",i,j,k,(*gradient)[i][j][k](0),(*gradient)[i][j][k](1),(*gradient)[i][j][k](2));
 }
 
-void Data3D::printHessianCell(int i, int j, int k){
+void Data3D::printHessianCell(unsigned int i, unsigned int j, unsigned int k){
 	printf("Hessian[%d,%d,%d]: \n",i,j,k);
 	printf("|%f, %f, %f|\n",(*hessian)[i][j][k](0,0),(*hessian)[i][j][k](0,1),(*hessian)[i][j][k](0,2));
 	printf("|%f, %f, %f|\n",(*hessian)[i][j][k](1,0),(*hessian)[i][j][k](1,1),(*hessian)[i][j][k](1,2));

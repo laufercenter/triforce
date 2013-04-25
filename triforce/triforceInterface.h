@@ -43,12 +43,16 @@ protected:
 	DataFile *df2;
 	DataFile *df3;
 	DataFile *df4;
+	DataFile *df5;
+	DataFile *df6;
 	
 	Data3D *dat0;
 	Data3D *dat1;
 	Data3D *dat2;
 	Data3D *dat3;
 	Data3D *dat4;
+	Data1D *dat5;
+	Data1D *dat6;
 
 	Surface3D* surf0;
 	Surface3D* surf1;

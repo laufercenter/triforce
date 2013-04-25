@@ -13,12 +13,16 @@ TriforceInterface::TriforceInterface(string path){
 	df2 = new DataFile(path+"/dataConcave1.dat");
 	df3 = new DataFile(path+"/dataConcave2.dat");
 	df4 = new DataFile(path+"/depthBuffer.dat");
+	df5 = new DataFile(path+"/occludedDistribution.dat");
+	df6 = new DataFile(path+"/exposedDistribution.dat");
 	
 	dat0 = df0->digest3DBinaryTable();
 	dat1 = df1->digest3DBinaryTable();
 	dat2 = df2->digest3DBinaryTable();
 	dat3 = df3->digest3DBinaryTable();
 	dat4 = df4->digest3DBinaryTable();
+	dat5 = df5->digest1DBinaryTable();
+	dat6 = df6->digest1DBinaryTable();
 	
 	surf0 = new Surface3D(dat0);
 	surf1 = new Surface3D(dat1);
@@ -40,7 +44,7 @@ TriforceInterface::TriforceInterface(string path){
 double TriforceInterface::calculateSurfaceArea(Molecule &mol){
 	Tessellation *t;
 	double area;
-	t = new Tessellation(mol,*depth0);
+	t = new Tessellation(mol,*depth0,*dat5,*dat6);
 	t->build(true);
 	area = integrator->integrate(&mol, t);
 	delete(t);

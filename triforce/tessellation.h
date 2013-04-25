@@ -33,6 +33,7 @@
 #include "molecule.h"
 #include "interpolation.h"
 #include "depth3d.h"
+#include "multiLayeredDepthBuffer.h"
 
 
 using namespace std;
@@ -56,7 +57,7 @@ using namespace arma;
 
 
 typedef vec Vector;
-typedef Col<int> VectorInt;
+typedef Col<unsigned int> VectorInt;
 
 enum OcclusionState{
 	OCCLUDED,
@@ -85,6 +86,37 @@ enum Orientation{
 enum Hemisphere{
 	FRONTHEMISPHERE,
 	BACKHEMISPHERE
+};
+
+
+enum CircularInterfaceForm{
+	CONCAVE,
+	CONVEX,
+	SPLITTER
+};
+
+
+
+
+struct SegmentInfo;
+
+typedef struct{
+	int i0;
+	int i1;
+}
+PartialSegmentID;
+
+
+
+struct SegmentComparator: public std::binary_function<PartialSegmentID, PartialSegmentID, bool>
+{
+	bool operator()(const PartialSegmentID& lhs, const PartialSegmentID& rhs) const
+	{
+		if(lhs.i0 == rhs.i0){
+			return lhs.i1 < rhs.i1;
+		}
+		else return lhs.i0 < rhs.i0;
+	}
 };
 
 
@@ -142,6 +174,32 @@ typedef struct
 	
 }
 PHIRotation;
+
+
+
+
+
+typedef vector<SegmentInfo> SegmentList;
+
+typedef map<PartialSegmentID, SegmentList::iterator, SegmentComparator> SegmentGraph;
+
+
+typedef struct SegmentInfo{
+	PartialSegmentID backw;
+	PartialSegmentID id0;
+	PartialSegmentID id1;
+	PartialSegmentID forw;
+	SegmentList::iterator it_backw;
+	SegmentList::iterator it_forw;
+	bool hasForward;
+	bool hasBackward;
+	bool visited;
+	double dist;
+	PHIRotation PHI0;
+	PHIRotation PHI1;
+	bool extended;
+} SegmentInfo;
+
 
 
 
@@ -278,7 +336,7 @@ RhoContainer;
 
 
 
-typedef struct 
+typedef struct CircularInterface
 {
 	int id;
 	int index;
@@ -286,6 +344,8 @@ typedef struct
 	LambdaRotation lambdaRotation;
 	Rotation lambda;
 	Rotation psi;
+	double kappa[2];
+	double psi2[2];
 	double g;
 	double sphereRadius;
 	double d;
@@ -298,6 +358,13 @@ typedef struct
 	bool flagged;
 	bool valid;
 	bool hasDerivatives;
+	bool extended;
+	vector<Vector> exposedVectors;
+	vector<double> exposedPHI[2];
+	Vector base[2];
+	Vector center;
+	bool hasBase[2];
+	bool hasCenter;
 }
 CircularInterface;
 
@@ -370,7 +437,7 @@ enum OcclusionType{
 class Tessellation{
 	
 public:
-	Tessellation(Molecule &m, Depth3D &depthData);
+	Tessellation(Molecule &m, Depth3D &depthData, Data1D &occludedDistribution, Data1D &exposedDistribution);
 	
 	void build(bool split);
 	SASAs &sasas();
@@ -404,6 +471,8 @@ public:
 private:
 	
 	Depth3D depthData;
+	Data1D occludedDistribution;
+	Data1D exposedDistribution;
 	Molecule molecule;
 	vector<Vector> atoms;
 	vector<double> radii;
@@ -413,7 +482,12 @@ private:
 	//#atoms #circularregions
 	//#atoms #sasas #circularregions
 	SASAs sasasForMolecule;
-	map<int,bool> SEGMENTS;
+	SASAs sasasForMolecule2;
+	map<int,bool> SEGMENTS[2];
+	bool inferno;
+	SegmentGraph segmentGraph[2];
+	double maxz;
+
 
 	CircularInterfacesPerAtom coverHemisphere(Vector tessellationAxis, double radius, CircularInterfacesPerAtom circles, CircularInterfaceForm form);
 	void buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<double> &radii, SASAs &sasas, bool split, vector<int> &neighbourlist);
@@ -436,10 +510,10 @@ private:
 	double complLongAngle(Vector &vi, Vector &vj, Vector &vk);
 	IntersectionBranches::iterator increaseBranchInterator(IntersectionBranches::iterator it, CircularInterface &circle);
 	IntersectionBranches::iterator decreaseBranchInterator(IntersectionBranches::iterator it, CircularInterface &circle);
-	void createIntersectionBranch(PHIContainer &PHII, PHIContainer &PHIJ, CircularInterface &I, CircularInterface &J);
+	void createIntersectionBranch(PHIContainer &PHII, CircularInterface &I, CircularInterface &J);
 	void printBranch(const char* s, multimap<double, IntersectionBranch>::iterator &it);
 	void printIntersectionGraph(IntersectionGraph &g, CircularInterfacesPerAtom &circles);
-	void buildIntersectionGraph(double radius, Vector &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename);
+	void buildIntersectionGraph(double radius, Vector &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1);
 	void outputGaussBonnetData(string filename, double radius, CircularInterfacesPerAtom &circles, SASAs &sasas, IntersectionGraph &intersectionGraph);
 	void depleteCircularInterfaces(Vector tessellationAxis, double radius, vector<CircularInterface> &circles);
 	bool isWithinNumericalLimits(double x, double l);
@@ -452,6 +526,11 @@ private:
 	Matrix matrixCross(Matrix &m, Vector &v);
 	Vector normalise(Vector x);
 	Vector normalise(Vector x, double &l);
+	double buriedness(Hemisphere hemisphere, CircularInterface &circle, CircularInterface &circle2, double PHI, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1);
+	void addLimitingInterface(LimitingInterface &limit, CircularInterfacesPerAtom &circles);
+	double V2PHI(Vector tessellationAxis, Hemisphere hemisphere, Vector v, CircularInterface &circle);
+	void convertExposedVectors2PHIValues(Vector &tessellationAxis,Hemisphere hemisphere, CircularInterface &circle);
+	double exposition(Hemisphere hemisphere, IntersectionBranches::iterator it0, IntersectionBranches::iterator it1, CircularInterface &circle);
 
 
 	clock_t ms();
