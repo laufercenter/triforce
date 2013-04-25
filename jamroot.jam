@@ -28,6 +28,7 @@ project triforce-config : requirements <include>$(INCLUDES) ;
 SOURCES = 
 tessellation.cc
 data3d.cc
+data1d.cc
 surface3d.cc
 datafile.cc
 molecule.cc
@@ -44,6 +45,7 @@ depth3d.cc ;
 HEADERS = 
 tessellation.h
 data3d.h
+data1d.h
 surface3d.h
 datafile.h
 molecule.h

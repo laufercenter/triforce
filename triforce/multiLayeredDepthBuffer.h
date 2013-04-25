@@ -25,27 +25,44 @@
 
 #include <armadillo>
 
-#include "tessellation.h"
 #include "depth3d.h"
+#include "data1d.h"
 
 
 using namespace std;
 using namespace arma;
 
+#define THRESHOLD_KAPPA 0.5
+
 
 
 
 enum LineType{
-	FRONT,
-	BACK,
+	FRONT=0,
+	BACK=1,
 };
 
 
 
+typedef struct{
+	double g;
+	Vector v;
+	bool flip;
+	double psi;
+}
+LimitingInterface;
+
+
+typedef struct{
+	double g;
+	double kappa;
+
+}
+DepthBufferProjection;
 
 
 
-typedef multimap<double, LineType> DepthBufferLine;
+typedef map<double, LineType> DepthBufferLine;
 typedef vector<DepthBufferLine>DepthBuffer;
 typedef vector<ScanlineMode>DepthBufferMode;
 
@@ -56,10 +73,23 @@ public:
 
 
 
-	MultiLayeredDepthBuffer(Depth3D &data, int m);
-	void addSphere(CircularInterface &circle);
-	bool passesBuffer(CircularInterface &circle);
+	MultiLayeredDepthBuffer(Depth3D &data, Data1D &occludedDistribution, Data1D &exposedDistribution, int m);
+	void addSphere(Vector &v, double lambda, bool invert, double &kappa, double &psi, int index);
+	bool passesBuffer(double kappa, double psi, double lambda, bool invert, int index, vector<Vector> &exposedVectors);
+	bool getSplitterExposedVectors(vector<Vector> &exposedVectors);
+
+	double probe(Vector &projection, bool &isExtended);
+	Vector project(bool splitter, bool hemflip, Vector n, double kappa, double PHI, double psi, double lambda, bool invert, Vector &projection0, Vector &projection1);
+	void extend();
+	double g2;
 	void print();
+	void startNewCycle();
+	void addProbe(double x);
+	bool isCycleExposed();
+	double exposedProbability();
+	bool retrieveLimitingInterfaces(vector<LimitingInterface> &limitList);
+	bool isExposed(double x);
+
 
 	
 
@@ -68,16 +98,34 @@ private:
 	Depth3D data;
 	DepthBuffer dbuffer;
 	DepthBufferMode dmode;
+	vector<int> extensionDistance;
+	vector<double> extensionAngle;
+	int mode;
+	double exposed;
+	double occluded;
+	Data1D exposedDistribution;
+	Data1D occludedDistribution;
+	double prior_occluded;
+	double prior_exposed;
+	bool test;
 	
 	Vector normalise(Vector x);
 	int sgn(double d);
-	Vector tessellationPlaneNormal,  tessellationAxisAuxiliary,  tessellationAxis;
+	Vector orientationPlaneNormal,  orientationAxisAuxiliary,  orientationAxis;
 	
 	
 	ScanlineMode insertIntoLineBuffer(DepthBufferLine &line, double front, double back);
-	bool wouldChangeLineBuffer(DepthBufferLine &line, double front, double back);
+	bool wouldChangeLineBuffer(DepthBufferLine &line, double front, double back, bool &frontChanges, bool &backChanges);
+	Vector convertToCartesian(DepthBufferProjection &pr);
 	DepthBufferLine::iterator increaseLineInterator(DepthBufferLine::iterator it, DepthBufferLine &line);
 	DepthBufferLine::iterator decreaseLineInterator(DepthBufferLine::iterator it, DepthBufferLine &line);
+	
+	void getDepthBounds(int p, double d, DepthBufferLine::iterator &it0, DepthBufferLine::iterator &it1);
+
+	bool isWithinNumericalLimits(double x, double l);
+
+	bool scanBuffer(double kappa, int index, vector<Vector> &exposedVectors, DepthInformation &dat);
+	
 	
 
 };

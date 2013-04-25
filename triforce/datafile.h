@@ -24,6 +24,7 @@
 #include <map>
 #include <armadillo>
 #include "data3d.h"
+#include "data1d.h"
 #include "topology.h"
 #include "molecule.h"
 
@@ -47,6 +48,8 @@ class DataFile{
 public:
 	DataFile();
 	DataFile(string name);
+	
+	Data1D* digest1DBinaryTable();
 	Data3D* digest3DBinaryTable();
 	Topology *digestMapCSV();
 	Topology* digestTOP(TopologyMode topm);

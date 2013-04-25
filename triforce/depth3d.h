@@ -22,18 +22,12 @@
 
 
 
-enum CircularInterfaceForm{
-	CONCAVE,
-	CONVEX,
-	SPLITTER
-};
-
-
 
 enum ScanlineMode{
 	SCANLINE_FULL,
 	SCANLINE_EMPTY,
-	SCANLINE_PARTIAL
+	SCANLINE_PARTIAL,
+	SCANLINE_EXTENDED
 };
 
 
@@ -53,14 +47,17 @@ public:
 	Depth3D();
 	Depth3D(Data3D* d);
 	
-	void closestGridPoint(Vector &x, VectorInt &p, Vector &l);
 	
-DepthInformation getFloorScanlines(double kappa, double psi, double lambda, CircularInterfaceForm form);
-DepthInformation getCeilScanlines(double kappa, double psi, double lambda, CircularInterfaceForm form);
-DepthInformation getScanlines(double kappa, double psi, double lambda, CircularInterfaceForm form, VectorInt &p);
+	DepthInformation getFloorScanlines(double kappa, double psi, double lambda, bool invert);
+	DepthInformation getCeilScanlines(double kappa, double psi, double lambda, bool invert);
+	double getInterpolatedDepth(double g, double kappa, double psi, double lambda, bool flip, int &p0);
+	int closestGridPoint(double x);
+	void closestGridPoint(Vector &x, VectorInt &p);
+	void closestGridPoint(Vector &x, VectorInt &p, Vector &l);
 	
 	
 private:
+	DepthInformation getScanlines(double kappa, double psi, double lambda, bool invert, VectorInt &p);
 	
 	
 };
