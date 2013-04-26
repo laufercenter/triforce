@@ -41,20 +41,20 @@ void Tessellation::build(bool split){
 		
 		//printf("NEIGHBOURS RECEIVED: %d\n",neighbourlist.size());
 		
-		/*
+		sasasForMolecule.clear();
 		inferno=false;
 		segmentGraph[0].clear();
 		segmentGraph[1].clear();
 		printf("ROUND NORMAL\n");
 		buildGaussBonnetPath(i, atoms, radii, sasasForMolecule, split, neighbourlist);
-		*/
+		
 		
 		
 		inferno=true;
 		segmentGraph[0].clear();
 		segmentGraph[1].clear();
 		printf("ROUND INFERNO\n");
-		buildGaussBonnetPath(i, atoms, radii, sasasForMolecule, split, neighbourlist);
+		buildGaussBonnetPath(i, atoms, radii, sasasForMolecule2, split, neighbourlist);
 		
 		
 		/*
@@ -75,7 +75,7 @@ void Tessellation::build(bool split){
 	
 	printf("TIME: %f\n",(end-start)/1.0);
 	printf("MAXZ: %f\n",maxz);
-	//exit(0);
+	exit(0);
 	
 }
 
@@ -2507,7 +2507,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 		if(segmentPointers.size()>0) segmentPointerLists.push_back(segmentPointers);
 	}
 	
-	
+	/*
 	if(inferno){
 	//filter SASAs
 	it_sp=segmentPointerLists.begin();
@@ -2532,7 +2532,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 		else ++it_sp;
 	}
 	}
-	
+	*/
 	
 	printf("SIZE: %d\n",segmentPointerLists.size());
 				
@@ -2577,7 +2577,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 				}
 				}
 				
-				/*
+				
 				if(inferno){
 					bool sfound=false;
 					for(unsigned int k=0; !sfound && k<sasasForMolecule[sasasForMolecule.size()-1].size(); ++k){
@@ -2591,7 +2591,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 					else fprintf(stderr, "0 %f %d %d %d\n",segmentPointerLists[i][j]->dist, index0, index1, index2);
 						//fprintf(stderr, "0 %f\n",segmentPointerLists[i][j]->dist);
 				}
-				*/
+				
 				
 				if(!circles[id0-1].hasDerivatives) calculateProjectionAndDerivatives(tessellationAxis, circles[id0-1]);
 				if(!circles[id1-1].hasDerivatives) calculateProjectionAndDerivatives(tessellationAxis, circles[id1-1]);
