@@ -6,29 +6,22 @@
 using namespace std;
 
 
-TriforceInterface::TriforceInterface(string path){
+TriforceInterface::TriforceInterface(string path, unsigned int buffer, unsigned int slack){
 	
 	df0 = new DataFile(path+"/dataConcave.dat");
 	df1 = new DataFile(path+"/dataConcave0.dat");
 	df2 = new DataFile(path+"/dataConcave1.dat");
 	df3 = new DataFile(path+"/dataConcave2.dat");
-	df4 = new DataFile(path+"/depthBuffer.dat");
-	df5 = new DataFile(path+"/occludedDistribution.dat");
-	df6 = new DataFile(path+"/exposedDistribution.dat");
 	
 	dat0 = df0->digest3DBinaryTable();
 	dat1 = df1->digest3DBinaryTable();
 	dat2 = df2->digest3DBinaryTable();
 	dat3 = df3->digest3DBinaryTable();
-	dat4 = df4->digest3DBinaryTable();
-	dat5 = df5->digest1DBinaryTable();
-	dat6 = df6->digest1DBinaryTable();
 	
 	surf0 = new Surface3D(dat0);
 	surf1 = new Surface3D(dat1);
 	surf2 = new Surface3D(dat2);
 	surf3 = new Surface3D(dat3);
-	depth0 = new Depth3D(dat4);
 	
 	interpolator0 = new Interpolation(surf0,TAYLOR_QUADRATIC);
 	interpolator1 = new Interpolation(surf1,TAYLOR_QUADRATIC);
@@ -37,6 +30,22 @@ TriforceInterface::TriforceInterface(string path){
 	
 
 	integrator = new IntegratorTriforce(interpolator0, interpolator1, interpolator2, interpolator3);
+	withDepthBuffer=false;
+	
+	if(buffer>0){
+		withDepthBuffer=true;
+		this->buffer=buffer;
+		df4 = new DataFile(path+"/depthBuffer.dat");
+		df5 = new DataFile(path+"/occludedDistribution.dat");
+		df6 = new DataFile(path+"/exposedDistribution.dat");
+
+		dat4 = df4->digest3DBinaryTable();
+		dat5 = df5->digest1DBinaryTable();
+		dat6 = df6->digest1DBinaryTable();
+
+		depth0 = new Depth3D(dat4,slack);
+	}
+	
 }
 
 
@@ -44,7 +53,8 @@ TriforceInterface::TriforceInterface(string path){
 double TriforceInterface::calculateSurfaceArea(Molecule &mol){
 	Tessellation *t;
 	double area;
-	t = new Tessellation(mol,*depth0,*dat5,*dat6);
+	if(withDepthBuffer) t = new Tessellation(mol,buffer,*depth0,*dat5,*dat6);
+	else t = new Tessellation(mol);
 	t->build(true);
 	area = integrator->integrate(&mol, t);
 	delete(t);

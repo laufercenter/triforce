@@ -34,6 +34,7 @@ using namespace arma;
 class TriforceInterface{
 public:
 	TriforceInterface(string path);
+	TriforceInterface(string path, unsigned int buffer, unsigned int slack);
 	
 	double calculateSurfaceArea(Molecule &mol);
 	
@@ -66,6 +67,10 @@ protected:
 	Interpolation *interpolator3;
 	
 	IntegratorTriforce *integrator;	
+	
+private:
+	bool withDepthBuffer;
+	unsigned int buffer;
 };
 
 

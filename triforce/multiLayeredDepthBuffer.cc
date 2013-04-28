@@ -1,9 +1,17 @@
 #include "multiLayeredDepthBuffer.h"
 
 
+#define doublepi 6.283185307179586231996
+#define halfpi 1.570796326794896557999
+
+
+MultiLayeredDepthBuffer::MultiLayeredDepthBuffer(){
+}
 
 
 MultiLayeredDepthBuffer::MultiLayeredDepthBuffer(Depth3D &data, Data1D &occludedDistribution, Data1D &exposedDistribution, int mode){
+	double g;
+	
 	this->data=data;
 	this->len = data.parameter0Dim;
 	this->mode=mode;
@@ -45,7 +53,19 @@ MultiLayeredDepthBuffer::MultiLayeredDepthBuffer(Depth3D &data, Data1D &occluded
 		orientationPlaneNormal(2)=0;
 	}
 	
-test=false;
+	//init g table
+	
+	gTable.resize(len,0);
+	for(unsigned int i=0; i<len; ++i){
+		g = data.getHeaderParameter0Cell(i);
+		gTable[i] = sqrt(1-g*g);
+	}
+	
+	projections[0].reserve(len);
+	projections[1].reserve(len);
+	segments.reserve(len);
+	segment.reserve(len);
+	
 }
 
 
@@ -72,38 +92,93 @@ DepthBufferLine::iterator MultiLayeredDepthBuffer::decreaseLineInterator(DepthBu
 
 
 ScanlineMode MultiLayeredDepthBuffer::insertIntoLineBuffer(DepthBufferLine &line, double front, double back){
-	DepthBufferLine::iterator it0, it1, it, it_next;
+	DepthBufferLine::iterator it0, it1, it, it_next, it0bound, it1bound;
 	bool deleteBack, deleteFront;
 	pair<double,LineType> p0, p1;
 	pair<DepthBufferLine::iterator, bool> r0,r1;
+	bool frontChanges, backChanges, wouldChange, wouldClear;
+	double x0,x1;
+	double frontBound,backBound;
+	frontBound = front;
+	backBound = back;
+	
+
+	frontChanges=false;
+	backChanges=false;
+	wouldChange=false;
+	wouldClear=false;
 	
 	
 	
-	p0.first=front;
-	p0.second=FRONT;
-	p1.first=back;
-	p1.second=BACK;
+	if(line.size()==0){
+		p0.first=front;
+		p0.second=FRONT;
+		p1.first=back;
+		p1.second=BACK;
+		
+		it0 = line.insert(p0);
+		it1 = line.insert(p1);
+ 		return SCANLINE_PARTIAL;
+	}
 	
-	r0 = line.insert(p0);
-	r1 = line.insert(p1);
+	it0bound = line.lower_bound(front);
+	if(it0bound==line.end()) it0=line.begin();
+	else it0=it0bound;
 	
-	it0=r0.first;
-	it1=r1.first;
+	it1bound = line.lower_bound(back);
+	if(it1bound==line.end()) it1=line.begin();
+	else it1=it1bound;
+	
+
+	//for sure it changes
+	if(it0!=it1){
+		wouldChange=true;
+		if(it0->second==FRONT) frontChanges=true;
+		if(it1->second==FRONT) backChanges=true;
+	}
+	//it still might change
+	else{
+		
+		if(it0->second==FRONT){
+			wouldChange=true;
+			frontChanges=true;
+			backChanges=true;
+		}
+		else{
+			x0 = it0->first;
+			if(front>=back) back+=doublepi;
+			if(x0<front) x0+=doublepi;
+			
+			if(back>=x0){
+				wouldClear=true;
+			}
+		}
+	}
 	
 	
-	//prune linebuffer
-	it=decreaseLineInterator(it0,line);
-	if(it->second==FRONT) deleteFront=true;
-	it=increaseLineInterator(it0,line);
-	if(it->second==BACK && it!=it1) deleteFront=true;
+	if(wouldClear){
+		line.clear();
+ 		return SCANLINE_FULL;
+	}
 	
-	it=increaseLineInterator(it1,line);
-	if(it->second==BACK) deleteBack=true;
-	it=decreaseLineInterator(it1,line);
-	if(it->second==FRONT && it!=it0) deleteBack=true;
+	if(frontChanges){
+		p0.first=frontBound;
+		p0.second=FRONT;
+		it0 = line.insert(it0bound,p0);
+	}
+	
+	if(backChanges){
+		p1.first=backBound;
+		p1.second=BACK;
+		//in certain occasions this is not optimal, because it0 might have changed it1's lower bound
+		it1 = line.insert(it1bound,p1);
+	}
 	
 	
-	it=increaseLineInterator(it0,line);
+	
+	if(frontChanges) it=increaseLineInterator(it0,line);
+	else it=it0;
+	//printf("starting at %f-%d\n",it->first,it->second);
 	while(it!=it1){
 		it_next=increaseLineInterator(it,line);
 		//printf("deleting %f-%d\n",it->first,it->second);
@@ -111,17 +186,10 @@ ScanlineMode MultiLayeredDepthBuffer::insertIntoLineBuffer(DepthBufferLine &line
 		it=it_next;
 	}
 	
-	if(deleteFront){
-		//printf("deleting %f-%d\n",it0->first,it0->second);
-		line.erase(it0);
-	}
-	if(deleteBack){
-		//printf("deleting %f-%d\n",it1->first,it1->second);
-		line.erase(it1);
-	}
 	
 	if(line.size()==0) return SCANLINE_FULL;
 	else return SCANLINE_PARTIAL;
+	
 		
 }
 
@@ -131,81 +199,49 @@ ScanlineMode MultiLayeredDepthBuffer::insertIntoLineBuffer(DepthBufferLine &line
 bool MultiLayeredDepthBuffer::wouldChangeLineBuffer(DepthBufferLine &line, double front, double back, bool &frontChanges, bool &backChanges){
 	DepthBufferLine::iterator it0, it1, it, it_next;
 	bool wouldChange;
-	pair<double,LineType> p0, p1;
-	pair<DepthBufferLine::iterator, bool> r0,r1;
+	double x0,x1;
 	
-	p0.first=front;
-	p0.second=FRONT;
-	p1.first=back;
-	p1.second=BACK;
 	
-	r0 = line.insert(p0);
-	r1 = line.insert(p1);
 	
-	it0=r0.first;
-	it1=r1.first;
-	
-	wouldChange=false;
 	frontChanges=false;
 	backChanges=false;
-// 	printf("CHECK: %f %f\n",front,back);
+	wouldChange=false;
 	
-	if(line.size()==0){
-		wouldChange=true;
-		frontChanges=true;
-		backChanges=true;
-	}
 	
-	if(!r0.second){
-		wouldChange=true;
-		frontChanges=true;
-// 		printf("CHECK 0\n");
-	}
-	if(!r1.second){
-		wouldChange=true;
-		backChanges=true;
-// 		printf("CHECK 1\n");
-	}
+	it0 = line.lower_bound(front);
+	if(it0==line.end()) it0=line.begin();
+	//if(it0->first!=front) it0=decreaseLineInterator(it0,line);
 	
-	it=decreaseLineInterator(it0,line);
-	if(it->second==BACK && it!=it1){
-		wouldChange=true;
-		frontChanges=true;
-// 		printf("CHECK 2 %d %f\n",it->second,it->first);
-	}
-	it=increaseLineInterator(it0,line);
-	if(it->second==FRONT && it!=it1){
-		wouldChange=true;
-		frontChanges=true;
-// 		printf("CHECK 3 %d %f\n",it->second,it->first);
-	}
+	it1 = line.lower_bound(back);
+	if(it1==line.end()) it1=line.begin();
 	
-	it=increaseLineInterator(it1,line);
-	if(it->second==FRONT && it!=it0){
+
+	//for sure it changes
+	if(it0!=it1){
 		wouldChange=true;
-		backChanges=true;
-// 		printf("CHECK 4 %d %f\n",it->second,it->first);
+		if(it0->second==FRONT) frontChanges=true;
+		if(it1->second==FRONT) backChanges=true;
 	}
-	it=decreaseLineInterator(it1,line);
-	if(it->second==BACK && it!=it0){
-		wouldChange=true;
-		backChanges=true;
-// 		printf("CHECK 5 %d %f\n",it->second,it->first);
-	}
-	
-	it=increaseLineInterator(it0,line);
-	while(it!=it1){
-		it_next=increaseLineInterator(it,line);
-		wouldChange=true;
-// 		frontChanges=true;
-// 		backChanges=true;
-		it=it_next;
+	//it still might change
+	else{
+		
+		if(it0->second==FRONT){
+			wouldChange=true;
+			frontChanges=true;
+			backChanges=true;
+		}
+		else{
+			x0 = it0->first;
+			if(front>=back) back+=doublepi;
+			if(x0<front) x0+=doublepi;
+			
+			if(back>=x0){
+				wouldChange=true;
+			}
+		}
 	}
 	
 
-	if(r0.second) line.erase(it0);
-	if(r1.second) line.erase(it1);
-	
 	return wouldChange;
 		
 }
@@ -237,7 +273,7 @@ void MultiLayeredDepthBuffer::addSphere(Vector &v, double lambda, bool invert, d
 	DepthInformation dat;
 	Vector n,n2;
 	double s;
-	
+	double dot_n_aux;
 	
 	
 	
@@ -247,12 +283,21 @@ void MultiLayeredDepthBuffer::addSphere(Vector &v, double lambda, bool invert, d
 	
 	
 	//construct normal
-	n2=cross(v, orientationAxis);
-	n=normalise(cross(orientationAxis,n2));
-	s = sgn(dot(n,orientationPlaneNormal));
+	if(isWithinNumericalLimits(abs(dot(v,orientationAxis)),1.0)){
+		kappa=0;
+	}
+	else{
+		n2=cross(v, orientationAxis);
+		n=normalise(cross(orientationAxis,n2));
+		s = sgn(dot(n,orientationPlaneNormal));
+		dot_n_aux=dot(n,orientationAxisAuxiliary);
+		kappa = acos(dot_n_aux);
+		if(s<0) kappa=doublepi-kappa;
+	}
 	
-	kappa = acos(dot(n,orientationAxisAuxiliary));
-	if(s<0) kappa=2*M_PI-kappa;
+	
+	
+	
 	
 	
 	//printf("ADDING SPHERE %d: lambda:%f psi:%f kappa:%f cart(%f %f %f) form: %d\n",index,lambda, psi, kappa, v(0), v(1), v(2), invert);
@@ -271,8 +316,8 @@ void MultiLayeredDepthBuffer::addSphere(Vector &v, double lambda, bool invert, d
 				//printf("F");
 			}
 			else if(dat.mode[i]==SCANLINE_PARTIAL){
+				//printf("SCANLINE %f %f\n",dat.scanline0[i], dat.scanline1[i]);
 				dmode[i]=insertIntoLineBuffer(dbuffer[i], dat.scanline0[i], dat.scanline1[i]);
-				//printf("%f %f",dat.scanline0[i], dat.scanline1[i]);
 				
 			}
 			//else printf("E");
@@ -320,15 +365,15 @@ bool MultiLayeredDepthBuffer::scanBuffer(double kappa, int index, vector<Vector>
 	bool wouldChange;
 	bool frontChanges, backChanges;
 	DepthBufferLine::iterator it;
-	vector<DepthBufferProjection> projections[2];
-	vector<DepthBufferProjection> segment;
-	vector<vector<DepthBufferProjection> > segments;
 	DepthBufferProjection pr;
-	double g_prev, k_prev;
+	double i_prev, k_prev;
 	
 	if(index==2) test=true;
 	
-	int ic=524;
+	projections[0].clear();
+	projections[1].clear();
+	segments.clear();
+	segment.clear();
 	
 	//if(invert) return true;
 	
@@ -336,44 +381,35 @@ bool MultiLayeredDepthBuffer::scanBuffer(double kappa, int index, vector<Vector>
 	
 	for(int i=0; i<len; ++i){
 // 		printf("line %d %d (%f %f)\n",i,dat.mode[i], dat.scanline0[i]-offset, dat.scanline1[i]+offset);
-		if(index==ic){
-			printf("line[%d]: ",i);
-		}
 		if(dmode[i]==SCANLINE_PARTIAL){
 			if(dat.mode[i]==SCANLINE_FULL){
 				wouldChange=true;
 				dmode[i]=SCANLINE_FULL;
 				for(it=dbuffer[i].begin(); it!=dbuffer[i].end(); ++it){
 					//exposedVectors.push_back(convertToCartesian(data.getHeaderParameter0Cell(i), it->first));
-					pr.g = data.getHeaderParameter0Cell(i);
+					pr.i = i;
 					pr.kappa = it->first;
-					printf("PR: %d\n",it->second);
+					//printf("PR: %d\n",it->second);
 					projections[it->second].push_back(pr);
 				}
 				
 				
-				if(index==ic){
-					printf("F:");
-				}
 				
 			}
 			else if(dat.mode[i]==SCANLINE_PARTIAL){
-				if(index==ic){
-					printf("P: %f %f",dat.scanline0[i], dat.scanline1[i]);
-				}
 				
 				if(wouldChangeLineBuffer(dbuffer[i], dat.scanline0[i]-offset, dat.scanline1[i]+offset, frontChanges, backChanges)){
 					wouldChange=true;
 					if(frontChanges){
 						//exposedVectors.push_back(convertToCartesian(data.getHeaderParameter0Cell(i),dat.scanline0[i]-offset));
-						pr.g = data.getHeaderParameter0Cell(i);
+						pr.i = i;
 						pr.kappa = dat.scanline0[i]-offset;
 						projections[0].push_back(pr);
 						
 					}
 					if(backChanges){
 						//exposedVectors.push_back(convertToCartesian(data.getHeaderParameter0Cell(i),dat.scanline1[i]+offset));
-						pr.g = data.getHeaderParameter0Cell(i);
+						pr.i = i;
 						pr.kappa = dat.scanline1[i]+offset;
 						projections[1].push_back(pr);
 					}
@@ -381,9 +417,6 @@ bool MultiLayeredDepthBuffer::scanBuffer(double kappa, int index, vector<Vector>
 				}
 			}
 			else{
-				if(index==ic){
-					printf("E: ");
-				}
 			}
 		}
 		else if(dmode[i]==SCANLINE_EMPTY){
@@ -391,12 +424,12 @@ bool MultiLayeredDepthBuffer::scanBuffer(double kappa, int index, vector<Vector>
 				if(dat.mode[i]!=SCANLINE_FULL){
 					//exposedVectors.push_back(convertToCartesian(data.getHeaderParameter0Cell(i),dat.scanline0[i]-offset));
 					//exposedVectors.push_back(convertToCartesian(data.getHeaderParameter0Cell(i),dat.scanline1[i]+offset));
-					pr.g = data.getHeaderParameter0Cell(i);
+					pr.i = i;
 					pr.kappa = dat.scanline0[i]-offset;
 					projections[0].push_back(pr);
 						
 					//exposedVectors.push_back(convertToCartesian(data.getHeaderParameter0Cell(i),dat.scanline1[i]+offset));
-					pr.g = data.getHeaderParameter0Cell(i);
+					pr.i = i;
 					pr.kappa = dat.scanline1[i]+offset;
 					projections[1].push_back(pr);
 					
@@ -410,37 +443,25 @@ bool MultiLayeredDepthBuffer::scanBuffer(double kappa, int index, vector<Vector>
 			else{
 			}
 			
-			if(index==ic){
-				if(dat.mode[i]==SCANLINE_FULL){
-					printf("+: ");
-				}
-				else{
-					printf("#:");
-				}
-			}
-		}
-		if(index==ic){
-			printf("\n");
 		}
 		
 	}
-	test=false;
 	
 	
 	//divide the list into separate segment candidates
 	for(unsigned int z=0; z<=1; ++z){
 		segment.clear();
-		g_prev=-1;
+		i_prev=-1;
 		k_prev=-1;
 		for(unsigned int i=0; i<projections[z].size(); ++i){
 			if(i!=0){
-				if(abs(projections[z][i].g-g_prev)>1){
+				if(abs(projections[z][i].i-i_prev)>1){
 					segments.push_back(segment);
 					segment.clear();
 				}
 			}
 				
-			g_prev=projections[z][i].g;
+			i_prev=projections[z][i].i;
 			k_prev=projections[z][i].kappa;
 			segment.push_back(projections[z][i]);
 			
@@ -480,7 +501,7 @@ void MultiLayeredDepthBuffer::print(){
 		line.clear();
 		line.resize(len+1,-1);
 		for(it=dbuffer[i].begin(); it!=dbuffer[i].end(); ++it){
-			pos=it->first*(double)len/(2.0*M_PI);
+			pos=it->first*(double)len/(doublepi);
 			line[pos]+=it->second+1;
 		}
 		
@@ -541,13 +562,13 @@ double MultiLayeredDepthBuffer::probe(Vector &projection, bool &isExtended){
 	d0=it0->first;
 	d1=it1->first;
 	
-	r0=min(min(abs(d-d0), abs(d-(d0-2*M_PI))), abs(d-(d0+2*M_PI)));
-	r1=min(min(abs(d-d1), abs(d-(d1-2*M_PI))), abs(d-(d1+2*M_PI)));
+	r0=min(min(abs(d-d0), abs(d-(d0-doublepi))), abs(d-(d0+doublepi)));
+	r1=min(min(abs(d-d1), abs(d-(d1-doublepi))), abs(d-(d1+doublepi)));
 	
 	
 	//printf("SUB %f, %f %f\n",d, it0->first, it1->first);
-	//printf("SUB2 %f %f %f\n", abs(d-d0), abs(d-(d0-2*M_PI)), abs(d-(d0+2*M_PI)));
-	//printf("SUB3 %f %f %f\n", abs(d-d1), abs(d-(d1-2*M_PI)), abs(d-(d1+2*M_PI)));
+	//printf("SUB2 %f %f %f\n", abs(d-d0), abs(d-(d0-doublepi)), abs(d-(d0+doublepi)));
+	//printf("SUB3 %f %f %f\n", abs(d-d1), abs(d-(d1-doublepi)), abs(d-(d1+doublepi)));
 	
 	m = min(r0,r1);
 	
@@ -620,7 +641,7 @@ Vector MultiLayeredDepthBuffer::project(bool splitter, bool hemflip, Vector n, d
 	
 	g = v(0);
 	//d = asin(v(2));
-	//if(d<0) d+=2*M_PI;
+	//if(d<0) d+=doublepi;
 	
 	
 	//construct normal
@@ -629,7 +650,7 @@ Vector MultiLayeredDepthBuffer::project(bool splitter, bool hemflip, Vector n, d
 	s = sgn(dot(n3,ez));
 	
 	d = acos(dot(n3,ey));
-	if(s<0) d=2*M_PI-d;
+	if(s<0) d=doublepi-d;
 	
 	
 	projection0=Vector(2);
@@ -650,13 +671,13 @@ Vector MultiLayeredDepthBuffer::project(bool splitter, bool hemflip, Vector n, d
 	s = sgn(dot(n3,ex));
 	
 	d2 = acos(dot(n3,ez));
-	if(s<0) d2=2*M_PI-d;
+	if(s<0) d2=doublepi-d;
 	
 	
 	
 	g2 = v(2);
 	//d2 = asin(v(0));
-	//if(d2<0) d2+=2*M_PI;
+	//if(d2<0) d2+=doublepi;
 	
 	projection1=Vector(2);
 	projection1(0) = g2;
@@ -759,7 +780,7 @@ bool MultiLayeredDepthBuffer::retrieveLimitingInterfaces(vector<LimitingInterfac
 	
 	
 	if(mode==0) limit.psi=0;
-	else limit.psi=M_PI/2;
+	else limit.psi=halfpi;
 	
 	limitList.clear();
 
@@ -835,7 +856,7 @@ void MultiLayeredDepthBuffer::startNewCycle(){
 	occluded=1;
 	prior_occluded=occludedDistribution.getAuxiliaryCell(0);
 	prior_exposed=exposedDistribution.getAuxiliaryCell(0);
-	printf("priors: %f %f\n",prior_exposed, prior_occluded);
+	//printf("priors: %f %f\n",prior_exposed, prior_occluded);
 }
 
 bool MultiLayeredDepthBuffer::isExposed(double x){
@@ -844,7 +865,7 @@ bool MultiLayeredDepthBuffer::isExposed(double x){
 	
 	exposedDistribution.closestGridPoint(x,p,l);
 	
-	printf("adding %f [%d]\n",x,p);
+	//printf("adding %f [%d]\n",x,p);
 	
 	if(exposedDistribution.getDataCell(p)>occludedDistribution.getDataCell(p)) return true;
 	else return false;
@@ -858,18 +879,18 @@ void MultiLayeredDepthBuffer::addProbe(double x){
 	
 	exposedDistribution.closestGridPoint(x,p,l);
 	
-	printf("adding %f [%d]\n",x,p);
+	//printf("adding %f [%d]\n",x,p);
 	
 	exposed*=exposedDistribution.getDataCell(p);
 	occluded*=occludedDistribution.getDataCell(p);
 	
-	printf("prob: %f %f\n",exposed, occluded);
+	//printf("prob: %f %f\n",exposed, occluded);
 }
 
 bool MultiLayeredDepthBuffer::isCycleExposed(){
 	double e;
 	e=exposedProbability();
-	printf("endprob: %f %f\n",e, 1-e);
+	//printf("endprob: %f %f\n",e, 1-e);
 	if(e > (1-e)) return true;
 	else return false;
 }
@@ -890,13 +911,15 @@ double MultiLayeredDepthBuffer::exposedProbability(){
 Vector MultiLayeredDepthBuffer::convertToCartesian(DepthBufferProjection &pr){
 	Vector v(3);
 	double h;
+	int i;
 	double g;
 	double kappa;
 	
-	g=pr.g;
+	i=pr.i;
+	g = data.getHeaderParameter0Cell(i);
 	kappa=pr.kappa;
 	
-	h=sqrt(1-g*g);
+	h=gTable[i];
 	if(mode==0){
 		v(0)=g;
 		v(1)=h*cos(kappa);
