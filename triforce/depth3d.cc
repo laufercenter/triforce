@@ -10,10 +10,15 @@ using namespace std;
 using namespace arma;
 using namespace boost;
 
+
+#define doublepi 6.283185307179586231996
+#define halfpi 1.570796326794896557999
+
+
 Depth3D::Depth3D(){
 }
 
-Depth3D::Depth3D(Data3D* d){
+Depth3D::Depth3D(Data3D* d, int slack){
 	
 	parameter0Dim=d->parameter0Dim;
 	parameter1Dim=d->parameter1Dim;
@@ -28,7 +33,12 @@ Depth3D::Depth3D(Data3D* d){
 	headerParameter1=d->headerParameter1;
 	headerParameter2=d->headerParameter2;
 	data=d->data;
+	
+	this->slack=slack;
 
+	depthInfoBuffer.scanline0.resize(parameter0Dim,-1);
+	depthInfoBuffer.scanline1.resize(parameter0Dim,-1);
+	depthInfoBuffer.mode.resize(parameter0Dim,SCANLINE_EMPTY);
 
 }
 
@@ -106,7 +116,7 @@ double Depth3D::getInterpolatedDepth(double g, double kappa, double psi, double 
 		a = (*data)[p(0)][p(1)][p(2)];
 		a = min(max(a,0.0), M_PI);
 		
-		if(flip) a = (2*M_PI)-a;
+		if(flip) a = (doublepi)-a;
 		return a + kappa;
 	}
 	else{
@@ -121,7 +131,7 @@ double Depth3D::getInterpolatedDepth(double g, double kappa, double psi, double 
 		b = min(max(b,0.0), M_PI);
 		
 		c = a*(1.0-sigma) + b*sigma;
-		if(flip) c = (2*M_PI)-c;
+		if(flip) c = (doublepi)-c;
 
 		return  c + kappa;
 		
@@ -133,7 +143,7 @@ double Depth3D::getInterpolatedDepth(double g, double kappa, double psi, double 
 }
 
 
-DepthInformation Depth3D::getFloorScanlines(double kappa, double psi, double lambda, bool invert){
+DepthInformation &Depth3D::getFloorScanlines(double kappa, double psi, double lambda, bool invert){
 	VectorInt p(3);
 	Vector x(2);
 	x(0)=psi;
@@ -141,11 +151,11 @@ DepthInformation Depth3D::getFloorScanlines(double kappa, double psi, double lam
 	closestGridPoint(x,p);
 
 	if(!invert)
-		p(1)=max(0, (int)p(1)-3);
+		p(1)=max(0, (int)p(1)-slack);
 		//p(1)=max(0, (int)p(1));
 	
 	if(invert)
-		p(1)=min((int)parameter2Dim-1, (int)p(1)+3);
+		p(1)=min((int)parameter2Dim-1, (int)p(1)+slack);
 		//p(1)=min((int)parameter2Dim-1, (int)p(1));
 	
 	return getScanlines(kappa, psi, lambda, invert, p);
@@ -153,7 +163,7 @@ DepthInformation Depth3D::getFloorScanlines(double kappa, double psi, double lam
 
 
 
-DepthInformation Depth3D::getCeilScanlines(double kappa, double psi, double lambda, bool invert){
+DepthInformation &Depth3D::getCeilScanlines(double kappa, double psi, double lambda, bool invert){
 	VectorInt p(3);
 	Vector x(2);
 	x(0)=psi;
@@ -166,43 +176,39 @@ DepthInformation Depth3D::getCeilScanlines(double kappa, double psi, double lamb
 	
 	
 	
-DepthInformation Depth3D::getScanlines(double kappa, double psi, double lambda, bool invert, VectorInt &p){
+DepthInformation &Depth3D::getScanlines(double kappa, double psi, double lambda, bool invert, VectorInt &p){
 	Vector x(2);
 	int offset;
 	int j;
 	double k;
-	DepthInformation dat;
 	Vector l(3); 
 	
 	x(0)=psi;
 	x(1)=lambda;
-	dat.scanline0.resize(parameter0Dim,-1);
-	dat.scanline1.resize(parameter0Dim,-1);
-	dat.mode.resize(parameter0Dim,SCANLINE_EMPTY);
 	
 	
 	//scanline0 represents the beginning of the occluded region, scanline1 the end
 	if(!invert){
 		for(int i=0; i<parameter0Dim; ++i){
 			k = (*data)[i][p(0)][p(1)];
-			if(k<0) dat.mode[i] = SCANLINE_FULL;
-			else if(k>2*M_PI) dat.mode[i] = SCANLINE_EMPTY; 
+			if(k<0) depthInfoBuffer.mode[i] = SCANLINE_FULL;
+			else if(k>doublepi) depthInfoBuffer.mode[i] = SCANLINE_EMPTY; 
 			else{
-				dat.mode[i] = SCANLINE_PARTIAL;
-				dat.scanline1[i] = k+kappa;
-				if(dat.scanline1[i]>2*M_PI) dat.scanline1[i]-=2*M_PI;
-				if(dat.scanline1[i]>2*M_PI) dat.scanline1[i]-=2*M_PI;
+				depthInfoBuffer.mode[i] = SCANLINE_PARTIAL;
+				depthInfoBuffer.scanline1[i] = k+kappa;
+				if(depthInfoBuffer.scanline1[i]>doublepi) depthInfoBuffer.scanline1[i]-=doublepi;
+				if(depthInfoBuffer.scanline1[i]>doublepi) depthInfoBuffer.scanline1[i]-=doublepi;
 				
-				if(dat.scanline1[i]<0) dat.scanline1[i]+=2*M_PI;
-				if(dat.scanline1[i]<0) dat.scanline1[i]+=2*M_PI;
+				if(depthInfoBuffer.scanline1[i]<0) depthInfoBuffer.scanline1[i]+=doublepi;
+				if(depthInfoBuffer.scanline1[i]<0) depthInfoBuffer.scanline1[i]+=doublepi;
 				
 				
-				dat.scanline0[i] = (2*M_PI-k)+kappa;
-				if(dat.scanline0[i]>2*M_PI) dat.scanline0[i]-=2*M_PI;
-				if(dat.scanline0[i]>2*M_PI) dat.scanline0[i]-=2*M_PI;
+				depthInfoBuffer.scanline0[i] = (doublepi-k)+kappa;
+				if(depthInfoBuffer.scanline0[i]>doublepi) depthInfoBuffer.scanline0[i]-=doublepi;
+				if(depthInfoBuffer.scanline0[i]>doublepi) depthInfoBuffer.scanline0[i]-=doublepi;
 				
-				if(dat.scanline0[i]<0) dat.scanline0[i]+=2*M_PI;
-				if(dat.scanline0[i]<0) dat.scanline0[i]+=2*M_PI;
+				if(depthInfoBuffer.scanline0[i]<0) depthInfoBuffer.scanline0[i]+=doublepi;
+				if(depthInfoBuffer.scanline0[i]<0) depthInfoBuffer.scanline0[i]+=doublepi;
 				
 			}
 		}
@@ -210,22 +216,22 @@ DepthInformation Depth3D::getScanlines(double kappa, double psi, double lambda, 
 	else{
 		for(int i=0; i<parameter0Dim; ++i){
 			k = (*data)[i][p(0)][p(1)];
-			if(k<0) dat.mode[i] = SCANLINE_EMPTY;
-			else if(k>2*M_PI) dat.mode[i] = SCANLINE_FULL; 
+			if(k<0) depthInfoBuffer.mode[i] = SCANLINE_EMPTY;
+			else if(k>doublepi) depthInfoBuffer.mode[i] = SCANLINE_FULL; 
 			else{
-				dat.mode[i] = SCANLINE_PARTIAL;
-				dat.scanline0[i] = k+kappa;
-				if(dat.scanline0[i]>2*M_PI) dat.scanline0[i]-=2*M_PI;
-				if(dat.scanline0[i]>2*M_PI) dat.scanline0[i]-=2*M_PI;
+				depthInfoBuffer.mode[i] = SCANLINE_PARTIAL;
+				depthInfoBuffer.scanline0[i] = k+kappa;
+				if(depthInfoBuffer.scanline0[i]>doublepi) depthInfoBuffer.scanline0[i]-=doublepi;
+				if(depthInfoBuffer.scanline0[i]>doublepi) depthInfoBuffer.scanline0[i]-=doublepi;
 				
-				dat.scanline1[i] = (2*M_PI-k)+kappa;
-				if(dat.scanline1[i]>2*M_PI) dat.scanline1[i]-=2*M_PI;
-				if(dat.scanline1[i]>2*M_PI) dat.scanline1[i]-=2*M_PI;
+				depthInfoBuffer.scanline1[i] = (doublepi-k)+kappa;
+				if(depthInfoBuffer.scanline1[i]>doublepi) depthInfoBuffer.scanline1[i]-=doublepi;
+				if(depthInfoBuffer.scanline1[i]>doublepi) depthInfoBuffer.scanline1[i]-=doublepi;
 			}
 		}
 	}
 	
-	return dat;
+	return depthInfoBuffer;
 }
 
 

@@ -45,11 +45,11 @@ class Depth3D: public Data3D{
 	
 public:
 	Depth3D();
-	Depth3D(Data3D* d);
+	Depth3D(Data3D* d, int slack);
 	
 	
-	DepthInformation getFloorScanlines(double kappa, double psi, double lambda, bool invert);
-	DepthInformation getCeilScanlines(double kappa, double psi, double lambda, bool invert);
+	DepthInformation &getFloorScanlines(double kappa, double psi, double lambda, bool invert);
+	DepthInformation &getCeilScanlines(double kappa, double psi, double lambda, bool invert);
 	double getInterpolatedDepth(double g, double kappa, double psi, double lambda, bool flip, int &p0);
 	int closestGridPoint(double x);
 	void closestGridPoint(Vector &x, VectorInt &p);
@@ -57,7 +57,9 @@ public:
 	
 	
 private:
-	DepthInformation getScanlines(double kappa, double psi, double lambda, bool invert, VectorInt &p);
+	int slack;
+	DepthInformation depthInfoBuffer;
+	DepthInformation &getScanlines(double kappa, double psi, double lambda, bool invert, VectorInt &p);
 	
 	
 };

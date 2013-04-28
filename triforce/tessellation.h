@@ -437,7 +437,8 @@ enum OcclusionType{
 class Tessellation{
 	
 public:
-	Tessellation(Molecule &m, Depth3D &depthData, Data1D &occludedDistribution, Data1D &exposedDistribution);
+	Tessellation(Molecule &m);
+	Tessellation(Molecule &m, unsigned int numbBuffer, Depth3D &depthData, Data1D &occludedDistribution, Data1D &exposedDistribution);
 	
 	void build(bool split);
 	SASAs &sasas();
@@ -487,6 +488,8 @@ private:
 	bool inferno;
 	SegmentGraph segmentGraph[2];
 	double maxz;
+	bool hasDepthBuffer;
+	unsigned int numbBuffer;
 
 
 	CircularInterfacesPerAtom coverHemisphere(Vector tessellationAxis, double radius, CircularInterfacesPerAtom circles, CircularInterfaceForm form);

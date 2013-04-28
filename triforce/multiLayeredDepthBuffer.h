@@ -54,7 +54,7 @@ LimitingInterface;
 
 
 typedef struct{
-	double g;
+	int i;
 	double kappa;
 
 }
@@ -62,7 +62,7 @@ DepthBufferProjection;
 
 
 
-typedef map<double, LineType> DepthBufferLine;
+typedef multimap<double, LineType> DepthBufferLine;
 typedef vector<DepthBufferLine>DepthBuffer;
 typedef vector<ScanlineMode>DepthBufferMode;
 
@@ -73,6 +73,7 @@ public:
 
 
 
+	MultiLayeredDepthBuffer();
 	MultiLayeredDepthBuffer(Depth3D &data, Data1D &occludedDistribution, Data1D &exposedDistribution, int m);
 	void addSphere(Vector &v, double lambda, bool invert, double &kappa, double &psi, int index);
 	bool passesBuffer(double kappa, double psi, double lambda, bool invert, int index, vector<Vector> &exposedVectors);
@@ -108,6 +109,11 @@ private:
 	double prior_occluded;
 	double prior_exposed;
 	bool test;
+	vector<double> gTable;
+	vector<DepthBufferProjection> projections[2];
+	vector<DepthBufferProjection> segment;
+	vector<vector<DepthBufferProjection> > segments;
+	
 	
 	Vector normalise(Vector x);
 	int sgn(double d);
