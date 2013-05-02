@@ -66,6 +66,15 @@ MultiLayeredDepthBuffer::MultiLayeredDepthBuffer(Depth3D &data, Data1D &occluded
 	segments.reserve(len);
 	segment.reserve(len);
 	
+	
+	double c,h;
+	c=0;
+	for(unsigned int i=0; i<len; ++i){
+		h=gTable[i];
+		c+= doublepi*h;
+	}
+	C=1.0/c;
+	
 }
 
 
@@ -93,11 +102,10 @@ DepthBufferLine::iterator MultiLayeredDepthBuffer::decreaseLineInterator(DepthBu
 
 ScanlineMode MultiLayeredDepthBuffer::insertIntoLineBuffer(DepthBufferLine &line, double front, double back){
 	DepthBufferLine::iterator it0, it1, it, it_next, it0bound, it1bound;
-	bool deleteBack, deleteFront;
 	pair<double,LineType> p0, p1;
 	pair<DepthBufferLine::iterator, bool> r0,r1;
-	bool frontChanges, backChanges, wouldChange, wouldClear;
-	double x0,x1;
+	bool frontChanges, backChanges, wouldClear;
+	double x0;
 	double frontBound,backBound;
 	frontBound = front;
 	backBound = back;
@@ -105,7 +113,6 @@ ScanlineMode MultiLayeredDepthBuffer::insertIntoLineBuffer(DepthBufferLine &line
 
 	frontChanges=false;
 	backChanges=false;
-	wouldChange=false;
 	wouldClear=false;
 	
 	
@@ -132,7 +139,6 @@ ScanlineMode MultiLayeredDepthBuffer::insertIntoLineBuffer(DepthBufferLine &line
 
 	//for sure it changes
 	if(it0!=it1){
-		wouldChange=true;
 		if(it0->second==FRONT) frontChanges=true;
 		if(it1->second==FRONT) backChanges=true;
 	}
@@ -140,7 +146,6 @@ ScanlineMode MultiLayeredDepthBuffer::insertIntoLineBuffer(DepthBufferLine &line
 	else{
 		
 		if(it0->second==FRONT){
-			wouldChange=true;
 			frontChanges=true;
 			backChanges=true;
 		}
@@ -199,7 +204,7 @@ ScanlineMode MultiLayeredDepthBuffer::insertIntoLineBuffer(DepthBufferLine &line
 bool MultiLayeredDepthBuffer::wouldChangeLineBuffer(DepthBufferLine &line, double front, double back, bool &frontChanges, bool &backChanges){
 	DepthBufferLine::iterator it0, it1, it, it_next;
 	bool wouldChange;
-	double x0,x1;
+	double x0;
 	
 	
 	
@@ -268,8 +273,6 @@ int MultiLayeredDepthBuffer::sgn(double d){
 
 void MultiLayeredDepthBuffer::addSphere(Vector &v, double lambda, bool invert, double &kappa, double &psi, int index){
 	Vector c;
-	double x;
-	double front,back;
 	DepthInformation dat;
 	Vector n,n2;
 	double s;
@@ -306,7 +309,7 @@ void MultiLayeredDepthBuffer::addSphere(Vector &v, double lambda, bool invert, d
 
 	dat = data.getFloorScanlines(kappa, psi, lambda, invert);
 	
-	for(int i=0; i<len; ++i){
+	for(unsigned int i=0; i<len; ++i){
 		//printf("line[%d]...",i);
 		
 		if(dmode[i]!=SCANLINE_FULL){
@@ -358,17 +361,13 @@ bool MultiLayeredDepthBuffer::getSplitterExposedVectors(vector<Vector> &exposedV
 
 bool MultiLayeredDepthBuffer::scanBuffer(double kappa, int index, vector<Vector> &exposedVectors, DepthInformation &dat){
 	Vector c;
-	double x;
-	double front,back;
-	double s;
 	double offset=0;
 	bool wouldChange;
 	bool frontChanges, backChanges;
 	DepthBufferLine::iterator it;
 	DepthBufferProjection pr;
-	double i_prev, k_prev;
+	double i_prev;
 	
-	if(index==2) test=true;
 	
 	projections[0].clear();
 	projections[1].clear();
@@ -379,17 +378,14 @@ bool MultiLayeredDepthBuffer::scanBuffer(double kappa, int index, vector<Vector>
 	
 	wouldChange=false;
 	
-	for(int i=0; i<len; ++i){
-// 		printf("line %d %d (%f %f)\n",i,dat.mode[i], dat.scanline0[i]-offset, dat.scanline1[i]+offset);
+	for(unsigned int i=0; i<len; ++i){
 		if(dmode[i]==SCANLINE_PARTIAL){
 			if(dat.mode[i]==SCANLINE_FULL){
 				wouldChange=true;
 				dmode[i]=SCANLINE_FULL;
 				for(it=dbuffer[i].begin(); it!=dbuffer[i].end(); ++it){
-					//exposedVectors.push_back(convertToCartesian(data.getHeaderParameter0Cell(i), it->first));
 					pr.i = i;
 					pr.kappa = it->first;
-					//printf("PR: %d\n",it->second);
 					projections[it->second].push_back(pr);
 				}
 				
@@ -401,14 +397,12 @@ bool MultiLayeredDepthBuffer::scanBuffer(double kappa, int index, vector<Vector>
 				if(wouldChangeLineBuffer(dbuffer[i], dat.scanline0[i]-offset, dat.scanline1[i]+offset, frontChanges, backChanges)){
 					wouldChange=true;
 					if(frontChanges){
-						//exposedVectors.push_back(convertToCartesian(data.getHeaderParameter0Cell(i),dat.scanline0[i]-offset));
 						pr.i = i;
 						pr.kappa = dat.scanline0[i]-offset;
 						projections[0].push_back(pr);
 						
 					}
 					if(backChanges){
-						//exposedVectors.push_back(convertToCartesian(data.getHeaderParameter0Cell(i),dat.scanline1[i]+offset));
 						pr.i = i;
 						pr.kappa = dat.scanline1[i]+offset;
 						projections[1].push_back(pr);
@@ -422,13 +416,10 @@ bool MultiLayeredDepthBuffer::scanBuffer(double kappa, int index, vector<Vector>
 		else if(dmode[i]==SCANLINE_EMPTY){
 			if(dat.mode[i]!=SCANLINE_EMPTY){
 				if(dat.mode[i]!=SCANLINE_FULL){
-					//exposedVectors.push_back(convertToCartesian(data.getHeaderParameter0Cell(i),dat.scanline0[i]-offset));
-					//exposedVectors.push_back(convertToCartesian(data.getHeaderParameter0Cell(i),dat.scanline1[i]+offset));
 					pr.i = i;
 					pr.kappa = dat.scanline0[i]-offset;
 					projections[0].push_back(pr);
 						
-					//exposedVectors.push_back(convertToCartesian(data.getHeaderParameter0Cell(i),dat.scanline1[i]+offset));
 					pr.i = i;
 					pr.kappa = dat.scanline1[i]+offset;
 					projections[1].push_back(pr);
@@ -452,7 +443,6 @@ bool MultiLayeredDepthBuffer::scanBuffer(double kappa, int index, vector<Vector>
 	for(unsigned int z=0; z<=1; ++z){
 		segment.clear();
 		i_prev=-1;
-		k_prev=-1;
 		for(unsigned int i=0; i<projections[z].size(); ++i){
 			if(i!=0){
 				if(abs(projections[z][i].i-i_prev)>1){
@@ -462,7 +452,6 @@ bool MultiLayeredDepthBuffer::scanBuffer(double kappa, int index, vector<Vector>
 			}
 				
 			i_prev=projections[z][i].i;
-			k_prev=projections[z][i].kappa;
 			segment.push_back(projections[z][i]);
 			
 		}
@@ -487,7 +476,7 @@ void MultiLayeredDepthBuffer::print(){
 	int pos;
 	printf("----------------------------------------------------------------\n");
 	
-	for(int i=0; i<len; ++i){
+	for(unsigned int i=0; i<len; ++i){
 		printf("[%d]:\t",i);
 		for(it=dbuffer[i].begin(); it!=dbuffer[i].end(); ++it){
 			printf("(%f %d) ",it->first,it->second);
@@ -496,7 +485,7 @@ void MultiLayeredDepthBuffer::print(){
 	}
 	
 	
-	for(int i=0; i<len; ++i){
+	for(unsigned int i=0; i<len; ++i){
 		printf("[%d]:\t",i);
 		line.clear();
 		line.resize(len+1,-1);
@@ -505,7 +494,7 @@ void MultiLayeredDepthBuffer::print(){
 			line[pos]+=it->second+1;
 		}
 		
-		for(int j=0; j<len+1; ++j){
+		for(unsigned int j=0; j<len+1; ++j){
 			if(dmode[i]==SCANLINE_FULL) printf("#");
 			else if(line[j]>=0) printf("%d",line[j]);
 			else printf("*");
@@ -525,327 +514,12 @@ void MultiLayeredDepthBuffer::getDepthBounds(int p, double d, DepthBufferLine::i
 
 
 
-double MultiLayeredDepthBuffer::probe(Vector &projection, bool &isExtended){
-	DepthBufferLine::iterator it0, it1;
-	int p;
-	double d;
-	double d0,d1;
-	double r0,r1;
-	double dist;
-	double m;
-	p = data.closestGridPoint(projection(0));
-	d = projection(1);
-	
-	isExtended=dmode[p]==SCANLINE_EXTENDED;
-	
-	
-	//printf("PROJECTION: %f (%d), %f\n",projection(0),p,d);
-	
-	if(dmode[p]==SCANLINE_EMPTY){
-		//printf("scanline empty\n");
-		return 0;
-	}
-	if(dbuffer[p].size()==0){
-		//printf("scanline of size 0\n");
-		return M_PI;
-	}
-	
-	getDepthBounds(p, d, it0, it1);
-	
-	if(it0->second==BACK){
-		//printf("in exposed area\n");
-		//return 0;
-	}
-	
-	
-	
-	d0=it0->first;
-	d1=it1->first;
-	
-	r0=min(min(abs(d-d0), abs(d-(d0-doublepi))), abs(d-(d0+doublepi)));
-	r1=min(min(abs(d-d1), abs(d-(d1-doublepi))), abs(d-(d1+doublepi)));
-	
-	
-	//printf("SUB %f, %f %f\n",d, it0->first, it1->first);
-	//printf("SUB2 %f %f %f\n", abs(d-d0), abs(d-(d0-doublepi)), abs(d-(d0+doublepi)));
-	//printf("SUB3 %f %f %f\n", abs(d-d1), abs(d-(d1-doublepi)), abs(d-(d1+doublepi)));
-	
-	m = min(r0,r1);
-	
-	if(dmode[p]==SCANLINE_EXTENDED){
-		m = sqrt(m*m + extensionAngle[p]);
-	}
-	
-	return m;
-}
 
 
 bool MultiLayeredDepthBuffer::isWithinNumericalLimits(double x, double l){
 	if(abs(x-l)<=0.0001) return true;
 	else return false;
 }
-
-
-Vector MultiLayeredDepthBuffer::project(bool splitter, bool hemflip, Vector n, double kappa, double PHI, double psi, double lambda, bool invert, Vector &projection0, Vector &projection1){
-	Vector v(3),v2(3);
-	double g,g2;
-	double d,d2,d3;
-	Vector n2,n3;
-	int s;
-	Vector ex(3),ey(3),ez(3);
-	
-	
-	ex(0)=1;
-	ex(1)=0;
-	ex(2)=0;
-	
-	ey(0)=0;
-	ey(1)=1;
-	ey(2)=0;
-	
-	ez(0)=0;
-	ez(1)=0;
-	ez(2)=1;
-	
-	PHI=-PHI;
-	
-	
-	//printf("BURY: %d %d %f %f %f %f\n",hemflip, invert, kappa, PHI, psi, lambda);
-	
-	
-	//if(invert) PHI=-PHI;
-	if(hemflip){
-		if(splitter){
-			PHI=-PHI;
-		}
-		else{
-			if(invert){
-				PHI=-(M_PI-PHI);
-			}
-			else{
-				PHI=-(M_PI-PHI);
-				
-			}
-		}
-	}
-		
-	
-	
-
-	//calculated projected coordinates
-	v(0) = cos(lambda)*cos(psi) + cos(PHI)*sin(lambda)*sin(psi);
-	v(1) = sin(kappa)*sin(lambda)*sin(PHI) + cos(kappa) * (-cos(PHI)*cos(psi)*sin(lambda) + cos(lambda)*sin(psi));
-	v(2) = -cos(kappa)*sin(lambda)*sin(PHI) + sin(kappa) * (-cos(PHI)*cos(psi)*sin(lambda) + cos(lambda)*sin(psi));
-	
-	//printf("PIP: (%f %f %f)\n",v(0),v(1),v(2));
-	
-	g = v(0);
-	//d = asin(v(2));
-	//if(d<0) d+=doublepi;
-	
-	
-	//construct normal
-	n2=cross(v, ex);
-	n3=normalise(cross(ex,n2));
-	s = sgn(dot(n3,ez));
-	
-	d = acos(dot(n3,ey));
-	if(s<0) d=doublepi-d;
-	
-	
-	projection0=Vector(2);
-	projection0(0) = g;
-	projection0(1) = d;
-	
-	
-	
-	//v2(0) = cos(lambda)*cos(psi) + cos(PHI)*sin(lambda)*sin(psi);
-	//v2(1) = -cos(PHI)*cos(psi)*sin(lambda) + cos(lambda)*sin(psi);
-	//v2(2) = -sin(lambda)*sin(PHI);
-	
-	
-	
-	//construct normal
-	n2=cross(v, ey);
-	n3=normalise(cross(ey,n2));
-	s = sgn(dot(n3,ex));
-	
-	d2 = acos(dot(n3,ez));
-	if(s<0) d2=doublepi-d;
-	
-	
-	
-	g2 = v(2);
-	//d2 = asin(v(0));
-	//if(d2<0) d2+=doublepi;
-	
-	projection1=Vector(2);
-	projection1(0) = g2;
-	projection1(1) = d2;
-	
-	
-	return v;
-	
-}
-
-
-void MultiLayeredDepthBuffer::extend(){
-	extensionDistance.resize(len,len);
-	extensionAngle.resize(len,0);
-	DepthBufferLine line;
-	int c;
-	int upperBound, lowerBound;
-	bool hasSASA;
-	double step;
-	
-	upperBound = len-1;
-	lowerBound = 0;
-	hasSASA=false;
-	
-	//first, look for upper and lower line bounds
-	for(int i=0; i<len; ++i){
-		if(dmode[i]==SCANLINE_PARTIAL){
-			hasSASA=true;
-			upperBound=min(i,upperBound);
-			lowerBound=max(i,lowerBound);
-		}
-		if(dmode[i]==SCANLINE_EMPTY){
-			hasSASA=true;
-			upperBound=min(i,upperBound);
-			lowerBound=max(i,lowerBound);
-		}
-	}
-	
-	//printf("BOUNDS: %d %d\n",upperBound, lowerBound);
-	
-	if(!hasSASA) return;
-	
-	
-	//forward
-	line=dbuffer[lowerBound];
-	
-	c=len-lowerBound;
-	for(int i=0; i<len; ++i){
-		if(dmode[i]==SCANLINE_PARTIAL){
-			c=0;
-			line = dbuffer[i];
-		}
-		if(dmode[i]==SCANLINE_FULL){
-			c++;
-			dbuffer[i]=line;
-		}
-		extensionDistance[i]=c;
-	}
-	
-	
-
-	//backward
-	line=dbuffer[upperBound];
-	c=upperBound;
-	for(int i=len-1; i>=0; --i){
-		if(dmode[i]==SCANLINE_PARTIAL){
-			c=0;
-			line = dbuffer[i];
-		}
-		if(dmode[i]==SCANLINE_FULL){
-			dmode[i]=SCANLINE_EXTENDED;
-			c++;
-			if(extensionDistance[i]>c){
-				dbuffer[i]=line;
-				extensionDistance[i]=c;
-			}
-		}
-	}
-	
-
-	step=M_PI/len;
-	
-	for(int i=0; i<len; ++i){
-		extensionAngle[i] = (extensionDistance[i]*step)*(extensionDistance[i]*step);
-	}
-	
-
-	
-	
-	
-}
-
-
-bool MultiLayeredDepthBuffer::retrieveLimitingInterfaces(vector<LimitingInterface> &limitList){
-	bool limitFound;
-	int p;
-	double g;
-	bool hasSASA;
-	LimitingInterface limit;
-	
-	
-	if(mode==0) limit.psi=0;
-	else limit.psi=halfpi;
-	
-	limitList.clear();
-
-	
-	//forward search
-	limitFound=false;
-	p=0;
-	for(int i=0; i<len && !limitFound; ++i){
-		if(dmode[i]!=SCANLINE_FULL){
-			limitFound=true;
-			p=i-1;
-		}
-	}
-	if(limitFound){
-		hasSASA=true;
-		if(p>=0){
-			g=data.getHeaderParameter0Cell(p);
-			if(g>0){
-				limit.g = g;
-				limit.v = orientationAxis;
-				limit.flip=true;
-			}
-			else{
-				limit.g = -g;
-				limit.v = -orientationAxis;
-				limit.flip=false;
-			}
-			limitList.push_back(limit);
-		}
-		
-		
-		
-		limitFound=false;
-		p=0;
-		for(int i=len-1; i>=0 && !limitFound; --i){
-			if(dmode[i]!=SCANLINE_FULL){
-				limitFound=true;
-				p=i+1;
-			}
-		}
-		if(limitFound){
-			if(p<len){
-				g=data.getHeaderParameter0Cell(p);
-				if(g>0){
-					limit.g = g;
-					limit.v = orientationAxis;
-					limit.flip=false;
-				}
-				else{
-					limit.g = -g;
-					limit.v = -orientationAxis;
-					limit.flip=true;
-				}
-				limitList.push_back(limit);
-			}
-			
-			
-		}
-	}
-	else hasSASA=false;
-	
-	return hasSASA;
-	
-}
-
 
 
 
@@ -935,6 +609,44 @@ Vector MultiLayeredDepthBuffer::convertToCartesian(DepthBufferProjection &pr){
 	//if(test) printf("VECTOR %f %f %f\n", v(0), v(1), v(2));
 	return v;
 		
+}
+
+
+double MultiLayeredDepthBuffer::exposedArea(){
+	double area;
+	DepthBufferLine::iterator it;
+	bool started;
+	double back;
+	double lineRadiants;
+	double h;
+	double c;
+	double p;
+	
+	area=0;
+	back=0;
+	
+	for(unsigned int i=0; i<len; ++i){
+		lineRadiants=0;
+		if(dmode[i]==SCANLINE_EMPTY){
+			lineRadiants=doublepi;
+		}
+		else if(dmode[i]==SCANLINE_PARTIAL){
+			started=false;
+			for(it=dbuffer[i].begin(); it!=dbuffer[i].end(); ++it){
+				if(!started && it->second==FRONT) back = decreaseLineInterator(it,dbuffer[i])->first-doublepi;
+				
+				if(it->second==FRONT) lineRadiants+=it->first-back;
+				if(it->second==BACK) back=it->first;
+				started=true;
+			}
+		}
+		p=lineRadiants/doublepi;
+		h = gTable[i];
+		c=doublepi*h*p;
+		area += c*C;
+	}
+	
+	return area;
 }
 
 

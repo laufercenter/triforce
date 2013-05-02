@@ -178,8 +178,6 @@ DepthInformation &Depth3D::getCeilScanlines(double kappa, double psi, double lam
 	
 DepthInformation &Depth3D::getScanlines(double kappa, double psi, double lambda, bool invert, VectorInt &p){
 	Vector x(2);
-	int offset;
-	int j;
 	double k;
 	Vector l(3); 
 	
@@ -189,7 +187,7 @@ DepthInformation &Depth3D::getScanlines(double kappa, double psi, double lambda,
 	
 	//scanline0 represents the beginning of the occluded region, scanline1 the end
 	if(!invert){
-		for(int i=0; i<parameter0Dim; ++i){
+		for(unsigned int i=0; i<parameter0Dim; ++i){
 			k = (*data)[i][p(0)][p(1)];
 			if(k<0) depthInfoBuffer.mode[i] = SCANLINE_FULL;
 			else if(k>doublepi) depthInfoBuffer.mode[i] = SCANLINE_EMPTY; 
@@ -214,7 +212,7 @@ DepthInformation &Depth3D::getScanlines(double kappa, double psi, double lambda,
 		}
 	}
 	else{
-		for(int i=0; i<parameter0Dim; ++i){
+		for(unsigned int i=0; i<parameter0Dim; ++i){
 			k = (*data)[i][p(0)][p(1)];
 			if(k<0) depthInfoBuffer.mode[i] = SCANLINE_EMPTY;
 			else if(k>doublepi) depthInfoBuffer.mode[i] = SCANLINE_FULL; 

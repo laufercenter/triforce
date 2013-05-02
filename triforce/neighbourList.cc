@@ -31,7 +31,6 @@ NeighbourList::NeighbourList(Vector center, Vector dim, double searchRadius){
 void NeighbourList::addSphere(Vector &v, int id){
 	Vector c;
 	int x,y,z;
-	Coordinate s;
 	c = (v-origin) / searchRadius;
 	x=c(0);
 	y=c(1);
@@ -69,9 +68,9 @@ vector<int> NeighbourList::getNeighbors(Vector &v){
 			
 				//printf("trying to retrieve neighbours of cell %d %d %d\n",x1,y1,z1);
 				
-				if(	x1>=0 && x1<numCubes(0) &&
-					y1>=0 && y1<numCubes(1) &&
-					z1>=0 && z1<numCubes(2)){
+				if(	x1>=0 && x1<(int)numCubes(0) &&
+					y1>=0 && y1<(int)numCubes(1) &&
+					z1>=0 && z1<(int)numCubes(2)){
 						//printf("retrieving neighbours of cell %d %d %d (%d)\n",x1,y1,z1,(*cubicalGrid)[x1][y1][z1].size());
 					
 						res.insert(res.end(),(*cubicalGrid)[x1][y1][z1].begin(),(*cubicalGrid)[x1][y1][z1].end());

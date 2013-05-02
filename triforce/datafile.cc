@@ -37,7 +37,6 @@ Data1D* DataFile::digest1DBinaryTable(){
 	vector<unsigned int> dimensions;
 	unsigned int totalCells;
 	unsigned int parameter0Dim;
-	unsigned int derivativeLevel;
 	bool containsAuxiliaryData;
 	
 	//printf("digesting...\n");
@@ -53,7 +52,7 @@ Data1D* DataFile::digest1DBinaryTable(){
 
 	//level of derivatives
 	f.read((char*)buffer1,1);
-	derivativeLevel = static_cast<unsigned int>(buffer1[0]);
+	//derivativeLevel = static_cast<unsigned int>(buffer1[0]);
 
 	//contains auxiliary values
 	f.read((char*)buffer1,1);
@@ -572,8 +571,10 @@ Topology* DataFile::digestTOP(TopologyMode topm){
 							
 							if(topm==GROMACS)
 								ident0=chainstr+" "+(*content)[2]+" "+string2UpperCase((*content)[3])+" "+string2UpperCase((*content)[4]);
-							else
+							else if(topm==GROMACS_GENERIC)
 								ident0=string2UpperCase((*content)[3])+" "+string2UpperCase((*content)[4]);
+							else if(topm==GROMACS_ELEMENTAL)
+								ident0=string2UpperCase((*content)[4]);
 							//is it already in the map?
 							if(data->contains(ident1)){
 								data->setMassValue(ident1,string2double((*content)[7]));
@@ -607,7 +608,7 @@ Topology* DataFile::digestTOP(TopologyMode topm){
 
 
 
-Molecule *DataFile::digestGRO(Topology &top){
+Molecule *DataFile::digestGRO(Topology &top, bool useHydrogens){
 	ifstream *ifs;
 	string line;
 	unsigned int numbAtoms;
@@ -682,7 +683,8 @@ Molecule *DataFile::digestGRO(Topology &top){
 				ident=chainstr + " " + residuenumstr + " " + residue + " " + atom;
 				name=chainstr + " " + residuenumstr + " " + residue + " " + atom;
 				try{
-					mol->addInternallyStoredAtom(x,y,z,name,ident);
+					if(useHydrogens || atom[0]!='H')
+						mol->addInternallyStoredAtom(x,y,z,name,ident);
 				}
 				catch(AssociationException const &e){
 					if(atom[0]!='H')
@@ -714,10 +716,9 @@ Molecule *DataFile::digestGRO(Topology &top){
 
 
 
-Molecule *DataFile::digestPDB(Topology &top){
+Molecule *DataFile::digestPDB(Topology &top, bool useHydrogens){
 	ifstream *ifs;
 	string line;
-	unsigned int numbAtoms;
 	unsigned int i;
 	string block;
 	Molecule *mol;
@@ -766,7 +767,12 @@ Molecule *DataFile::digestPDB(Topology &top){
 				
 				residue = line.substr(17,4);
 				trim(residue);
-				atom = string2UpperCase(line.substr(11,6));
+				if(top.mode==GROMACS || top.mode==GROMACS_GENERIC){
+					atom = string2UpperCase(line.substr(11,6));
+				}
+				else if(top.mode==GROMACS_ELEMENTAL){
+					atom = string2UpperCase(line.substr(76,2));
+				}
 				trim(atom);
 				xstr = line.substr(30,8);
 				trim(xstr);
@@ -781,9 +787,17 @@ Molecule *DataFile::digestPDB(Topology &top){
 				
 				
 				name=chainstr + " " + residuenumstr + " " + residue + " " + atom;
-				ident=residue+" "+atom;
+				
+				if(top.mode==GROMACS || top.mode==GROMACS_GENERIC){
+					ident=residue+" "+atom;
+				}
+				else if(top.mode==GROMACS_ELEMENTAL){
+					ident=atom;
+				}
+				
 				try{
-					mol->addInternallyStoredAtom(x,y,z,name,ident);
+					if(useHydrogens || atom[0]!='H')
+						mol->addInternallyStoredAtom(x,y,z,name,ident);
 				}
 				catch(AssociationException const &e){
 					if(atom[0]!='H')

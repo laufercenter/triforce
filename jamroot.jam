@@ -39,6 +39,7 @@ integratorNumerical.cc
 triforceInterface.cc
 neighbourList.cc 
 multiLayeredDepthBuffer.cc
+benchmark.cc
 depth3d.cc ;
 
 
@@ -56,6 +57,7 @@ integratorNumerical.h
 triforceInterface.h
 neighbourList.h
 multiLayeredDepthBuffer.h
+benchmark.h
 depth3d.h ;
 
 

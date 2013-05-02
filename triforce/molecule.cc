@@ -233,7 +233,7 @@ string Molecule::string2UpperCase(string s){
 }
 
 
-void Molecule::print(){
+void Molecule::print(FILE* outputfile){
 /*	fprintf(stderr,"Molecule:\n");
 	for(int i=0;i<atomicPointers.size();++i){
 		fprintf(stderr,"[%d]: (%f, %f, %f), eps: %f, sig: %f, pointers: (%d,%d,%d)\n",i,atoms[i](0),atoms[i](1),atoms[i](2),epsilons[i],sigmas[i],
@@ -241,9 +241,9 @@ void Molecule::print(){
 	}
 */
 	//fprintf(stderr,"Areas and forces:\n");
-	fprintf(stdout,"index\tname\tarea\tgradx\tgrady\tgradz\tradius\tx\ty\tz\n");
+	fprintf(outputfile,"index\tname\tarea\tgradx\tgrady\tgradz\tradius\tx\ty\tz\n");
 	for(unsigned int i=0;i<areas.size();++i){
-		fprintf(stdout,"%d\t%s\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",i, names[i].c_str(),*(areas[i]), *(forces[i][0]), *(forces[i][1]), *(forces[i][2]), radii[i], atoms[i](0), atoms[i](1), atoms[i](2));
+		fprintf(outputfile,"%d\t%s\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",i, names[i].c_str(),*(areas[i]), *(forces[i][0]), *(forces[i][1]), *(forces[i][2]), radii[i], atoms[i](0), atoms[i](1), atoms[i](2));
 		//printf("[%d]: pointers: (%d, %d, %d, %d)\n",i,areas[i], forces[i][0], forces[i][1], forces[i][2]);
 	}
 	

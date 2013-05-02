@@ -4,6 +4,7 @@
 Tessellation::Tessellation(Molecule &m){
 	molecule = m;
 	hasDepthBuffer=false;
+	benchmark=Benchmark(string("Tessellation"));
 
 }
 
@@ -15,6 +16,8 @@ Tessellation::Tessellation(Molecule &m, unsigned int numbBuffer, Depth3D &depthD
 	this->exposedDistribution = exposedDistribution;
 	hasDepthBuffer=true;
 	this->numbBuffer=numbBuffer;
+	
+	benchmark=Benchmark(string("Tessellation"));
 	
 
 }
@@ -28,41 +31,29 @@ void Tessellation::build(bool split){
 	atoms = molecule.fetchCoordinates();
 	radii = molecule.fetchRadii();
 	
+	totalInterfaces=0;
+	survivedInterfaces=0;
 	
-	clock_t start=ms();
 	//for(int j=0; j<=10; ++j){
 	sasasForMolecule.clear();
-	maxz=0;
 	//iterate over all atoms and build the tessellation for each of them
 	for(unsigned int i=0; i<atoms.size(); ++i){
+		benchmark.start(string("initialisation"));
+		
 		//int i=12;{Tessellation
 		neighbourlist = molecule.getNeighborListFor(i);
 
 		
 		//printf("NEIGHBOURS RECEIVED: %d\n",neighbourlist.size());
-		/*vector<int>::iterator it;
-		for(it=neighbourlist.begin(); it!=neighbourlist.end(); ++it){
-			printf(" %d",*it);
-		}
-		printf("\n");
-		*/
 		
-		//printf("NEIGHBOURS RECEIVED: %d\n",neighbourlist.size());
 		
-		/*
-		inferno=false;
-		segmentGraph[0].clear();
-		segmentGraph[1].clear();
-		printf("ROUND NORMAL\n");
+		benchmark.stop();
+		benchmark.start(string("gauss-bonnet path"));
+	
+		
 		buildGaussBonnetPath(i, atoms, radii, sasasForMolecule, split, neighbourlist);
-		*/
 		
-		
-		inferno=true;
-		segmentGraph[0].clear();
-		segmentGraph[1].clear();
-		//printf("ROUND INFERNO\n");
-		buildGaussBonnetPath(i, atoms, radii, sasasForMolecule, split, neighbourlist);
+		benchmark.stop();
 		
 		
 		/*
@@ -77,20 +68,14 @@ void Tessellation::build(bool split){
 		//exit(0);
 	}
 	
+	//printf("Interfaces: %d kept: %d\n",totalInterfaces,survivedInterfaces);
+	
 	//}
 	
-	clock_t end=ms();
-	
-	printf("TIME: %f\n",(end-start)/1.0);
-	printf("MAXZ: %f\n",maxz);
-	//exit(0);
 	
 }
 
 
-clock_t Tessellation::ms(){
-	return clock() / (CLOCKS_PER_SEC / 1000);
-}
 
 
 CircularInterfacesPerAtom Tessellation::coverHemisphere(Vector tessellationAxis, double radius, CircularInterfacesPerAtom circles, CircularInterfaceForm form){
@@ -182,17 +167,12 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 	MultiLayeredDepthBuffer depthBuffer0;
 	MultiLayeredDepthBuffer depthBuffer1;
 	
-	
 	if(hasDepthBuffer){
 		if(numbBuffer>1)
 			depthBuffer0 = MultiLayeredDepthBuffer(depthData, occludedDistribution, exposedDistribution, 0);
 		depthBuffer1 = MultiLayeredDepthBuffer(depthData, occludedDistribution, exposedDistribution, 1);
 	}
 	
-	if(!inferno){
-	SEGMENTS[0].clear();
-	SEGMENTS[1].clear();
-	}
 	
 	origin = atoms[i];
 	torigin = origin;
@@ -245,6 +225,8 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 		determineProjection(origin, radius, precircles[j]);
 	}
 	
+	totalInterfaces+=precircles.size();
+	
 	if(hasDepthBuffer){
 		for(unsigned int j=0;j<precircles.size();j++){
 			if(numbBuffer>1)
@@ -259,11 +241,7 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 			
 			pass1=depthBuffer1.passesBuffer(precircles[j].kappa[1], precircles[j].psi2[1], precircles[j].lambda.rotation, precircles[j].form!=CONVEX, precircles[j].index, precircles[j].exposedVectors);
 			if(pass0 || pass1){
-				//printf("CIRCLE %d PASSES\n",precircles[j].index);
-				//if(!inferno)
-					//SEGMENTS[precircles[j].index]=true;
-				if(inferno)
-					circles.push_back(precircles[j]);
+				circles.push_back(precircles[j]);
 			}
 		
 			
@@ -272,27 +250,27 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 	else circles=precircles;
 	
 	
-	//printf("CIRCLES: %d %d\n",precircles.size(), circles.size());
+	
+	
 	if(circles.size()==0) return;
-	/*
-	vector<LimitingInterface> veclim0, veclim1;
 	
-	
-	if(!depthBuffer0.retrieveLimitingInterfaces(veclim0) && !depthBuffer1.retrieveLimitingInterfaces(veclim1)) return;
-	
-	for(unsigned i=0; i<veclim0.size(); ++i)
-		addLimitingInterface(veclim0[i],circles);
-	for(unsigned i=0; i<veclim1.size(); ++i)
-		addLimitingInterface(veclim1[i],circles);
-	*/
+	depthBufferEstimatedArea=-1;
+	if(hasDepthBuffer){
+		if(numbBuffer>1){
+			depthBufferEstimatedArea=(depthBuffer0.exposedArea()+depthBuffer1.exposedArea())/2.0;
+		}
+		else{
+			depthBufferEstimatedArea=depthBuffer1.exposedArea();
+		}
 
-	/*
-	printf("DEPTHBUFFER 0-----------------------------");
-	depthBuffer0.print();
+		//this will delete very small areas. It is not necessary for correctness of the method, but speeds things up a bit more
+		if(depthBufferEstimatedArea<0.01) return;
+		
+	}
 	
-	printf("DEPTHBUFFER 1-----------------------------");
-	depthBuffer1.print();
-	*/
+	
+	survivedInterfaces+=circles.size();
+	
 	
 	//there is room for optimisation here...
 	if(split){
@@ -311,20 +289,10 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 			depthBuffer1.getSplitterExposedVectors(splitter1->exposedVectors);
 		}
 		
-		
+		//this will remove interaces that are completely inside other interfaces
 		filterCircularInterfaces(frontTessellationAxis,radius, circlesFrontHemisphere);
 		filterCircularInterfaces(backTessellationAxis,radius, circlesBackHemisphere);
 		
-		if(!inferno){
-			for(unsigned int j=0;j<circlesFrontHemisphere.size();j++) SEGMENTS[0][circlesFrontHemisphere[j].index] = true;
-			for(unsigned int j=0;j<circlesBackHemisphere.size();j++) SEGMENTS[1][circlesBackHemisphere[j].index] = true;
-		}
-		
-		//for(unsigned int j=0;j<circlesFrontHemisphere.size();j++) if(circlesFrontHemisphere[j].form!=SPLITTER) calculateProjectionDerivatives(circlesFrontHemisphere[j]);
-		//for(unsigned int j=0;j<circlesBackHemisphere.size();j++) if(circlesBackHemisphere[j].form!=SPLITTER) calculateProjectionDerivatives(circlesBackHemisphere[j]);
-		
-		//determinePsiRotations(frontTessellationAxis, circlesFrontHemisphere);
-		//determinePsiRotations(backTessellationAxis, circlesBackHemisphere);
 		
 		reindexCircularInterfaces(circlesFrontHemisphere);
 		reindexCircularInterfaces(circlesBackHemisphere);
@@ -421,10 +389,7 @@ LambdaRotation Tessellation::calculateLambda(double d_i, double r_l, double r_i,
 
 LambdaRotation Tessellation::calculateLambda(int index_i, double d_i, double r_l, double r_i, Vector &mu_i, CircularInterfaceForm &form){
 	double g;
-	double dg_dd;
-	double dlambda_dg;
 	LambdaRotation r;
-	double q;
 	Vector mu_i_original;
 	Vector dlambda_dxi(3), dlambda_dxl(3);
 	Vector dd_dxi;
@@ -461,7 +426,6 @@ Rotation Tessellation::calculateLambdaDerivatives(LambdaRotation &r, CircularInt
 	Rotation lambda;
 	double d_i;
 	double r_l;
-	double r_i;
 	Vector mu_i;
 	CircularInterfaceForm form;
 	
@@ -836,6 +800,7 @@ void Tessellation::insertArtificialIntersectionPoints(CircularInterface &I, Vect
 	
 	sasaSegment.rotation0 = f;
 	sasaSegment.rotation1 = f_reverse;
+	sasaSegment.depthBufferEstimatedArea=depthBufferEstimatedArea;
 	
 	sasa.push_back(sasaSegment);
 	
@@ -1333,7 +1298,7 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 	ey(1)=1;
 	ey(2)=0;
 	double dotChi_mui, dotmui_muj;
-	double s0,s2,s3;
+	double s0,s2;
 	Vector pp(3),p(3),p2(3);
 	double di;
 	double dij;
@@ -2079,60 +2044,7 @@ double Tessellation::V2PHI(Vector tessellationAxis, Hemisphere hemisphere, Vecto
 	return a;
 	
 	
-	/*
-	ez(0)=0;
-	ez(1)=0;
-	ez(2)=1;
-	
-	if(isWithinNumericalLimits(dot(circle.normal, tessellationAxis),1.0)) nz=ez;
-	else nz = cross(tessellationAxis,circle.normal);
-	
-	
-	nv = cross(circle.normal,v);
-	cv=cross(nz,circle.normal);
-	
-	dot_nz_nv=norm_dot(nz,nv);
-	
-	//printf("DOT: %f nv(%f %f %f) nz(%f %f %f)\n",dot_nz_nv, nv(0), nv(1), nv(2), nz(0), nz(1), nz(2));
-		
-	a = asin(dot_nz_nv);
-	//if(sgn(dot(cv,nv)) < 0) a=-a;
-	
-	
-	return a;
-	
-	*/
-	
-	
-	/*
-	
-	ez(0)=0;
-	ez(1)=0;
-	ez(2)=1;
-	
-	if(!circle.hasBase[hemisphere]){
-		circle.base[hemisphere]=Vector(3);
-		circle.base[hemisphere](0)=sin(circle.psi.rotation);
-		circle.base[hemisphere](1)=-cos(circle.psi.rotation);
-		circle.base[hemisphere](2)=0;
-		circle.hasBase[hemisphere]=true;
-		
-	}
-	base = circle.base[hemisphere];
 
-	if(!circle.hasCenter){
-		circle.center = circle.normal*circle.g;
-		circle.hasCenter=true;
-	}
-	c=v-circle.center;
-	
-	a=acos(norm_dot(base,v));
-	if(sgn(dot(c,ez)) > 0) a=-a;
-	
-	
-	return a;
-	
-	*/
 	
 }
 
@@ -2149,12 +2061,8 @@ void Tessellation::convertExposedVectors2PHIValues(Vector &tessellationAxis, Hem
 double Tessellation::exposition(Hemisphere hemisphere, IntersectionBranches::iterator it0, IntersectionBranches::iterator it1, CircularInterface &circle){
 	double e;
 	double m,mmax;
-	double cand;
-	double tmp;
-	double r,r0,r1;
-	bool invert;
+	double r0,r1;
 	IntersectionBranches::iterator it;
-	double in, out;
 	
 	m=0;
 	mmax=numeric_limits<double>::max();
@@ -2199,13 +2107,10 @@ double Tessellation::exposition(Hemisphere hemisphere, IntersectionBranches::ite
 				}
 			}
 			
-			in = it0->first;
-			out = it1->first;
 				
 			
 			mmax = min(mmax,m);
 			
-			//printf("EXPOSITION: [%d,%d] invert: %d in:%f out:%f e:%f r:%f r0:%f r1:%f m:%f\n",circle.form, circle.index, invert,in, out,e,r,r0,r1,m);
 			
 			
 	}
@@ -2214,42 +2119,6 @@ double Tessellation::exposition(Hemisphere hemisphere, IntersectionBranches::ite
 	
 }
 
-
-
-
-double Tessellation::buriedness(Hemisphere hemisphere, CircularInterface &circle, CircularInterface &circle2, double PHI, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1){
-	Vector projection0, projection1;
-	double dist;
-	double dhorizontal, dvertical;
-	Vector pp(3);
-	bool ca;
-	bool cb;
-	bool hextended, vextended;
-	
-	IntersectionPair ip;
-	circle.g = circle.lambdaRotation.g;
-	circle2.g = circle2.lambdaRotation.g;
-	//ip = determineIntersectionPoints(1,circle,circle2);
-	
-	//printf("IPS:  jk %d (%f %f %f) kj %d (%f %f %f)\n",circle.form, ip.j_k(0),ip.j_k(1),ip.j_k(2), circle2.form, ip.k_j(0), ip.k_j(1), ip.k_j(2));
-	
-	
-	pp = buffer0.project(circle.form==SPLITTER, hemisphere!=FRONTHEMISPHERE, circle.normal, circle.kappa[0], PHI, circle.psi2[0], circle.lambda.rotation, circle.form!=CONVEX, projection0, projection1);
-	
-	//ca = isWithinNumericalLimits(ip.j_k(0), pp(0)) && isWithinNumericalLimits(ip.j_k(1), pp(1)) && isWithinNumericalLimits(ip.j_k(2), pp(2));
-	//cb = isWithinNumericalLimits(ip.k_j(0), pp(0)) && isWithinNumericalLimits(ip.k_j(1), pp(1)) && isWithinNumericalLimits(ip.k_j(2), pp(2));
-	
-	//if(!ca && !cb) exit(-1);
-	
-	dhorizontal = buffer0.probe(projection0, hextended);
-	dvertical = buffer1.probe(projection1, vextended);
-	
-	dist=min(dhorizontal,dvertical);
-	
-	
-	//printf("DIST: %f\n",dist);
-	return dist;
-}
 
 
 
@@ -2275,8 +2144,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 	SegmentGraph segmentGraph1;
 	pair<PartialSegmentID,SegmentList::iterator> p;
 	SegmentGraph::iterator it_s0, it_s1;
-	PartialSegmentID psid,ps0,ps1,pempty;
-	double dist0,dist1;
+	PartialSegmentID ps0,ps1,pempty;
 	bool segmentSearchForward;
 	SegmentList segmentList;
 	SegmentList::iterator it_sl, it_sl2, it_sl2_start;
@@ -2286,7 +2154,6 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 	vector<vector<SegmentList::iterator> >::iterator it_sp;
 	int segmentCount;
 	int id0,id1,id2;
-	int index0, index1, index2;
 	
 	
 	
@@ -2446,35 +2313,6 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 					
 					
 					
-					/*
-					//fprintf(stderr,"%f\n",dist0);
-					//fprintf(stderr,"%f\n",dist1);
-					
-					
-					if(!inferno){
-						maxz=max(maxz,dist0);
-						//maxz=max(maxz,dist1);
-					}
-					
-					
-					if(inferno){
-						psid.i0=circles[it->second.id-1].index;
-						psid.i1=circles[I->id-1].index;
-
-						if((it_s=segmentGraph[hemisphere].find(psid))==segmentGraph[hemisphere].end()){
-							fprintf(stderr,"0 %f\n",dist0);
-							if(dist0==0) printf("DISTANCE 0\n");
-						}
-						else{
-							fprintf(stderr,"1 %f\n",dist0);
-							fprintf(stderr,"2 %f\n",it_s->second.dist0-dist0);
-						}
-					}
-					*/
-					
-					
-					
-					
 				}
 			}
 		}
@@ -2496,15 +2334,14 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 				if(segmentSearchForward){
 					if(it_sl2->hasForward) it_sl2=it_sl2->it_forw;
 					else {
-						//it's not guaranteed that the sasa is a cycle. In the case wehere we discover a hole, we fill up the rest of the sasa using backward search
+						//it's not guaranteed that the sasa is a cycle. 
+						//however, we get better results disregarding broken cycles
 						segmentSearchForward=false;
 						it_sl2=segmentList.end();
 						segmentPointers.clear();
 						
-						/*
+						
 						it_sl2=it_sl2_start;
-						printf("BREAKING APART\n");
-						*/
 					}
 				}
 				/*
@@ -2512,7 +2349,6 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 					if(it_sl2->hasBackward) it_sl2=it_sl2->it_backw;
 					else {
 						it_sl2=segmentList.end();
-						printf("BREAKING TOTALLY\n");
 
 					}
 				}
@@ -2566,10 +2402,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 				sasaSegment.index1 = circles[id1-1].index;
 				sasaSegment.index2 = circles[id2-1].index;
 				
-				index0 = circles[id0-1].index;
-				index1 = circles[id1-1].index;
-				index2 = circles[id2-1].index;
-				
+		
 				
 				if(!circles[id0-1].hasDerivatives) calculateProjectionAndDerivatives(tessellationAxis, circles[id0-1]);
 				if(!circles[id1-1].hasDerivatives) calculateProjectionAndDerivatives(tessellationAxis, circles[id1-1]);
@@ -2589,7 +2422,7 @@ void Tessellation::buildIntersectionGraph(double radius, Vector &tessellationAxi
 				
 				sasaSegment.tessellationAxis = tessellationAxis;
 				sasaSegment.hemisphere = hemisphere;
-				
+				sasaSegment.depthBufferEstimatedArea=depthBufferEstimatedArea;
 				
 				
 				sasa.push_back(sasaSegment);
@@ -2674,3 +2507,11 @@ void Tessellation::outputGaussBonnetData(string filename, double radius, Circula
 	
 
 }
+
+
+
+
+Benchmark Tessellation::getBenchmark(){
+	return benchmark;
+}
+

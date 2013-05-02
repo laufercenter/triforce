@@ -38,7 +38,8 @@ typedef struct{
 
 enum TopologyMode{
 	GROMACS,
-	GROMACS_GENERIC
+	GROMACS_GENERIC,
+	GROMACS_ELEMENTAL
 };
 
 

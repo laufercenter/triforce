@@ -26,6 +26,7 @@
 #include "tessellation.h"
 #include "interpolation.h"
 #include "molecule.h"
+#include "benchmark.h"
 
 #include <armadillo>
 
@@ -47,6 +48,14 @@ typedef struct
 }
 Area;
 
+typedef struct
+{
+	int i;
+	Vector force;
+}
+ForceElement;
+
+
 
 
 
@@ -66,6 +75,7 @@ public:
 	
 	double integrate(Molecule *molecule, Tessellation *tessellation);
 	void outputIntegrationData(string filename, Vector &integrationOrigin, list<IntersectionNode*> &frontHemisphere, list<IntersectionNode*> &backHemisphere);
+	Benchmark getBenchmark();
 	
 	
 	
@@ -75,9 +85,11 @@ private:
 	Molecule* molecule;
 	
 	vector<double*> areas;
-	vector<vector<double*> > forces;	
+	vector<vector<double*> > forces;
+	vector<ForceElement> forcesDelayed;
 	vector<Vector> atoms;
 	vector<double> radii;
+	Benchmark benchmark;
 	
 	
 	double csc(double a);
@@ -106,6 +118,8 @@ private:
 	double dlogisticSmoother(double lambda);
 	Vector areaSmoother(Vector &x, double area, double radius);
 	double sech(double x);
+	void pushForces();
+	void purgeForces();
 	
 	
 };
