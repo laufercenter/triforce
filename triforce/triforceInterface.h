@@ -25,6 +25,7 @@
 #include "interpolation.h"
 #include "integrator.h"
 #include "molecule.h"
+#include "benchmark.h"
 
 using namespace std;
 using namespace arma;
@@ -37,6 +38,10 @@ public:
 	TriforceInterface(string path, unsigned int buffer, unsigned int slack);
 	
 	double calculateSurfaceArea(Molecule &mol);
+	
+	Benchmark getBenchmark();
+	void printBenchmark(FILE* outputfile);
+	
 	
 protected:
 	DataFile *df0;
@@ -71,6 +76,9 @@ protected:
 private:
 	bool withDepthBuffer;
 	unsigned int buffer;
+	Benchmark benchmark;
+	Benchmark tessellationBenchmark;
+	
 };
 
 

@@ -53,8 +53,8 @@ public:
 	Data3D* digest3DBinaryTable();
 	Topology *digestMapCSV();
 	Topology* digestTOP(TopologyMode topm);
-	Molecule *digestGRO(Topology &top);
-	Molecule *digestPDB(Topology &top);
+	Molecule *digestGRO(Topology &top, bool useHydrogens);
+	Molecule *digestPDB(Topology &top, bool useHydrogens);
 	Molecule *digestXYZR();
 
 		

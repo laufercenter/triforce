@@ -70,7 +70,7 @@ public:
 	void setInternallyStoredAtomCoordinates(int i, Vector &v);
 	void perturbInternallyStoredAtomCoordinates(int i, Vector p);
 	
-	void print();
+	void print(FILE* outputfile);
 	void printxyz();
 	
 	void printDifference(Molecule *mol);

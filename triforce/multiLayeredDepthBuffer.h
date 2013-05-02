@@ -78,29 +78,22 @@ public:
 	void addSphere(Vector &v, double lambda, bool invert, double &kappa, double &psi, int index);
 	bool passesBuffer(double kappa, double psi, double lambda, bool invert, int index, vector<Vector> &exposedVectors);
 	bool getSplitterExposedVectors(vector<Vector> &exposedVectors);
-
-	double probe(Vector &projection, bool &isExtended);
-	Vector project(bool splitter, bool hemflip, Vector n, double kappa, double PHI, double psi, double lambda, bool invert, Vector &projection0, Vector &projection1);
-	void extend();
-	double g2;
 	void print();
 	void startNewCycle();
 	void addProbe(double x);
 	bool isCycleExposed();
 	double exposedProbability();
-	bool retrieveLimitingInterfaces(vector<LimitingInterface> &limitList);
 	bool isExposed(double x);
+	double exposedArea();
 
 
 	
 
 private:
-	int len;
+	unsigned int len;
 	Depth3D data;
 	DepthBuffer dbuffer;
 	DepthBufferMode dmode;
-	vector<int> extensionDistance;
-	vector<double> extensionAngle;
 	int mode;
 	double exposed;
 	double occluded;
@@ -108,8 +101,8 @@ private:
 	Data1D occludedDistribution;
 	double prior_occluded;
 	double prior_exposed;
-	bool test;
 	vector<double> gTable;
+	double C;
 	vector<DepthBufferProjection> projections[2];
 	vector<DepthBufferProjection> segment;
 	vector<vector<DepthBufferProjection> > segments;

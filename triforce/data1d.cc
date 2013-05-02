@@ -18,7 +18,6 @@ Data1D::Data1D(){
 Data1D::Data1D(unsigned int parameter0Dim, bool containsAuxiliaryData){
 	this->parameter0Dim = parameter0Dim;
 	
-	printf("PARAMETERDIM0: %u\n",parameter0Dim);
 		
 	this->containsAuxiliaryData = containsAuxiliaryData;
 		

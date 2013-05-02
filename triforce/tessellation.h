@@ -28,12 +28,12 @@
 #include <list>
 #include <set>
 #include <stdio.h>
-#include <ctime>
 
 #include "molecule.h"
 #include "interpolation.h"
 #include "depth3d.h"
 #include "multiLayeredDepthBuffer.h"
+#include "benchmark.h"
 
 
 using namespace std;
@@ -391,6 +391,7 @@ typedef struct
 	Rotation psi;
 	Vector tessellationAxis;
 	Hemisphere hemisphere;
+	double depthBufferEstimatedArea;
 }
 SASASegment;
 
@@ -466,6 +467,7 @@ public:
 	double sdot(Vector &a, Vector &b);
 	double l(Vector &a);
 	void calculateProjectionAndDerivatives(Vector &tessellationAxis, CircularInterface &circle);
+	Benchmark getBenchmark();
 
 	
 	
@@ -483,13 +485,13 @@ private:
 	//#atoms #circularregions
 	//#atoms #sasas #circularregions
 	SASAs sasasForMolecule;
-	SASAs sasasForMolecule2;
-	map<int,bool> SEGMENTS[2];
-	bool inferno;
 	SegmentGraph segmentGraph[2];
-	double maxz;
 	bool hasDepthBuffer;
 	unsigned int numbBuffer;
+	Benchmark benchmark;
+	double depthBufferEstimatedArea;
+	int totalInterfaces;
+	int survivedInterfaces;
 
 
 	CircularInterfacesPerAtom coverHemisphere(Vector tessellationAxis, double radius, CircularInterfacesPerAtom circles, CircularInterfaceForm form);
@@ -529,14 +531,12 @@ private:
 	Matrix matrixCross(Matrix &m, Vector &v);
 	Vector normalise(Vector x);
 	Vector normalise(Vector x, double &l);
-	double buriedness(Hemisphere hemisphere, CircularInterface &circle, CircularInterface &circle2, double PHI, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1);
 	void addLimitingInterface(LimitingInterface &limit, CircularInterfacesPerAtom &circles);
 	double V2PHI(Vector tessellationAxis, Hemisphere hemisphere, Vector v, CircularInterface &circle);
 	void convertExposedVectors2PHIValues(Vector &tessellationAxis,Hemisphere hemisphere, CircularInterface &circle);
 	double exposition(Hemisphere hemisphere, IntersectionBranches::iterator it0, IntersectionBranches::iterator it1, CircularInterface &circle);
 
 
-	clock_t ms();
 	
 	
 };

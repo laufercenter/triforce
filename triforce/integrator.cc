@@ -31,15 +31,31 @@ IntegratorTriforce::IntegratorTriforce(Interpolation *dataConcave, Interpolation
 	data.push_back(forcesConcave0);
 	data.push_back(forcesConcave1);
 	data.push_back(forcesConcave2);
+	benchmark=Benchmark("integrator");
+	
 }
 	
 
 	
 void IntegratorTriforce::clearForces(){
+	purgeForces();
+	
 	for(unsigned int i=0; i<forces.size(); ++i)
 		for(unsigned int j=0; j<3; ++j){
 			*(forces[i][j]) = 0;
 		}
+}
+
+
+void IntegratorTriforce::pushForces(){
+	for(unsigned int i=0; i<forcesDelayed.size(); ++i)
+		for(unsigned int j=0; j<3; ++j){
+			*(forces[forcesDelayed[i].i][j]) += forcesDelayed[i].force(j);
+		}
+}
+
+void IntegratorTriforce::purgeForces(){
+	forcesDelayed.clear();
 }
 
 
@@ -49,6 +65,7 @@ double IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 	Vector integrationOrigin;
 	double radius;
 	double area,a;
+	
 	
 	this->molecule = m;
 	this->tessellation = tessellation;
@@ -69,6 +86,9 @@ double IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 	area = 0;
 	
 	//iterate over all atoms
+	
+	benchmark.start(string("integrating"));
+	
 	for(unsigned int i=0;i<sasas.size();++i){
 		radius = radii[i];
 		a = integrateSASA(i, sasas[i], radius);
@@ -79,8 +99,12 @@ double IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 		*(areas[i]) = a;
 		area += a;
 		
+		if(a>0) pushForces();
+		purgeForces();
 		
 	}
+	
+	benchmark.stop();
 	
 	return area;
 	
@@ -91,17 +115,11 @@ double IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 
 
 void IntegratorTriforce::addForce(int i, Vector force){
-	int j;
-/*	if(i == 0) fprintf(stderr,"FORCE: %f %f %f\n", force(0), force(1), force(2));
-	if(force(1) > 20){
-		fprintf(stderr,"FORCE: THRESHOLD EXCEEDED");
-		exit(-1);
-	}
-	*/
+	ForceElement fe;
 	if(i>=0){
-		for(j=0; j<3; ++j){
-			*(forces[i][j]) += force(j);
-		}
+		fe.i=i;
+		fe.force=force;
+		forcesDelayed.push_back(fe);
 	}
 }
 
@@ -175,7 +193,6 @@ double IntegratorTriforce::integrateSASA(int l, SASASegmentList &sasa, double ra
 	
 	area0=0;
 	area1=0;
-	
 	for(it = sasa.begin(); it!=sasa.end(); ++it){
 		x=*it;
 		integral = integrateTriangle(l, x, x.tessellationAxis, actphi);
@@ -212,6 +229,13 @@ double IntegratorTriforce::integrateSASA(int l, SASASegmentList &sasa, double ra
 	
 	
 	area = area0 + area1;
+	
+	//if we have information from the depthbuffer, check if the calculated size coarsely matches the one from the buffer
+	//and if not, disregard the sasa (!)
+	if(sasa.size()>0){
+		if(sasa[0].depthBufferEstimatedArea>=0)
+			if(area> 5*sasa[0].depthBufferEstimatedArea*4*M_PI) area=0;
+	}
 	
 	
 	
@@ -638,4 +662,10 @@ double IntegratorTriforce::csc(double a){
 	return 1.0/sin(a);
 }
 
+
+
+
+Benchmark IntegratorTriforce::getBenchmark(){
+	return benchmark;
+}
 

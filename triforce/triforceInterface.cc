@@ -7,7 +7,8 @@ using namespace std;
 
 
 TriforceInterface::TriforceInterface(string path, unsigned int buffer, unsigned int slack){
-	
+	benchmark=Benchmark(string("Interface"));
+	benchmark.start(string("loading tables"));
 	df0 = new DataFile(path+"/dataConcave.dat");
 	df1 = new DataFile(path+"/dataConcave0.dat");
 	df2 = new DataFile(path+"/dataConcave1.dat");
@@ -45,6 +46,7 @@ TriforceInterface::TriforceInterface(string path, unsigned int buffer, unsigned 
 
 		depth0 = new Depth3D(dat4,slack);
 	}
+	benchmark.stop();
 	
 }
 
@@ -57,7 +59,25 @@ double TriforceInterface::calculateSurfaceArea(Molecule &mol){
 	else t = new Tessellation(mol);
 	t->build(true);
 	area = integrator->integrate(&mol, t);
+	tessellationBenchmark=t->getBenchmark();
 	delete(t);
 	
 	return area;
 }
+
+
+
+Benchmark TriforceInterface::getBenchmark(){
+	return benchmark;
+}
+
+
+void TriforceInterface::printBenchmark(FILE* outputfile){
+	fprintf(outputfile,"time statistics\n");
+	benchmark.print(outputfile);
+	tessellationBenchmark.print(outputfile);
+	integrator->getBenchmark().print(outputfile);
+	
+}
+
+
