@@ -271,7 +271,7 @@ int MultiLayeredDepthBuffer::sgn(double d){
 	else return -1;
 }
 
-void MultiLayeredDepthBuffer::addSphere(Vector &v, double lambda, bool invert, double &kappa, double &psi, int index){
+void MultiLayeredDepthBuffer::addSphere(Vector &v, double lambda, bool invert, double &kappa, double &psi){
 	Vector c;
 	DepthInformation dat;
 	Vector n,n2;
@@ -338,11 +338,11 @@ void MultiLayeredDepthBuffer::addSphere(Vector &v, double lambda, bool invert, d
 }
 
 
-bool MultiLayeredDepthBuffer::passesBuffer(double kappa, double psi, double lambda, bool invert, int index, vector<Vector> &exposedVectors){
+bool MultiLayeredDepthBuffer::passesBuffer(double kappa, double psi, double lambda, bool invert, vector<Vector> &exposedVectors){
 	DepthInformation dat;
 	bool pass;
 	dat = data.getCeilScanlines(kappa, psi, lambda, invert);
-	pass=scanBuffer(kappa, index, exposedVectors, dat);
+	pass=scanBuffer(kappa, exposedVectors, dat);
 	if(invert) pass=true;
 	return pass;
 }
@@ -354,18 +354,18 @@ bool MultiLayeredDepthBuffer::getSplitterExposedVectors(vector<Vector> &exposedV
 	dat.scanline0.resize(len,0);
 	dat.scanline1.resize(len,M_PI);
 	dat.mode.resize(len,SCANLINE_PARTIAL);
-	res=scanBuffer(M_PI, -1, exposedVectors, dat);
+	res=scanBuffer(M_PI, exposedVectors, dat);
 	return res;
 }
 
 
-bool MultiLayeredDepthBuffer::scanBuffer(double kappa, int index, vector<Vector> &exposedVectors, DepthInformation &dat){
+bool MultiLayeredDepthBuffer::scanBuffer(double kappa, vector<Vector> &exposedVectors, DepthInformation &dat){
 	Vector c;
 	double offset=0;
 	bool wouldChange;
 	bool frontChanges, backChanges;
 	DepthBufferLine::iterator it;
-	DepthBufferProjection pr;
+	DepthBufferCoordinate pr;
 	double i_prev;
 	
 	
@@ -582,7 +582,7 @@ double MultiLayeredDepthBuffer::exposedProbability(){
 
 
 
-Vector MultiLayeredDepthBuffer::convertToCartesian(DepthBufferProjection &pr){
+Vector MultiLayeredDepthBuffer::convertToCartesian(DepthBufferCoordinate &pr){
 	Vector v(3);
 	double h;
 	int i;
