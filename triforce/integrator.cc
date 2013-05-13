@@ -234,7 +234,7 @@ double IntegratorTriforce::integrateSASA(int l, SASASegmentList &sasa, double ra
 	//and if not, disregard the sasa (!)
 	if(sasa.size()>0){
 		if(sasa[0].depthBufferEstimatedArea>=0)
-			if(area> 5*sasa[0].depthBufferEstimatedArea*4*M_PI) area=0;
+			if(area> 2*sasa[0].depthBufferEstimatedArea*4*M_PI) area=0;
 	}
 	
 	

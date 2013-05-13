@@ -230,16 +230,16 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 	if(hasDepthBuffer){
 		for(unsigned int j=0;j<precircles.size();j++){
 			if(numbBuffer>1)
-				depthBuffer0.addSphere(precircles[j].normal, precircles[j].lambda.rotation, precircles[j].form!=CONVEX, precircles[j].kappa[0], precircles[j].psi2[0], precircles[j].index);
-			depthBuffer1.addSphere(precircles[j].normal, precircles[j].lambda.rotation, precircles[j].form!=CONVEX, precircles[j].kappa[1], precircles[j].psi2[1], precircles[j].index);
+				depthBuffer0.addSphere(precircles[j].normal, precircles[j].lambda.rotation, precircles[j].form!=CONVEX, precircles[j].kappa[0], precircles[j].psi2[0]);
+			depthBuffer1.addSphere(precircles[j].normal, precircles[j].lambda.rotation, precircles[j].form!=CONVEX, precircles[j].kappa[1], precircles[j].psi2[1]);
 		}
 
 		pass0=false;
 		for(unsigned int j=0;j<precircles.size();j++){
 			if(numbBuffer>1)
-				pass0=depthBuffer0.passesBuffer(precircles[j].kappa[0], precircles[j].psi2[0], precircles[j].lambda.rotation, precircles[j].form!=CONVEX, precircles[j].index, precircles[j].exposedVectors);
+				pass0=depthBuffer0.passesBuffer(precircles[j].kappa[0], precircles[j].psi2[0], precircles[j].lambda.rotation, precircles[j].form!=CONVEX, precircles[j].exposedVectors);
 			
-			pass1=depthBuffer1.passesBuffer(precircles[j].kappa[1], precircles[j].psi2[1], precircles[j].lambda.rotation, precircles[j].form!=CONVEX, precircles[j].index, precircles[j].exposedVectors);
+			pass1=depthBuffer1.passesBuffer(precircles[j].kappa[1], precircles[j].psi2[1], precircles[j].lambda.rotation, precircles[j].form!=CONVEX, precircles[j].exposedVectors);
 			if(pass0 || pass1){
 				circles.push_back(precircles[j]);
 			}
@@ -249,7 +249,8 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<dou
 	}
 	else circles=precircles;
 	
-	
+	benchmark.addQuantity("interfaces found",precircles.size());
+	benchmark.addQuantity("interfaces kept",circles.size());
 	
 	
 	if(circles.size()==0) return;

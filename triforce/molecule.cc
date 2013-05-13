@@ -141,6 +141,9 @@ void Molecule::refreshInternalPointers(){
 
 void Molecule::constructAtoms(unsigned int end){
 	AtomicPointers c;
+	c.x=0;
+	c.y=0;
+	c.z=0;
 	if(end>=atomicPointers.size()){
 		atomicPointers.resize(end+1,c);
 		atoms.resize(end+1,Vector(3));

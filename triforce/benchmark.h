@@ -33,7 +33,7 @@
 using namespace std;
 
 
-typedef map<string,double> TimeList;
+typedef map<string,double> EntityList;
 
 
 class Benchmark{
@@ -43,6 +43,7 @@ public:
 	Benchmark(string section);
 	void start(string phase);
 	void stop();
+	void addQuantity(string quantity, double x);
 	void print(FILE* outputfile);
 
 private:
@@ -50,7 +51,8 @@ private:
 	string section;
 	string phase;
 	clock_t clock_start;
-	TimeList times;
+	EntityList times;
+	EntityList stats;
 	
 	
 	clock_t ms();

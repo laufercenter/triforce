@@ -40,11 +40,28 @@ void Benchmark::stop(){
 
 
 void Benchmark::print(FILE* outputfile){
-	TimeList::iterator it;
+	EntityList::iterator it;
 	fprintf(outputfile,"%s\n",section.c_str());
 	for(it=times.begin(); it!=times.end(); ++it){
 		fprintf(outputfile,"\t%s\t\t%.3f ms\n",it->first.c_str(), it->second);
 	}
+	for(it=stats.begin(); it!=stats.end(); ++it){
+		fprintf(outputfile,"\t%s\t\t%.3f\n",it->first.c_str(), it->second);
+	}
+}
+
+
+void Benchmark::addQuantity(string quantity, double x){
+	pair<string,double> p;
+	if(stats.find(quantity)==stats.end()){
+		p.first=string(quantity);
+		p.second=x;
+		stats.insert(p);
+	}
+	else{
+		stats[quantity]=stats[quantity]+x;
+	}
+	
 }
 
 
