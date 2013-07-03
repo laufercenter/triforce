@@ -9,7 +9,8 @@
 #include "topology.h"
 
 #define INT32BYTEMASK 255
-#define BINARY_DATA_BLOCK_SIZE 8
+#define BINARY_DATA_BLOCK_SIZE_DOUBLE 8
+#define BINARY_DATA_BLOCK_SIZE_FLOAT 4
 
 
 using namespace boost;
@@ -73,20 +74,20 @@ Data1D* DataFile::digest1DBinaryTable(){
 	tbl = new Data1D(parameter0Dim,containsAuxiliaryData);
 	
 	//read header
-	buffer=new char[parameter0Dim*BINARY_DATA_BLOCK_SIZE];
-	f.read(buffer,parameter0Dim*BINARY_DATA_BLOCK_SIZE);
+	buffer=new char[parameter0Dim*BINARY_DATA_BLOCK_SIZE_DOUBLE];
+	f.read(buffer,parameter0Dim*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 	for(unsigned int i=0; i<parameter0Dim; i++){
-		double v = charArray2Double(buffer+i*BINARY_DATA_BLOCK_SIZE);
+		double v = charArray2Double(buffer+i*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 		tbl->setHeaderParameter0Cell(i,v);
 	}
 	delete buffer;
 	
 	//read data
 	totalCells = parameter0Dim;
-	buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
-	f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
+	buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE];
+	f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 	for(unsigned int x=0; x<parameter0Dim; x++){
-		double v = charArray2Double(buffer+x*BINARY_DATA_BLOCK_SIZE);
+		double v = charArray2Double(buffer+x*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 		tbl->setDataCell(x,v);
 	}
 	
@@ -96,10 +97,10 @@ Data1D* DataFile::digest1DBinaryTable(){
 	if(containsAuxiliaryData){
 		//read data
 		totalCells = parameter0Dim;
-		buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
-		f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
+		buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE];
+		f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 		for(unsigned int x=0; x<parameter0Dim; x++){
-			double v = charArray2Double(buffer+x*BINARY_DATA_BLOCK_SIZE);
+			double v = charArray2Double(buffer+x*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 			tbl->setAuxiliaryCell(x,v);
 		}
 		
@@ -173,38 +174,38 @@ Data3D* DataFile::digest3DBinaryTable(){
 	tbl = new Data3D(parameter0Dim, parameter1Dim, parameter2Dim, derivativeLevel, containsphiValues);
 	
 	//read PHI header
-	buffer=new char[parameter0Dim*BINARY_DATA_BLOCK_SIZE];
-	f.read(buffer,parameter0Dim*BINARY_DATA_BLOCK_SIZE);
+	buffer=new char[parameter0Dim*BINARY_DATA_BLOCK_SIZE_DOUBLE];
+	f.read(buffer,parameter0Dim*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 	for(unsigned int i=0; i<parameter0Dim; i++){
-		double v = charArray2Double(buffer+i*BINARY_DATA_BLOCK_SIZE);
+		double v = charArray2Double(buffer+i*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 		tbl->setHeaderParameter0Cell(i,v);
 	}
 	delete buffer;
 	//read psi header
-	buffer=new char[parameter1Dim*BINARY_DATA_BLOCK_SIZE];
-	f.read(buffer,parameter1Dim*BINARY_DATA_BLOCK_SIZE);
+	buffer=new char[parameter1Dim*BINARY_DATA_BLOCK_SIZE_DOUBLE];
+	f.read(buffer,parameter1Dim*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 	for(unsigned int i=0; i<parameter1Dim; i++){
-		double v = charArray2Double(buffer+i*BINARY_DATA_BLOCK_SIZE);
+		double v = charArray2Double(buffer+i*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 		tbl->setHeaderParameter1Cell(i,v);
 	}
 	delete buffer;
 	//read lambda header
-	buffer=new char[parameter2Dim*BINARY_DATA_BLOCK_SIZE];
-	f.read(buffer,parameter2Dim*BINARY_DATA_BLOCK_SIZE);
+	buffer=new char[parameter2Dim*BINARY_DATA_BLOCK_SIZE_DOUBLE];
+	f.read(buffer,parameter2Dim*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 	for(unsigned int i=0; i<parameter2Dim; i++){
-		double v = charArray2Double(buffer+i*BINARY_DATA_BLOCK_SIZE);
+		double v = charArray2Double(buffer+i*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 		tbl->setHeaderParameter2Cell(i,v);
 	}
 	delete buffer;
 	
 	//read data
 	totalCells = parameter0Dim*parameter1Dim*parameter2Dim;
-	buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
-	f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
+	buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE];
+	f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 	for(unsigned int z=0; z<parameter2Dim; z++)
 		for(unsigned int y=0; y<parameter1Dim; y++)
 			for(unsigned int x=0; x<parameter0Dim; x++){
-				double v = charArray2Double(buffer+((z*parameter1Dim+y)*parameter0Dim+x)*BINARY_DATA_BLOCK_SIZE);
+				double v = charArray2Double(buffer+((z*parameter1Dim+y)*parameter0Dim+x)*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 				tbl->setDataCell(x,y,z,v);
 			}
 	
@@ -214,13 +215,13 @@ Data3D* DataFile::digest3DBinaryTable(){
 	if(derivativeLevel>=2){
 		//read gradients
 		totalCells = parameter0Dim*parameter1Dim*parameter2Dim*3;
-		buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
-		f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
+		buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE];
+		f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 		for(unsigned int z=0; z<parameter2Dim; z++)
 			for(unsigned int y=0; y<parameter1Dim; y++)
 				for(unsigned int x=0; x<parameter0Dim; x++)
 					for(unsigned int i=0; i<3; i++){
-						double v = charArray2Double(buffer+(((z*parameter1Dim+y)*parameter0Dim+x)*3+i)*BINARY_DATA_BLOCK_SIZE);
+						double v = charArray2Double(buffer+(((z*parameter1Dim+y)*parameter0Dim+x)*3+i)*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 						tbl->setGradientCell(x,y,z,i,v);
 					}
 		
@@ -230,14 +231,14 @@ Data3D* DataFile::digest3DBinaryTable(){
 	if(derivativeLevel>=3){
 		//read hessians
 		totalCells = parameter0Dim*parameter1Dim*parameter2Dim*3*3;
-		buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
-		f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
+		buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE];
+		f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 		for(unsigned int z=0; z<parameter2Dim; z++)
 			for(unsigned int y=0; y<parameter1Dim; y++)
 				for(unsigned int x=0; x<parameter0Dim; x++)
 					for(unsigned int j=0; j<3; j++)
 						for(unsigned int i=0; i<3; i++){
-							double v = charArray2Double(buffer+((((z*parameter1Dim+y)*parameter0Dim+x)*3+j)*3+i)*BINARY_DATA_BLOCK_SIZE);
+							double v = charArray2Double(buffer+((((z*parameter1Dim+y)*parameter0Dim+x)*3+j)*3+i)*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 							tbl->setHessianCell(x,y,z,j,i,v);
 						}
 		
@@ -247,12 +248,12 @@ Data3D* DataFile::digest3DBinaryTable(){
 	if(containsphiValues == 1){
 		//read phi
 		totalCells = parameter0Dim*parameter1Dim*parameter2Dim;
-		buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE];
-		f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE);
+		buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE];
+		f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 		for(unsigned int z=0; z<parameter2Dim; z++)
 			for(unsigned int y=0; y<parameter1Dim; y++)
 				for(unsigned int x=0; x<parameter0Dim; x++){
-					double v = charArray2Double(buffer+((z*parameter1Dim+y)*parameter0Dim+x)*BINARY_DATA_BLOCK_SIZE);
+					double v = charArray2Double(buffer+((z*parameter1Dim+y)*parameter0Dim+x)*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 					tbl->setAuxiliaryCell(x,y,z,v);
 				}
 		
@@ -270,7 +271,148 @@ Data3D* DataFile::digest3DBinaryTable(){
 
 
 
+/*
 
+Data6D* DataFile::digest6DBinaryTable(){
+	unsigned char buffer0[4];
+	unsigned char buffer1[1];
+	unsigned char buffer2[8];
+	char *buffer;
+	unsigned int numberDimensions;
+	vector<double> tmp;
+	Data3D *tbl;
+	vector<unsigned int> dimensions;
+	unsigned int totalCells;
+	unsigned int parameter0Dim;
+	unsigned int parameter1Dim;
+	unsigned int parameter2Dim;
+	unsigned int parameter3Dim;
+	unsigned int parameter4Dim;
+	unsigned int parameter5Dim;
+	unsigned int derivativeLevel, containsphiValues;
+	
+	//printf("digesting...\n");
+	
+	fstream f(name.c_str(),ios::binary|ios::in);
+	
+	//first 4 bytes should be "NILS" : 78, 73, 76, 83
+	f.read((char*)buffer0,4);
+	if(buffer0[0] != 78 || buffer0[1] != 73 || buffer0[2] != 76 || buffer0[3] != 83) exit(-1);
+
+	//level of derivatives (should be 0)
+	f.read((char*)buffer1,1);
+	derivativeLevel = static_cast<unsigned int>(buffer1[0]);
+
+	//contains phi values (should be 0)
+	f.read((char*)buffer1,1);
+	containsphiValues = static_cast<unsigned int>(buffer1[0]);
+	
+	//this byte gives number of dimensions (should be 6)
+	f.read((char*)buffer1,1);
+	numberDimensions = static_cast<unsigned int>(buffer1[0]);
+	if(numberDimensions!=6) exit(-1);
+	
+	//read headers
+	//header for PHI
+	f.read((char*)buffer2,12);
+	//zeroth byte is how many dimensions the PHI header has. should be 1
+	//first byte is number of PHI entries
+	parameter0Dim = static_cast<unsigned int>(buffer2[1]);
+	//2nd byte is number of psi dimensions (should be 1)
+	//3rd byte is number of psi entries
+	//4th byte is number of lambda dimensions (should be 1)
+	//5th byte is number of lambda entries
+	parameter1Dim = static_cast<unsigned int>(buffer2[3]);
+	parameter2Dim = static_cast<unsigned int>(buffer2[5]);
+	parameter3Dim = static_cast<unsigned int>(buffer2[7]);
+	parameter4Dim = static_cast<unsigned int>(buffer2[9]);
+	parameter5Dim = static_cast<unsigned int>(buffer2[11]);
+	
+
+	
+	//printf("dimensions: %d, rows in header: %d, maxdim: %d\n",numberDimensions,nrowsHeader,maxdim); 
+	
+	tbl = new Data6D(parameter0Dim, parameter1Dim, parameter2Dim, parameter3Dim, parameter4Dim, parameter5Dim);
+	
+	//read PHI header
+	buffer=new char[parameter0Dim*BINARY_DATA_BLOCK_SIZE_FLOAT];
+	f.read(buffer,parameter0Dim*BINARY_DATA_BLOCK_SIZE_FLOAT);
+	for(unsigned int i=0; i<parameter0Dim; i++){
+		double v = charArray2Float(buffer+i*BINARY_DATA_BLOCK_SIZE_FLOAT);
+		tbl->setHeaderParameter0Cell(i,v);
+	}
+	delete buffer;
+	//read psi header
+	buffer=new char[parameter1Dim*BINARY_DATA_BLOCK_SIZE_FLOAT];
+	f.read(buffer,parameter1Dim*BINARY_DATA_BLOCK_SIZE_FLOAT);
+	for(unsigned int i=0; i<parameter1Dim; i++){
+		double v = charArray2Float(buffer+i*BINARY_DATA_BLOCK_SIZE_FLOAT);
+		tbl->setHeaderParameter1Cell(i,v);
+	}
+	delete buffer;
+	//read lambda header
+	buffer=new char[parameter2Dim*BINARY_DATA_BLOCK_SIZE_FLOAT];
+	f.read(buffer,parameter2Dim*BINARY_DATA_BLOCK_SIZE_FLOAT);
+	for(unsigned int i=0; i<parameter2Dim; i++){
+		double v = charArray2Float(buffer+i*BINARY_DATA_BLOCK_SIZE_FLOAT);
+		tbl->setHeaderParameter2Cell(i,v);
+	}
+	delete buffer;
+	//read d header
+	buffer=new char[parameter3Dim*BINARY_DATA_BLOCK_SIZE_FLOAT];
+	f.read(buffer,parameter3Dim*BINARY_DATA_BLOCK_SIZE_FLOAT);
+	for(unsigned int i=0; i<parameter3Dim; i++){
+		double v = charArray2Float(buffer+i*BINARY_DATA_BLOCK_SIZE_FLOAT);
+		tbl->setHeaderParameter2Cell(i,v);
+	}
+	delete buffer;
+	//read eps header
+	buffer=new char[parameter4Dim*BINARY_DATA_BLOCK_SIZE_FLOAT];
+	f.read(buffer,parameter4Dim*BINARY_DATA_BLOCK_SIZE_FLOAT);
+	for(unsigned int i=0; i<parameter4Dim; i++){
+		double v = charArray2Float(buffer+i*BINARY_DATA_BLOCK_SIZE_FLOAT);
+		tbl->setHeaderParameter2Cell(i,v);
+	}
+	delete buffer;
+	//read sig header
+	buffer=new char[parameter5Dim*BINARY_DATA_BLOCK_SIZE_FLOAT];
+	f.read(buffer,parameter5Dim*BINARY_DATA_BLOCK_SIZE_FLOAT);
+	for(unsigned int i=0; i<parameter5Dim; i++){
+		double v = charArray2Float(buffer+i*BINARY_DATA_BLOCK_SIZE_FLOAT);
+		tbl->setHeaderParameter2Cell(i,v);
+	}
+	delete buffer;
+	
+	//read data
+	totalCells = parameter0Dim*parameter1Dim*parameter2Dim*parameter3Dim*parameter4Dim*parameter5Dim;
+	buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE_FLOAT];
+	f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE_FLOAT);
+	for(unsigned int w=0; w<parameter5Dim; w++)
+		for(unsigned int v=0; v<parameter4Dim; v++)
+			for(unsigned int u=0; u<parameter3Dim; u++)
+				for(unsigned int z=0; z<parameter2Dim; z++)
+					for(unsigned int y=0; y<parameter1Dim; y++)
+						for(unsigned int x=0; x<parameter0Dim; x++){
+							double w0 = w*parameter4Dim*parameter3Dim*parameter2Dim*parameter1Dim*parameter0Dim;
+							double v0 = v*parameter3Dim*parameter2Dim*parameter1Dim*parameter0Dim;
+							double u0 = u*parameter2Dim*parameter1Dim*parameter0Dim;
+							double z0 = z*parameter1Dim*parameter0Dim;
+							double y0 = y*parameter0Dim;
+							double x0 = x;
+							double val = charArray2Float(buffer+(w0+v0+u0+z0+y0+x0)*BINARY_DATA_BLOCK_SIZE_FLOAT);
+							tbl->setDataCell(x,y,z,u,v,w,val);
+						}
+	
+	delete buffer;
+	
+	
+	tbl->init();
+	
+
+	return tbl;
+}	
+
+*/
 
 /*
 void DataFile::double2charArray(double x, char* data){
@@ -835,6 +977,7 @@ Molecule *DataFile::digestXYZR(){
 	double x,y,z,r;
 	string ident;
 	vector<string> *content;
+	string element;
 	
 	
 	mol = new Molecule();
@@ -848,10 +991,11 @@ Molecule *DataFile::digestXYZR(){
 		std::getline(*ifs,line);
 		content=split(line,' ');
 		if(content->size()>=3){
-			x = string2double((*content)[0]);
-			y = string2double((*content)[1]);
-			z = string2double((*content)[2]);
-			r = string2double((*content)[3]);
+			element = (*content)[0];
+			x = string2double((*content)[1]);
+			y = string2double((*content)[2]);
+			z = string2double((*content)[3]);
+			r = string2double((*content)[4]);
 			ident = int2string(i);
 			mol->addInternallyStoredAtom(x, y, z, r, ident);
 			++i;
