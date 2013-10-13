@@ -11,10 +11,9 @@ using namespace arma;
 using namespace boost;
 
 
-#define floatpi 6.283185307179586231996f
-#define halfpi 1.570796326794896557999f
+#define floatpi 6.283185307179586231996
+#define halfpi 1.570796326794896557999
 #define pi 3.141592653589793238462f
-
 
 Depth3D::Depth3D(){
 }

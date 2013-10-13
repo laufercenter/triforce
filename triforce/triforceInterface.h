@@ -73,6 +73,8 @@ protected:
 	
 	IntegratorTriforce *integrator;	
 	
+	vector<Interpolation*> interpolators;
+	
 private:
 	bool withDepthBuffer;
 	unsigned int buffer;

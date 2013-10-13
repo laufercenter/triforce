@@ -84,12 +84,11 @@ private:
 	Tessellation* tessellation;
 	Molecule* molecule;
 	
-	vector<double*> areas;
-	vector<vector<double*> > forces;
+	vector<float*> areas;
+	vector<vector<float*> > forces;
 	vector<ForceElement> forcesDelayed;
 	vector<Vector> atoms;
 	vector<float> radii;
-	Benchmark benchmark;
 	Benchmark benchmark;
 	
 	
@@ -119,8 +118,6 @@ private:
 	float dlogisticSmoother(float lambda);
 	Vector areaSmoother(Vector &x, float area, float radius);
 	float sech(float x);
-	void pushForces();
-	void purgeForces();
 	void pushForces();
 	void purgeForces();
 	

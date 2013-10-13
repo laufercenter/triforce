@@ -63,43 +63,43 @@ void Data3D::init(){
 }
 
 
-void Data3D::setHeaderParameter0Cell(unsigned int x, double value){
+void Data3D::setHeaderParameter0Cell(unsigned int x, float value){
 	(*headerParameter0)[x] = value;
 }
 
-void Data3D::setHeaderParameter1Cell(unsigned int x, double value){
+void Data3D::setHeaderParameter1Cell(unsigned int x, float value){
 	(*headerParameter1)[x] = value;
 }
 
-void Data3D::setHeaderParameter2Cell(unsigned int x, double value){
+void Data3D::setHeaderParameter2Cell(unsigned int x, float value){
 	(*headerParameter2)[x] = value;
 }
 
-double Data3D::getHeaderParameter0Cell(unsigned int x){
+float Data3D::getHeaderParameter0Cell(unsigned int x){
 	return (*headerParameter0)[x];
 }
 
-double Data3D::getHeaderParameter1Cell(unsigned int x){
+float Data3D::getHeaderParameter1Cell(unsigned int x){
 	return (*headerParameter1)[x];
 }
 
-double Data3D::getHeaderParameter2Cell(unsigned int x){
+float Data3D::getHeaderParameter2Cell(unsigned int x){
 	return (*headerParameter2)[x];
 }
 
 
-void Data3D::setDataCell(unsigned int x, unsigned int y, unsigned int z, double value){
+void Data3D::setDataCell(unsigned int x, unsigned int y, unsigned int z, float value){
 	(*data)[x][y][z] = value;
 }
 
-void Data3D::setAuxiliaryCell(unsigned int x, unsigned int y, unsigned int z, double value){
+void Data3D::setAuxiliaryCell(unsigned int x, unsigned int y, unsigned int z, float value){
 	(*auxiliary)[x][y][z] = value;
 }
 
-void Data3D::setGradientCell(unsigned int x, unsigned int y, unsigned int z, unsigned int i, double value){
+void Data3D::setGradientCell(unsigned int x, unsigned int y, unsigned int z, unsigned int i, float value){
 	(*gradient)[x][y][z](i) = value;
 }
-void Data3D::setHessianCell(unsigned int x, unsigned int y, unsigned int z, unsigned int i, unsigned int j, double value){
+void Data3D::setHessianCell(unsigned int x, unsigned int y, unsigned int z, unsigned int i, unsigned int j, float value){
 	(*hessian)[x][y][z](i,j) = value;
 }
 
@@ -119,21 +119,21 @@ float Data3D::parameter2GridLength(){
 	return abs((*headerParameter2)[parameter2Dim-1]-(*headerParameter2)[0]);
 }
 
-double Data3D::parameter1GridLength(unsigned int parameter2){
+float Data3D::parameter1GridLength(unsigned int parameter2){
 	return abs((*headerParameter1)[parameter1Dim-1]-(*headerParameter1)[0]);
 }
 
-double Data3D::parameter0GridLength(unsigned int parameter1, unsigned int parameter2){
+float Data3D::parameter0GridLength(unsigned int parameter1, unsigned int parameter2){
 	return abs((*headerParameter0)[parameter0Dim-1]-(*headerParameter0)[0]);
 }
 
 
 
-double Data3D::getDataCell(unsigned int x, unsigned int y, unsigned int z){
+float Data3D::getDataCell(unsigned int x, unsigned int y, unsigned int z){
 	return (*data)[x][y][z];
 }
 
-double Data3D::getAuxiliaryCell(unsigned int x, unsigned int y, unsigned int z){
+float Data3D::getAuxiliaryCell(unsigned int x, unsigned int y, unsigned int z){
 	return (*auxiliary)[x][y][z];
 }
 

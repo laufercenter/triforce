@@ -30,7 +30,7 @@
 using namespace std;
 using namespace arma;
 
-typedef vec Vector;
+typedef fvec Vector;
 typedef Col<unsigned int> VectorInt;
 
 typedef fmat Matrix;
@@ -54,27 +54,27 @@ class Data3D{
 public:
 	Data3D();
 	Data3D(unsigned int parameter0Dim, unsigned int parameter1Dim, unsigned int parameter2Dim, unsigned int derivativeLevel, bool containsAuxiliaryData);
-	void setHeaderParameter0Cell(unsigned int x, double value);
-	void setHeaderParameter1Cell(unsigned int x, double value);
-	void setHeaderParameter2Cell(unsigned int x, double value);
-	double getHeaderParameter0Cell(unsigned int x);
-	double getHeaderParameter1Cell(unsigned int x);
-	double getHeaderParameter2Cell(unsigned int x);
-	void setDataCell(unsigned int x, unsigned int y, unsigned int z, double value);
-	void setAuxiliaryCell(unsigned int x, unsigned int y, unsigned int z, double value);
-	void setGradientCell(unsigned int x, unsigned int y, unsigned int z, unsigned int i, double value);
-	void setHessianCell(unsigned int x, unsigned int y, unsigned int z, unsigned int i, unsigned int j, double value);
+	void setHeaderParameter0Cell(unsigned int x, float value);
+	void setHeaderParameter1Cell(unsigned int x, float value);
+	void setHeaderParameter2Cell(unsigned int x, float value);
+	float getHeaderParameter0Cell(unsigned int x);
+	float getHeaderParameter1Cell(unsigned int x);
+	float getHeaderParameter2Cell(unsigned int x);
+	void setDataCell(unsigned int x, unsigned int y, unsigned int z, float value);
+	void setAuxiliaryCell(unsigned int x, unsigned int y, unsigned int z, float value);
+	void setGradientCell(unsigned int x, unsigned int y, unsigned int z, unsigned int i, float value);
+	void setHessianCell(unsigned int x, unsigned int y, unsigned int z, unsigned int i, unsigned int j, float value);
 	void print();
-	double getDataCell(unsigned int x, unsigned int y, unsigned int z);
-	double getAuxiliaryCell(unsigned int x, unsigned int y, unsigned int z);
+	float getDataCell(unsigned int x, unsigned int y, unsigned int z);
+	float getAuxiliaryCell(unsigned int x, unsigned int y, unsigned int z);
 	Vector &getGradient(unsigned int x, unsigned int y, unsigned int z);
 	Matrix &getHessian(unsigned int x, unsigned int y, unsigned int z);
 	
 	Vector getHeaderVector(unsigned int parameter0, unsigned int parameter1, unsigned int parameter2);
 	//Vector bisectFloor(Vector &x);
-	double parameter2GridLength();
-	double parameter1GridLength(unsigned int parameter2);
-	double parameter0GridLength(unsigned int parameter1, unsigned int parameter2);
+	float parameter2GridLength();
+	float parameter1GridLength(unsigned int parameter2);
+	float parameter0GridLength(unsigned int parameter1, unsigned int parameter2);
 	
 	void printDataCell(unsigned int i, unsigned int j, unsigned int k);
 	void printGradientCell(unsigned int i, unsigned int j, unsigned int k);
@@ -90,12 +90,12 @@ public:
 	unsigned int parameter0Dim;
 	unsigned int parameter1Dim;
 	unsigned int parameter2Dim;
-	double minParameter0;
-	double minParameter1;
-	double minParameter2;
-	double cellLengthParameter0;
-	double cellLengthParameter1;
-	double cellLengthParameter2;
+	float minParameter0;
+	float minParameter1;
+	float minParameter2;
+	float cellLengthParameter0;
+	float cellLengthParameter1;
+	float cellLengthParameter2;
 	Table1dDouble *headerParameter0;
 	Table1dDouble *headerParameter1;
 	Table1dDouble *headerParameter2;
