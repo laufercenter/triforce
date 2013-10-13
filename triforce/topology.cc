@@ -40,15 +40,15 @@ bool Topology::contains(string ident){
 }
 
 
-void Topology::setMassValue(string ident, double v){
+void Topology::setMassValue(string ident, float v){
 		data[ident].mass=v;
 }
 
-void Topology::setEpsilonValue(string ident, double v){
+void Topology::setEpsilonValue(string ident, float v){
 		data[ident].epsilon=v;
 }
 
-void Topology::setSigmaValue(string ident, double v){
+void Topology::setSigmaValue(string ident, float v){
 		data[ident].sigma=v;
 }
 

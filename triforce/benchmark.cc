@@ -21,11 +21,11 @@ void Benchmark::start(string phase){
 }
 void Benchmark::stop(){
 	clock_t clock_end;
-	double t;
-	pair<string,double> p;
+	float t;
+	pair<string,float> p;
 	clock_end=ms();
 	
-	t=(double)(clock_end-clock_start);
+	t=(float)(clock_end-clock_start);
 	if(times.find(phase)==times.end()){
 		p.first=string(phase);
 		p.second=t;
@@ -51,8 +51,8 @@ void Benchmark::print(FILE* outputfile){
 }
 
 
-void Benchmark::addQuantity(string quantity, double x){
-	pair<string,double> p;
+void Benchmark::addQuantity(string quantity, float x){
+	pair<string,float> p;
 	if(stats.find(quantity)==stats.end()){
 		p.first=string(quantity);
 		p.second=x;

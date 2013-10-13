@@ -24,7 +24,7 @@ void Molecule::generateNeighbourList(){
 	Vector minPoint(3);
 	Vector dim(3);
 	Vector center(3);
-	double maxRadius;
+	float maxRadius;
 	Vector v;
 	
 	if(atoms.size()==0) return;
@@ -82,6 +82,25 @@ vector<int> Molecule::getNeighborListFor(int i){
 }
 
 
+unsigned int Molecule::identifySpecies(float eps, float sig){
+	float realisticEps[6] = {3.39967, 2.64953,  3.25000, 2.95992, 3.74177, 3.56359};
+	float realisticSig[6] = {0.35982400, 0.06568880, 0.71128000, 0.87864000, 0.83680000, 1.04600000};
+	float bestScore = std::numeric_limits<float>::max();
+	unsigned int bestSpecies=0;
+	float score;
+	//go through all the species, select the one that fits best
+	for(unsigned int i=0; i<N_SPECIES; ++i){
+		score = (eps-realisticEps[i]) * (eps-realisticEps[i]) + (sig-realisticSig[i]) * (eps-realisticSig[i]);
+		if(score<bestScore){
+			bestSpecies=i;
+			bestScore=score;
+		}
+	}
+	return bestSpecies;
+
+}
+
+
 
 Vector Molecule::getInternallyStoredAtomCoordinates(int i){
 	return atoms[i];
@@ -95,12 +114,20 @@ void Molecule::perturbInternallyStoredAtomCoordinates(int i, Vector p){
 	atoms[i] = atoms[i] + p;
 }
 
-void Molecule::addInternallyStoredAtom(double x, double y, double z, string name, string type, int i){
+void Molecule::addInternallyStoredAtom(float x, float y, float z, string name, string type, int i){
 	Parameters p;
 	p=topology.getAssociatedCell(string2UpperCase(type));
 	
 	addInternallyStoredAtom(x,y,z, 0.5*p.sigma+1.4, name,i);
 	
+}
+
+void Molecule::addInternallyStoredAtom(float x, float y, float z, float radius, string name, int i){
+	addInternallyStoredAtom(x,y,z, radius, 0, 0, name,i);
+}
+
+void Molecule::addInternallyStoredAtom(float x, float y, float z, float eps, float sig, string name, int i){
+	addInternallyStoredAtom(x,y,z, sig, eps, sig, name,i);
 }
 	
 	
@@ -147,10 +174,12 @@ void Molecule::constructAtoms(unsigned int end){
 	if(end>=atomicPointers.size()){
 		atomicPointers.resize(end+1,c);
 		atoms.resize(end+1,Vector(3));
+		epsilons.resize(end+1,0);
 		sigmas.resize(end+1,0);
 		radii.resize(end+1,0);
+		species.resize(end+1,0);
 		areas.resize(end+1,0);
-		forces.resize(end+1,vector<double*>());
+		forces.resize(end+1,vector<float*>());
 		realArea.resize(end+1,0);
 		realForceX.resize(end+1,0);
 		realForceY.resize(end+1,0);
@@ -161,7 +190,7 @@ void Molecule::constructAtoms(unsigned int end){
 }
 
 
-void Molecule::addAtom(double* x, double* y, double* z, double* area, double* forceX, double* forceY, double* forceZ, string name, string type, int i){
+void Molecule::addAtom(float* x, float* y, float* z, float* area, float* forceX, float* forceY, float* forceZ, string name, string type, int i){
 	Parameters p;
 	p=topology.getAssociatedCell(string2UpperCase(type));
 	
@@ -175,7 +204,7 @@ void Molecule::addAtom(double* x, double* y, double* z, double* area, double* fo
 	
 void Molecule::addAtom(double* x, double* y, double* z, double* area, double* forceX, double* forceY, double* forceZ, double radius, string name, int i){
 	AtomicPointers c;
-	vector<double*> force;
+	vector<float*> force;
 	c.x=x;
 	c.y=y;
 	c.z=z;
@@ -195,10 +224,17 @@ void Molecule::addAtom(double* x, double* y, double* z, double* area, double* fo
 	atomicPointers[i]=c;
 	radii[i]=radius;
 	
+	//sea water modifications
+	epsilons[i]=sqrt(eps);
+	sigmas[i]=(sig+0.82)*0.5;
+	
 	areas[i] = area;
 	forces[i] = force;
 	source[i] = EXTERNAL_SOURCE;
-	names[i]=name;	
+	names[i]=name;
+	
+	//determine species
+	species[i] = identifySpecies(eps,sig);
 }
 
 
@@ -216,18 +252,33 @@ void Molecule::update(){
 vector<Vector> &Molecule::fetchCoordinates(){
 	return atoms;
 }
-vector<double> &Molecule::fetchRadii(){
+vector<float> &Molecule::fetchRadii(){
 	return radii;
 }
 
-vector<vector<double*> > &Molecule::fetchForcePointers(){
+vector<float> &Molecule::fetchEpsilons(){
+	return epsilons;
+}
+
+vector<float> &Molecule::fetchSigmas(){
+	return sigmas;
+}
+
+vector<unsigned int> &Molecule::fetchSpecies(){
+	return species;
+}
+
+vector<vector<float*> > &Molecule::fetchForcePointers(){
 	return forces;
 }
 
-vector<double*> &Molecule::fetchAreaPointers(){
+vector<float*> &Molecule::fetchAreaPointers(){
 	return areas;
 }
 
+vector<float*> &Molecule::fetchNonpolarPointers(){
+	return nonpolarFreeEnergies;
+}
 
 string Molecule::string2UpperCase(string s){
 	string str=s;
@@ -264,8 +315,8 @@ void Molecule::printxyz(){
 
 void Molecule::printDifference(Molecule *mol){
 	//we assume here that the two molecules have same number of atoms etc..
-	vector<double*> areas2 = mol->fetchAreaPointers();
-	vector<vector<double*> > forces2 = mol->fetchForcePointers();
+	vector<float*> areas2 = mol->fetchAreaPointers();
+	vector<vector<float*> > forces2 = mol->fetchForcePointers();
 	
 	fprintf(stdout,"index\tname\tarea\tgradx\tgrady\tgradz\tradius\n");
 	for(unsigned int i=0;i<areas.size();++i){

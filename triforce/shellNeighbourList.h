@@ -41,13 +41,13 @@ Coordinate;
 
 typedef boost::multi_array<set<int>,3> ShellGrid;
 typedef boost::multi_array<vector<Coordinate>,3> CubicalGrid;
-typedef boost::multi_array<double,3> CubicalTemporaryGrid;
+typedef boost::multi_array<float,3> CubicalTemporaryGrid;
 
 
 class ShellNeighbourList{
 	
 public:
-	ShellNeighbourList(Vector center, Vector dim, double searchRadius, int sphericalDetail, int cubicalDetail);
+	ShellNeighbourList(Vector center, Vector dim, float searchRadius, int sphericalDetail, int cubicalDetail);
 	
 	void addSphere(Vector &x, int id);
 	set<int> getNeighbors(Vector &x);
@@ -60,11 +60,11 @@ private:
 	VectorInt numSpheres;
 	VectorInt numCubes;
 	Vector origin;
-	double shellRadius;
-	double cubicalLength;
-	double sphericalDistance;
-	double sphericalDetail;
-	double cubicalDetail;
+	float shellRadius;
+	float cubicalLength;
+	float sphericalDistance;
+	float sphericalDetail;
+	float cubicalDetail;
 	
 	ShellGrid *shellGrid;
 	CubicalGrid *cubicalGrid;

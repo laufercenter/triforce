@@ -22,18 +22,18 @@ IntegratorStatistical::IntegratorStatistical(int trials){
 }
 
 
-double IntegratorStatistical::angle(Vector &a, Vector &b){
+float IntegratorStatistical::angle(Vector &a, Vector &b){
 	return acos(norm_dot(a,b));
 }
 
 
 
-double IntegratorStatistical::integrate(Molecule *molecule, Tessellation *tessellation){
+float IntegratorStatistical::integrate(Molecule *molecule, Tessellation *tessellation){
 	this->molecule = molecule;
 	this->tessellation = tessellation;
 	
 	SASAsForMolecule sasas;
-	double area;
+	float area;
 	
 	sasas = tessellation->sasas();
 	
@@ -49,16 +49,16 @@ double IntegratorStatistical::integrate(Molecule *molecule, Tessellation *tessel
 }
 
 
-double IntegratorStatistical::integrateAtomicSASA(SASAsForAtom sasasForAtom){
-	double radius;
-	double area;
+float IntegratorStatistical::integrateAtomicSASA(SASAsForAtom sasasForAtom){
+	float radius;
+	float area;
 	Vector v(3);
 	int form;
 	int sasaCount;
 	int sesaCount;
 	bool occluded;
 	Vector n(3);
-	double l;
+	float l;
 	
 	
 	radius = sasasForAtom.radius;
@@ -68,7 +68,7 @@ double IntegratorStatistical::integrateAtomicSASA(SASAsForAtom sasasForAtom){
 	srand(120);
 	
 	for(int t= 0; t<trials; ++t){
-		v = randu<vec>(3);
+		v = randu<fvec>(3);
 		v(0) = v(0)-0.5;
 		v(1) = v(1)-0.5;
 		v(2) = v(2)-0.5;
@@ -105,7 +105,7 @@ double IntegratorStatistical::integrateAtomicSASA(SASAsForAtom sasasForAtom){
 	
 	printf("SASA: %d, SESA: %d\n",sasaCount,sesaCount);
 	
-	area = 4*M_PI*(double)sasaCount / ((double)(sasaCount+sesaCount));
+	area = 4*M_PI*(float)sasaCount / ((float)(sasaCount+sesaCount));
 	
 	return area;
 	

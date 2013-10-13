@@ -33,7 +33,7 @@
 using namespace std;
 
 
-typedef map<string,double> EntityList;
+typedef map<string,float> EntityList;
 
 
 class Benchmark{
@@ -43,7 +43,7 @@ public:
 	Benchmark(string section);
 	void start(string phase);
 	void stop();
-	void addQuantity(string quantity, double x);
+	void addQuantity(string quantity, float x);
 	void print(FILE* outputfile);
 
 private:

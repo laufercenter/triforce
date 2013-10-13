@@ -45,17 +45,17 @@ enum LineType{
 
 
 typedef struct{
-	double g;
+	float g;
 	Vector v;
 	bool flip;
-	double psi;
+	float psi;
 }
 LimitingInterface;
 
 
 typedef struct{
 	int i;
-	double kappa;
+	float kappa;
 
 }
 DepthBufferCoordinate;
@@ -64,7 +64,7 @@ DepthBufferCoordinate;
 
 
 
-typedef multimap<double, LineType> DepthBufferLine;
+typedef multimap<float, LineType> DepthBufferLine;
 typedef vector<DepthBufferLine>DepthBuffer;
 typedef vector<ScanlineMode>DepthBufferMode;
 
@@ -78,16 +78,16 @@ public:
 
 	MultiLayeredDepthBuffer();
 	MultiLayeredDepthBuffer(Depth3D &data, Data1D &occludedDistribution, Data1D &exposedDistribution, int m);
-	void addSphere(Vector &v, double lambda, bool invert, double &kappa, double &psi);
-	bool passesBuffer(double kappa, double psi, double lambda, bool invert, vector<Vector> &exposedVectors);
+	void addSphere(Vector &v, float lambda, bool invert, float &kappa, float &psi);
+	bool passesBuffer(float kappa, float psi, float lambda, bool invert, vector<Vector> &exposedVectors);
 	bool getSplitterExposedVectors(vector<Vector> &exposedVectors);
 	void print();
 	void startNewCycle();
-	void addProbe(double x);
+	void addProbe(float x);
 	bool isCycleExposed();
-	double exposedProbability();
-	bool isExposed(double x);
-	double exposedArea();
+	float exposedProbability();
+	bool isExposed(float x);
+	float exposedArea();
 
 
 	
@@ -98,14 +98,14 @@ private:
 	DepthBuffer dbuffer;
 	DepthBufferMode dmode;
 	int mode;
-	double exposed;
-	double occluded;
+	float exposed;
+	float occluded;
 	Data1D exposedDistribution;
 	Data1D occludedDistribution;
-	double prior_occluded;
-	double prior_exposed;
-	vector<double> gTable;
-	double C;
+	float prior_occluded;
+	float prior_exposed;
+	vector<float> gTable;
+	float C;
 	vector<DepthBufferCoordinate> projections[2];
 	vector<DepthBufferCoordinate> segment;
 	vector<vector<DepthBufferCoordinate> > segments;
@@ -115,15 +115,15 @@ private:
 	
 	
 	Vector normalise(Vector x);
-	int sgn(double d);
-	ScanlineMode insertIntoLineBuffer(DepthBufferLine &line, double front, double back);
-	bool wouldChangeLineBuffer(DepthBufferLine &line, double front, double back, bool &frontChanges, bool &backChanges);
+	int sgn(float d);
+	ScanlineMode insertIntoLineBuffer(DepthBufferLine &line, float front, float back);
+	bool wouldChangeLineBuffer(DepthBufferLine &line, float front, float back, bool &frontChanges, bool &backChanges);
 	Vector convertToCartesian(DepthBufferCoordinate &pr);
 	DepthBufferLine::iterator increaseLineInterator(DepthBufferLine::iterator it, DepthBufferLine &line);
 	DepthBufferLine::iterator decreaseLineInterator(DepthBufferLine::iterator it, DepthBufferLine &line);
-	void getDepthBounds(int p, double d, DepthBufferLine::iterator &it0, DepthBufferLine::iterator &it1);
-	bool isWithinNumericalLimits(double x, double l);
-	bool scanBuffer(double kappa, vector<Vector> &exposedVectors, DepthInformation &dat);
+	void getDepthBounds(int p, float d, DepthBufferLine::iterator &it0, DepthBufferLine::iterator &it1);
+	bool isWithinNumericalLimits(float x, float l);
+	bool scanBuffer(float kappa, vector<Vector> &exposedVectors, DepthInformation &dat);
 	
 	
 

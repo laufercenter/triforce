@@ -1,7 +1,7 @@
 #include "spline.h"
 
 
-typedef mat Matrix;
+typedef fmat Matrix;
 
 Spline::Spline(vector<Vector> geometry){
 	int i,l;
@@ -10,8 +10,8 @@ Spline::Spline(vector<Vector> geometry){
 	
 
 	//first define constant cutmull-rom base matrix
-	//double c[16]={-1,2,-1,0,3,-5,0,2,-3,4,1,0,1,-1,0,0};
-	double c[16]={0,2,0,0,-1,0,1,0,2,-5,4,-1,-1,3,-3,1};
+	//float c[16]={-1,2,-1,0,3,-5,0,2,-3,4,1,0,1,-1,0,0};
+	float c[16]={0,2,0,0,-1,0,1,0,2,-5,4,-1,-1,3,-3,1};
 	B = Matrix(c,4,4) * 0.5;
 
 	l=geometry.size();
@@ -49,7 +49,7 @@ Spline::Spline(vector<Vector> geometry){
 }
 
 
-int Spline::logSearch(double x){
+int Spline::logSearch(float x){
 	int l,r,c;
 	l=0;
 	r=X.size()-1;
@@ -61,11 +61,11 @@ int Spline::logSearch(double x){
 	return l;
 }
 
-double Spline::f(double x){
+float Spline::f(float x){
 	int c;
-	double x0,x1,t,t_square,t_cubic;
+	float x0,x1,t,t_square,t_cubic;
 	Vector T,y;
-	double res;
+	float res;
 	
 	
 	//determine bin in which x resides

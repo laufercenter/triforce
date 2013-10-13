@@ -37,7 +37,7 @@ class IntegratorGaussBonnet: public Integrator{
 	
 public:
 	IntegratorGaussBonnet();
-	double integrate(Molecule *molecule, Tessellation *tessellation);
+	float integrate(Molecule *molecule, Tessellation *tessellation);
 	
 	
 private:
@@ -45,10 +45,10 @@ private:
 	Molecule* molecule;
 	
 
-	double integrateAtomicSASA(SASAsForAtom sasasForAtom);
-	double integrateSASA(SASA &sasa);
-	double integrateArc(SASANode &x0, SASANode &x1);
-	int sgn(double d);
+	float integrateAtomicSASA(SASAsForAtom sasasForAtom);
+	float integrateSASA(SASA &sasa);
+	float integrateArc(SASANode &x0, SASANode &x1);
+	int sgn(float d);
 	
 };
 

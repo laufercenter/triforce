@@ -20,12 +20,12 @@ IntegratorGaussBonnet::IntegratorGaussBonnet(){
 
 
 
-double IntegratorGaussBonnet::integrate(Molecule *molecule, Tessellation *tessellation){
+float IntegratorGaussBonnet::integrate(Molecule *molecule, Tessellation *tessellation){
 	this->molecule = molecule;
 	this->tessellation = tessellation;
 	
 	SASAsForMolecule sasas;
-	double area;
+	float area;
 	
 	sasas = tessellation->sasas();
 	
@@ -40,16 +40,16 @@ double IntegratorGaussBonnet::integrate(Molecule *molecule, Tessellation *tessel
 	
 }
 
-int IntegratorGaussBonnet::sgn(double d){
+int IntegratorGaussBonnet::sgn(float d){
 	if(d>=0) return 1;
 	else return -1;
 }
 
 
-double IntegratorGaussBonnet::integrateAtomicSASA(SASAsForAtom sasasForAtom){
+float IntegratorGaussBonnet::integrateAtomicSASA(SASAsForAtom sasasForAtom){
 	int i;
-	double radius;
-	double area;
+	float radius;
+	float area;
 	
 	radius = sasasForAtom.radius;
 	area = 0;
@@ -62,10 +62,10 @@ double IntegratorGaussBonnet::integrateAtomicSASA(SASAsForAtom sasasForAtom){
 	
 }
 
-double IntegratorGaussBonnet::integrateSASA(SASA &sasa){
+float IntegratorGaussBonnet::integrateSASA(SASA &sasa){
 	SASANodeList::iterator it;
 	SASANode x0, x1;
-	double area;
+	float area;
 	
 	x0 = *(--sasa.sasa.end());
 	area = 0;
@@ -85,18 +85,18 @@ double IntegratorGaussBonnet::integrateSASA(SASA &sasa){
 
 
 
-double IntegratorGaussBonnet::integrateArc(SASANode &x0, SASANode &x1){
-	double lambda_k, lambda_j;
+float IntegratorGaussBonnet::integrateArc(SASANode &x0, SASANode &x1){
+	float lambda_k, lambda_j;
 	Vector mu_k(3), mu_j(3);
-	double a_k, a_j;
-	double g_k, g_j;
+	float a_k, a_j;
+	float g_k, g_j;
 	Vector n_kj(3), m_kl(3), m_jk(3);
-	double OMEGA;
-	double S;
-	double PHI;
-	double cosTHETA;
-	double res;
-	double dot1, dot2;
+	float OMEGA;
+	float S;
+	float PHI;
+	float cosTHETA;
+	float res;
+	float dot1, dot2;
 	
 	//calculate lambda
 	lambda_k = x1.lambda.rotation;

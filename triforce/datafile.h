@@ -65,14 +65,14 @@ private:
 	DataFileType type;
 	
 
-	double charArray2Double(char* data);
+	float charArray2Double(char* data);
 	int32_t charArray2FixedSignedInt32(char *data);
-	double fixedSignedInt322Double(int32_t x, unsigned short fraction);
+	float fixedSignedInt322Double(int32_t x, unsigned short fraction);
 	int fixedSignedInt322Int(int32_t x);	
 	
 	
 	
-	double string2double(string s);
+	float string2float(string s);
 	int string2int(string s);
 	vector<string>* split(string &s, char delimiter);
 	string string2UpperCase(string s);

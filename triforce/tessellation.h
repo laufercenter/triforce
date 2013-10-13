@@ -48,11 +48,12 @@ using namespace arma;
 #define EPSILON 0.01
 #define ORDER_CLOCKWISE 0
 #define ORDER_COUNTERCLOCKWISE 1
+#define THRESHOLD_INTERFACE 0.0001
 
 #define FD 0.000001
 #define FDT 10.0025
 
-#define MINISCULE 0.00001
+#define MINISCULE 0.000000000000000001
 
 
 
@@ -122,7 +123,7 @@ struct SegmentComparator: public std::binary_function<PartialSegmentID, PartialS
 
 typedef struct
 {
-	double rotation;
+	float rotation;
 	Vector drotation_dxi;
 	Vector drotation_dxj;
 	Vector drotation_dxl;
@@ -132,14 +133,14 @@ Rotation;
 
 typedef struct
 {
-	double rotation;
-	double di;
-	double dij;
+	float rotation;
+	float di;
+	float dij;
 	Vector ni;
 	Vector nij;
-	double dot_ni_nij;
-	double s0;
-	double s2;
+	float dot_ni_nij;
+	float s0;
+	float s2;
 	
 	int id_i;
 	int id_j;
@@ -148,12 +149,12 @@ OmegaRotation;
 
 typedef struct
 {
-	double rotation;
-	double sig0;
-	double sig1;
-	double sig2;
-	double dot_IJ;
-	double rho;
+	float rotation;
+	float sig0;
+	float sig1;
+	float sig2;
+	float dot_IJ;
+	float rho;
 
 	int id_i;
 	int id_j;
@@ -164,7 +165,7 @@ EtaRotation;
 
 typedef struct
 {
-	double rotation;
+	float rotation;
 	
 	OmegaRotation omega;
 	EtaRotation eta;
@@ -215,11 +216,11 @@ PHIContainer;
 typedef struct
 
 {
-	double rotation;
-	double d_i;
-	double r_l;
-	double r_i;
-	double g;
+	float rotation;
+	float d_i;
+	float r_l;
+	float r_i;
+	float g;
 }
 LambdaRotation;
 
@@ -227,7 +228,7 @@ LambdaRotation;
 
 typedef struct
 {
-	double d;
+	float d;
 	bool visited;
 	
 	
@@ -236,9 +237,9 @@ CircularIntersection;
 
 typedef struct
 {
-	double out;
+	float out;
 	Vector vectorOut;
-	double in;
+	float in;
 	Vector vectorIn;
 }
 Interfaces;
@@ -292,7 +293,7 @@ struct InteractionNodeComparator: public std::binary_function<IntersectionAddres
 
 struct IntersectionBranch;
 
-typedef multimap<double, IntersectionBranch> IntersectionBranches;
+typedef multimap<float, IntersectionBranch> IntersectionBranches;
 
 
 typedef struct IntersectionBranch
@@ -329,8 +330,8 @@ struct IteratorComparator: public std::binary_function<IntersectionBranches::ite
 typedef struct
 {
 	int id;
-	double rho;
-	double dot_mui_muj;
+	float rho;
+	float dot_mui_muj;
 }
 RhoContainer;
 
@@ -446,10 +447,10 @@ public:
 	
 	
 	Vector calculateInterfaceNormal(const Vector &v_l, const Vector &v_i);
-	Vector calculateInterfaceNormal(const Vector &v_l, const Vector &v_i, double &d);
-	LambdaRotation calculateLambda(int index_i, double d_i, double r_l, double r_i, Vector &mu_i, CircularInterfaceForm &form);
+	Vector calculateInterfaceNormal(const Vector &v_l, const Vector &v_i, float &d);
+	LambdaRotation calculateLambda(int index_i, float d_i, float r_l, float r_i, Vector &mu_i, CircularInterfaceForm &form);
 	Rotation calculateLambdaDerivatives(LambdaRotation &r, CircularInterface &circle);
-	LambdaRotation calculateLambda(double d_i, double r_l, double r_i, Vector &mu_i);
+	LambdaRotation calculateLambda(float d_i, float r_l, float r_i, Vector &mu_i);
 	Rotation calculatePsi(Vector &tessellationAxis, Vector &mu_i, Matrix &dmu_dx, CircularInterfaceForm form, int index);
 	Rotation calculatePsi(Vector &tessellationAxis, Vector &mu_i);
 	EtaRotation calculateEta(Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, RhoContainer &rhoContainer);
@@ -461,11 +462,11 @@ public:
 	PHIContainer calculatePHI(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, RhoContainer &rhoContainer);
 	PHIContainer calculatePHI(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, RhoContainer &rhoContainer);
 	Rotation calculatePHIDerivatives(PHIRotation &r, CircularInterfacesPerAtom &circles, Vector &tessellationAxis);
-	double calculateRho(Vector &mu_i, Vector &mu_j);
-	double calculateRho(Vector &mu_i, Vector &mu_j, bool derivatives);
-	double sacos(Vector &a, Vector &b);
-	double sdot(Vector &a, Vector &b);
-	double l(Vector &a);
+	float calculateRho(Vector &mu_i, Vector &mu_j);
+	float calculateRho(Vector &mu_i, Vector &mu_j, bool derivatives);
+	float sacos(Vector &a, Vector &b);
+	float sdot(Vector &a, Vector &b);
+	float l(Vector &a);
 	void calculateProjectionAndDerivatives(Vector &tessellationAxis, CircularInterface &circle);
 	Benchmark getBenchmark();
 
@@ -478,10 +479,11 @@ private:
 	Data1D exposedDistribution;
 	Molecule molecule;
 	vector<Vector> atoms;
-	vector<double> radii;
+	vector<float> radii;
 	Vector torigin;
-	double tradius;
+	float tradius;
 	int ti;
+	CircularInterfacesPerAtom tcircles;
 	//#atoms #circularregions
 	//#atoms #sasas #circularregions
 	SASAs sasasForMolecule;
@@ -510,9 +512,7 @@ private:
 	void outputGaussBonnetPath(SASAs &points);
 	void reindexCircularInterfaces(CircularInterfacesPerAtom &circles);
 	void insertArtificialIntersectionPoints(CircularInterface &I, Vector &tessellationAxis, Hemisphere hemisphere, SASASegmentList &sasa);
-	int sgn(double d);
 	void determineCircularIntersections(CircularInterfacesPerAtom &circles);
-	double complLongAngle(Vector &vi, Vector &vj, Vector &vk);
 	IntersectionBranches::iterator increaseBranchInterator(IntersectionBranches::iterator it, CircularInterface &circle);
 	IntersectionBranches::iterator decreaseBranchInterator(IntersectionBranches::iterator it, CircularInterface &circle);
 	void createIntersectionBranch(PHIContainer &PHII, CircularInterface &I, CircularInterface &J);
@@ -525,12 +525,15 @@ private:
 	bool isWithinStrongNumericalLimits(double x, double l);
 	OmegaRotation calculateOmega(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J, RhoContainer &rhoContainer);
 	EtaRotation calculateEta(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J, RhoContainer &rhoContainer);
-	PHIContainer calculatePHI(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J, double radius, RhoContainer &rhoContainer);
+	PHIContainer calculatePHI(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J, float radius, RhoContainer &rhoContainer);
 	void determinePsiRotations(Vector &tessellationAxis, CircularInterfacesPerAtom &circles);
 	Rotation calculatePsi(Vector &tessellationAxis, CircularInterface &circle);
 	Matrix matrixCross(Matrix &m, Vector &v);
 	Vector normalise(Vector x);
-	Vector normalise(Vector x, double &l);
+	Vector normalise(Vector x, float &l);
+	void addLimitingInterface(LimitingInterface &limit, CircularInterfacesPerAtom &circles);
+	void convertExposedVectors2PHIValues(Vector &tessellationAxis,Hemisphere hemisphere, CircularInterface &circle);
+	float exposition(Hemisphere hemisphere, IntersectionBranches::iterator it0, IntersectionBranches::iterator it1, CircularInterface &circle);
 	void addLimitingInterface(LimitingInterface &limit, CircularInterfacesPerAtom &circles);
 	double V2PHI(Vector tessellationAxis, Hemisphere hemisphere, Vector v, CircularInterface &circle);
 	void convertExposedVectors2PHIValues(Vector &tessellationAxis,Hemisphere hemisphere, CircularInterface &circle);

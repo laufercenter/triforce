@@ -28,16 +28,19 @@
 #include "neighbourList.h"
 
 
+#define N_SPECIES 6
+
+
 using namespace std;
 using namespace arma;
 
-typedef vec Vector;
+typedef fvec Vector;
 
 typedef struct
 {
-	double* x;
-	double* y;
-	double* z;
+	float* x;
+	float* y;
+	float* z;
 }
 AtomicPointers; 
 
@@ -76,9 +79,13 @@ public:
 	void printDifference(Molecule *mol);
 	
 	vector<Vector> &fetchCoordinates();
-	vector<double> &fetchRadii();
-	vector<double*> &fetchAreaPointers();
-	vector<vector<double*> > &fetchForcePointers();
+	vector<float> &fetchRadii();
+	vector<float*> &fetchAreaPointers();
+	vector<vector<float*> > &fetchForcePointers();
+	vector<float> &fetchEpsilons();
+	vector<float> &fetchSigmas();
+	vector<float*> &fetchNonpolarPointers();
+	vector<unsigned int> &fetchSpecies();
 	void generateNeighbourList();
 	vector<int> getNeighborListFor(int i);
 	
@@ -93,11 +100,13 @@ private:
 	Topology topology;
 	vector<AtomicPointers> atomicPointers;
 	vector<Vector> atoms;
-	vector<double> sigmas;
-	vector<double> radii;
-	vector<double> epsilons;
-	vector<double*> areas;
-	vector<vector<double*> >forces;
+	vector<float> epsilons;
+	vector<float> sigmas;
+	vector<float> radii;
+	vector<unsigned int> species;
+	vector<float*> areas;
+	vector<vector<float*> >forces;
+	vector<float*> nonpolarFreeEnergies;
 	vector<Source> source;
 	vector<string> names;
 	bool hasNeighbourList;
@@ -107,15 +116,16 @@ private:
 	
 	
 	//this will only be needed for usage with the tool. Amber and Adun will provide their own structures
-	vector<double> realArea;
-	vector<double> realForceX;
-	vector<double> realForceY;
-	vector<double> realForceZ;
+	vector<float> realArea;
+	vector<float> realForceX;
+	vector<float> realForceY;
+	vector<float> realForceZ;
 	
 
 	NeighbourList *neighbourList;
 	
 	void refreshInternalPointers();
+	unsigned int identifySpecies(float eps, float sig);
 	
 	
 };

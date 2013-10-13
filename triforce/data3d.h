@@ -33,18 +33,18 @@ using namespace arma;
 typedef vec Vector;
 typedef Col<unsigned int> VectorInt;
 
-typedef mat Matrix;
+typedef fmat Matrix;
 
 //#define THRESHOLD_NUMERICAL 0.00001
 
-//typedef boost::numeric::ublas::vector<double> Vector;
-//typedef boost::numeric::ublas::matrix<double> Matrix;
+//typedef boost::numeric::ublas::vector<float> Vector;
+//typedef boost::numeric::ublas::matrix<float> Matrix;
 
 
 
-typedef boost::multi_array<double,1> Table1dDouble;
-typedef boost::multi_array<double,2> Table2dDouble;
-typedef boost::multi_array<double,3> Table3dDouble;
+typedef boost::multi_array<float,1> Table1dDouble;
+typedef boost::multi_array<float,2> Table2dDouble;
+typedef boost::multi_array<float,3> Table3dDouble;
 typedef boost::multi_array<Vector,3> Table3dVector;
 typedef boost::multi_array<Matrix,3> Table3dMatrix;
 
@@ -82,7 +82,7 @@ public:
 	
 	virtual void closestGridPoint(Vector &x, VectorInt &p, Vector &l);
 	virtual void surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Vector &lengths);
-	bool isWithinNumericalLimits(double x, double t);
+	bool isWithinNumericalLimits(float x, float t);
 	void init();
 	
 

@@ -1,7 +1,7 @@
 #include "neighbourList.h"
 
 
-NeighbourList::NeighbourList(Vector center, Vector dim, double searchRadius){
+NeighbourList::NeighbourList(Vector center, Vector dim, float searchRadius){
 	this->dim = dim;
 	searchRadius*=2;
 	this->searchRadius = searchRadius;
