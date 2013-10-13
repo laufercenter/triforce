@@ -37,24 +37,24 @@ void Data1D::init(){
 }
 
 
-void Data1D::setHeaderParameter0Cell(unsigned int x, double value){
+void Data1D::setHeaderParameter0Cell(unsigned int x, float value){
 	(*headerParameter0)[x] = value;
 }
 
-void Data1D::setAuxiliaryCell(unsigned int x, double value){
+void Data1D::setAuxiliaryCell(unsigned int x, float value){
 	(*auxiliary)[x] = value;
 }
 
-double Data1D::getHeaderParameter0Cell(unsigned int x){
+float Data1D::getHeaderParameter0Cell(unsigned int x){
 	return (*headerParameter0)[x];
 }
 
 
-double Data1D::getAuxiliaryCell(unsigned int x){
+float Data1D::getAuxiliaryCell(unsigned int x){
 	return (*auxiliary)[x];
 }
 
-void Data1D::setDataCell(unsigned int x, double value){
+void Data1D::setDataCell(unsigned int x, float value){
 	(*data)[x] = value;
 }
 
@@ -69,12 +69,12 @@ Vector Data1D::getHeaderVector(unsigned int parameter0){
 
 
 
-double Data1D::getDataCell(unsigned int x){
+float Data1D::getDataCell(unsigned int x){
 	return (*data)[x];
 }
 
 
-bool Data1D::isWithinNumericalLimits(double x, double t){
+bool Data1D::isWithinNumericalLimits(float x, float t){
 	if(abs(x-t) <= THRESHOLD_NUMERICAL) return true;
 	else return false;
 }
@@ -83,7 +83,7 @@ bool Data1D::isWithinNumericalLimits(double x, double t){
 
 
 
-void Data1D::closestGridPoint(double x, unsigned int &p, double &l){
+void Data1D::closestGridPoint(float x, unsigned int &p, float &l){
 	unsigned int i_parameter0;
 	
 	l = cellLengthParameter0;

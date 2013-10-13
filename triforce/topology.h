@@ -30,9 +30,9 @@ using namespace arma;
 
 
 typedef struct{
-	double mass;
-	double epsilon;
-	double sigma;
+	float mass;
+	float epsilon;
+	float sigma;
 }Parameters;
 
 
@@ -61,9 +61,9 @@ public:
 	void setCell(string ident, Parameters p);
 	Parameters getCell(string ident);
 	Parameters getAssociatedCell(string ident);
-	void setMassValue(string ident, double v);
-	void setEpsilonValue(string ident, double v);
-	void setSigmaValue(string ident, double v);
+	void setMassValue(string ident, float v);
+	void setEpsilonValue(string ident, float v);
+	void setSigmaValue(string ident, float v);
 	void setAssociation(string ident0, string ident1);
 	string getAssociation(string ident);
 	bool contains(string ident);

@@ -22,10 +22,8 @@ IntegratorTriforce::IntegratorTriforce(){
 
 
 409060
-*/
 
 
-IntegratorTriforce::IntegratorTriforce(Interpolation *dataConcave, Interpolation *forcesConcave0, Interpolation *forcesConcave1, Interpolation *forcesConcave2){
 	data.clear();
 	data.push_back(dataConcave);
 	data.push_back(forcesConcave0);
@@ -63,8 +61,8 @@ void IntegratorTriforce::purgeForces(){
 double IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 	SASAs sasas;
 	Vector integrationOrigin;
-	double radius;
-	double area,a;
+	float radius;
+	float area,a;
 	
 	
 	this->molecule = m;
@@ -125,16 +123,16 @@ void IntegratorTriforce::addForce(int i, Vector force){
 
 
 
-bool IntegratorTriforce::isWithinNumericalLimits(double x, double l){
+bool IntegratorTriforce::isWithinNumericalLimits(float x, float l){
 	if(abs(x-l)<=THRESHOLD_NUMERICAL) return true;
 	else return false;
 }
 
 
-Vector  IntegratorTriforce::recoverCircularInterface(Vector p, double psi_b, double lambda_b, double PHI_b0){
+Vector  IntegratorTriforce::recoverCircularInterface(Vector p, float psi_b, float lambda_b, float PHI_b0){
 	Vector c(2);
 	if(isWithinNumericalLimits(psi_b,0)) psi_b=0.0001;
-	double denominator = (lambda_b*lambda_b + psi_b*psi_b - 2*lambda_b*psi_b*cos(PHI_b0));
+	float denominator = (lambda_b*lambda_b + psi_b*psi_b - 2*lambda_b*psi_b*cos(PHI_b0));
 	
 	c(0) = (psi_b * (p(0) * psi_b - lambda_b * (p(0) * cos(PHI_b0) + p(1) * sin(PHI_b0)))) / denominator;
 	c(1) = (psi_b * (p(1) * psi_b - p(1) * lambda_b * cos(PHI_b0) + p(0) * lambda_b * sin(PHI_b0))) / denominator;
@@ -144,10 +142,10 @@ Vector  IntegratorTriforce::recoverCircularInterface(Vector p, double psi_b, dou
 }
 
 
-Vector  IntegratorTriforce::recoverCircularInterface(double psi_a, double lambda_a, double PHI_a1, double psi_b, double lambda_b, double PHI_b0){
+Vector  IntegratorTriforce::recoverCircularInterface(float psi_a, float lambda_a, float PHI_a1, float psi_b, float lambda_b, float PHI_b0){
 	Vector c(2);
 	
-	double denominator = (lambda_b*lambda_b + psi_b*psi_b - 2*lambda_b*psi_b*cos(PHI_b0));
+	float denominator = (lambda_b*lambda_b + psi_b*psi_b - 2*lambda_b*psi_b*cos(PHI_b0));
 	
 	c(0) = -(psi_b*(lambda_a*psi_b*sin(PHI_a1)-lambda_a*lambda_b*sin(PHI_a1-PHI_b0)+lambda_b*psi_a*sin(PHI_b0))) / denominator;
 	c(1) = (psi_b*(psi_a*psi_b+lambda_a*psi_b*cos(PHI_a1)-lambda_b*(lambda_a*cos(PHI_a1-PHI_b0)+psi_a*cos(PHI_b0)))) / denominator;
@@ -157,9 +155,9 @@ Vector  IntegratorTriforce::recoverCircularInterface(double psi_a, double lambda
 
 }
 
-Vector  IntegratorTriforce::intersectionPoint(Vector c, double psi, double lambda, double PHI){
+Vector  IntegratorTriforce::intersectionPoint(Vector c, float psi, float lambda, float PHI){
 	Vector r(2);
-	double d;
+	float d;
 	d = norm(c,2);
 	
 		
@@ -178,15 +176,14 @@ Vector  IntegratorTriforce::intersectionPoint(Vector c, double psi, double lambd
 	
 }
 
-double IntegratorTriforce::integrateSASA(int l, SASASegmentList &sasa, double radius){
+float IntegratorTriforce::integrateSASA(int l, SASASegmentList &sasa, float radius){
 	SASASegmentList::iterator it;
 	SASASegment x;
-	double area0,area1,area;
-	Area integral;
-	double r_square;
-	double actphi;
+	float area0,area1,area;
+	Integral integral;
+	float r_square;
 	Vector c(2),c2(2);
-	double a;
+	float a;
 	Vector p0, p1, p2, p01, p12, n01(2);
 	
 	r_square = radius*radius;
@@ -195,12 +192,9 @@ double IntegratorTriforce::integrateSASA(int l, SASASegmentList &sasa, double ra
 	area1=0;
 	for(it = sasa.begin(); it!=sasa.end(); ++it){
 		x=*it;
-		integral = integrateTriangle(l, x, x.tessellationAxis, actphi);
+		integral = integrateTriangle(l, x, x.tessellationAxis);
 		
-		a = integral.area;
-		
-		
-		
+		a = integral.integral;
 		
 		addForce(x.index0, integral.force_i * r_square);
 		addForce(x.index1, integral.force_j * r_square);
@@ -244,27 +238,30 @@ double IntegratorTriforce::integrateSASA(int l, SASASegmentList &sasa, double ra
 
 
 
-Vector IntegratorTriforce::lookUp(double PHI, double psi, double lambda, double &phi, CircularInterfaceForm form){
+Vector IntegratorTriforce::lookUp(float PHI, float psi, float lambda, CircularInterfaceForm form){
 	Vector res(4);
-	double aPHI, apsi, alambda;
+	float aPHI, apsi, alambda;
 	int i;
-	
+	Vector v(3);
+
 	aPHI=abs(PHI);
-	apsi = max(0.0,psi);
-	alambda= max(0.0,lambda);
+	apsi = max(0.0f,psi);
+	alambda= max(0.0f,lambda);
 	
+	v(0)=aPHI;
+	v(1)=apsi;
+	v(2)=alambda;
 	
 	
 	for(i=0;i<4;++i){
 		//printf("start lookup %d (%f %f %f)\n",i,PHI,psi,lambda);
-		res(i) = -data[i]->interpolate(aPHI, apsi, alambda, phi);
+		res(i) = -(data[i]->interpolate(v));
 		//printf("end lookup %d\n",i);
 	}
 	
 	if(PHI <0){
 		res=-res;
 		res(1) = -res(1);
-		phi=-phi;
 	}
 	
 	
@@ -280,7 +277,7 @@ Vector IntegratorTriforce::lookUp(double PHI, double psi, double lambda, double 
 }
 	
 
-double IntegratorTriforce::PHI2phi(double PHI, double psi, double lambda){
+float IntegratorTriforce::PHI2phi(float PHI, float psi, float lambda){
 
 	return acos( 	(-cos(PHI)*cos(psi)*sin(lambda)+cos(lambda)*sin(psi)) /
 			(sqrt(pow(abs(cos(psi)*sin(lambda)*sin(PHI)),2) + pow(abs(sin(lambda)*sin(PHI)*sin(psi)),2)
@@ -290,18 +287,18 @@ double IntegratorTriforce::PHI2phi(double PHI, double psi, double lambda){
 }
 
 
-double IntegratorTriforce::PHI2phi2(Vector integrationOrigin, double PHI, double psi, double lambda){
-	mat33 T;
-	mat33 r0, r1;
+float IntegratorTriforce::PHI2phi2(Vector integrationOrigin, float PHI, float psi, float lambda){
+	fmat33 T;
+	fmat33 r0, r1;
 	Vector n(3);
 	Vector n0(3);
 	Vector n1(3);
 	Vector v(3),v2(2);
 	Vector ex(3);
 	Vector p(3);
-	double ux,uy,uz;
-	double C,S,t;
-	double g;
+	float ux,uy,uz;
+	float C,S,t;
+	float g;
 	
 	ex(0) = 1;
 	ex(1) = 0;
@@ -349,13 +346,13 @@ double IntegratorTriforce::PHI2phi2(Vector integrationOrigin, double PHI, double
 
 }
 
-bool IntegratorTriforce::isInPositiveEpsilonRange(double v, double eps){
+bool IntegratorTriforce::isInPositiveEpsilonRange(float v, float eps){
 	if(eps-(v+THRESHOLD_NUMERICAL) <= 0) return true;
 	else return false;
 }
 
 
-double IntegratorTriforce::V2phi(Vector &integrationOrigin, Vector cv, Vector &v){
+float IntegratorTriforce::V2phi(Vector &integrationOrigin, Vector cv, Vector &v){
 	Vector up(3);
 	Vector n_origin(3);
 	Vector n_v(3);
@@ -381,8 +378,8 @@ double IntegratorTriforce::V2phi(Vector &integrationOrigin, Vector cv, Vector &v
 }
 
 
-mat33 IntegratorTriforce::rotz(double theta){
-	mat33 m;
+fmat33 IntegratorTriforce::rotz(float theta){
+	fmat33 m;
 	m(0,0) = cos(theta);
 	m(0,1) = -sin(theta);
 	m(0,2) = 0;
@@ -400,13 +397,13 @@ mat33 IntegratorTriforce::rotz(double theta){
 }
 
 
-double IntegratorTriforce::logisticSmoother(double x){
+float IntegratorTriforce::logisticSmoother(float x){
 	return 1.0/(1.0+exp(-((x*2*LOGISTIC_SMOOTHER_PARAMETER)-LOGISTIC_SMOOTHER_PARAMETER)));
 }
 
 
 
-double IntegratorTriforce::sech(double x){
+float IntegratorTriforce::sech(float x){
 	return 1.0/(0.5 * (exp(x)+exp(-x)));
 }
 
@@ -414,37 +411,36 @@ double IntegratorTriforce::sech(double x){
 
 
 
-double IntegratorTriforce::dlogisticSmoother(double x){
+float IntegratorTriforce::dlogisticSmoother(float x){
 	return LOGISTIC_SMOOTHER_PARAMETER / (1+cosh(LOGISTIC_SMOOTHER_PARAMETER - 2*LOGISTIC_SMOOTHER_PARAMETER*x));
 
 }
 
 
 
-Vector IntegratorTriforce::areaSmoother(Vector &x, double area, double radius){
+Vector IntegratorTriforce::areaSmoother(Vector &x, float area, float radius){
 	return x*area/(2*M_PI*radius*radius);
 }
 
 
 
-Area IntegratorTriforce::integrateTriangle(int l, SASASegment &x, Vector integrationOrigin, double &phi){
+Integral IntegratorTriforce::integrateTriangle(int l, SASASegment &x, Vector integrationOrigin){
 	Rotation psi;
 	Rotation lambda;
 	Rotation PHIij;
 	Rotation PHIjk;
-	double area;
+	float area;
 	Vector M;
-	Area a;
+	Integral a;
 	Vector Tij(4), Tjk(4);
 	Vector Tij2(4), Tjk2(4);
 	Vector force_i(3), force_j(3), force_k(3), force_l(3);
-	double phi0,phi1;
-	double q, q0, q1;
+	float q, q0, q1;
 	CircularInterfaceForm form;
 	CircularInterfaceForm formi;
 	CircularInterfaceForm formj;
 	CircularInterfaceForm formk;
-	double s_convex, s_direction;
+	float s_convex, s_direction;
 	
 	
 	area = 0;
@@ -487,11 +483,11 @@ Area IntegratorTriforce::integrateTriangle(int l, SASASegment &x, Vector integra
 	}
 	
 		
-	M = lookUp(M_PI, psi.rotation, lambda.rotation, q0, form);
+	M = lookUp(M_PI, psi.rotation, lambda.rotation, form);
 	
 	
-	Tij = lookUp(PHIij.rotation, psi.rotation, lambda.rotation, phi0, form);
-	Tjk = lookUp(PHIjk.rotation, psi.rotation, lambda.rotation, phi1, form);
+	Tij = lookUp(PHIij.rotation, psi.rotation, lambda.rotation, form);
+	Tjk = lookUp(PHIjk.rotation, psi.rotation, lambda.rotation, form);
 	
 	
 	/*
@@ -560,11 +556,13 @@ Area IntegratorTriforce::integrateTriangle(int l, SASASegment &x, Vector integra
 	q = s_convex;
 	
 	
-	a.area=q * area;
+	a.integral=q * area;
 	a.force_i = q* force_i;
 	a.force_j = q* force_j;
 	a.force_k = q* force_k;
 	a.force_l = q* force_l;
+	
+	
 	
 	
 	
@@ -577,7 +575,7 @@ Area IntegratorTriforce::integrateTriangle(int l, SASASegment &x, Vector integra
 
 	int index_j, index_l, index_i, index_k;
 	Vector v_j,mu_j,mu_l;
-	double d_j,r_j,r_l, t_j, dd;
+	float d_j,r_j,r_l, t_j, dd;
 	
 	index_i=x0.index0;
 	index_j=x0.index1;
@@ -642,15 +640,15 @@ Area IntegratorTriforce::integrateTriangle(int l, SASASegment &x, Vector integra
 
 
 
-double IntegratorTriforce::angle(Vector &a, Vector &b){
+float IntegratorTriforce::angle(Vector &a, Vector &b){
 	return acos(norm_dot(a,b));
 }
 
-double IntegratorTriforce::complAngle(Vector &a, Vector &b){
+float IntegratorTriforce::complAngle(Vector &a, Vector &b){
 	return asin(norm_dot(a,b));
 }
 
-int IntegratorTriforce::sgn(double d){
+int IntegratorTriforce::sgn(float d){
 	if(d>=0) return 1;
 	else return -1;
 }
@@ -658,7 +656,7 @@ int IntegratorTriforce::sgn(double d){
 
 
 
-double IntegratorTriforce::csc(double a){
+float IntegratorTriforce::csc(float a){
 	return 1.0/sin(a);
 }
 

@@ -23,30 +23,30 @@ IntegratorNumerical::IntegratorNumerical(){
 
 
 
-IntegratorNumerical::IntegratorNumerical(int trials, double fd){
+IntegratorNumerical::IntegratorNumerical(int trials, float fd){
 	this->trials=trials;
 	this->fd = fd;
 	
 }
 
 
-double IntegratorNumerical::angle(Vector &a, Vector &b){
+float IntegratorNumerical::angle(Vector &a, Vector &b){
 	return acos(norm_dot(a,b));
 }
 
 
 
-double IntegratorNumerical::integrate(Molecule *molecule, Tessellation *tessellation){
+float IntegratorNumerical::integrate(Molecule *molecule, Tessellation *tessellation){
 	exit(-1);
 }
 
 
 
-double IntegratorNumerical::integrate(Molecule *molecule, int index, void (*feedback)(double)){
+float IntegratorNumerical::integrate(Molecule *molecule, int index, void (*feedback)(float)){
 	Vector coordinate(3);
 	Vector pp(3),pn(3);
-	double areap,arean;
-	vector<vector<double*> > forces;	
+	float areap,arean;
+	vector<vector<float*> > forces;	
 	
 	
 	//numerical derivatives
@@ -59,7 +59,7 @@ double IntegratorNumerical::integrate(Molecule *molecule, int index, void (*feed
 		for(unsigned int i=0; i<atoms.size(); ++i){
 			coordinate = molecule->getInternallyStoredAtomCoordinates(i);
 			for(int j=0; j<3; ++j){
-				if(feedback!=NULL) feedback((double)(i*3+j)/((double)(atoms.size()*3)-1));
+				if(feedback!=NULL) feedback((float)(i*3+j)/((float)(atoms.size()*3)-1));
 
 				pp = Vector(3).zeros();
 				pn = Vector(3).zeros();
@@ -86,7 +86,7 @@ double IntegratorNumerical::integrate(Molecule *molecule, int index, void (*feed
 
 
 /*
-double IntegratorNumerical::partitionSearch(int p0, int p1, double phi0, double theta0, double phi1, double theta1, vector<double> &lambdas, vector<Vector> &mus, vector<CircularInterfaceForm> &forms){
+float IntegratorNumerical::partitionSearch(int p0, int p1, float phi0, float theta0, float phi1, float theta1, vector<float> &lambdas, vector<Vector> &mus, vector<CircularInterfaceForm> &forms){
 	Vector v0 = Vector(2);
 	Vector v1 = Vector(2);
 	v0(0)=phi0;
@@ -95,8 +95,8 @@ double IntegratorNumerical::partitionSearch(int p0, int p1, double phi0, double 
 	v1(1)=theta1;
 	Vector l=v0;
 	Vector r=v1;
-	double length = norm(l-r,2);
-	double h = 1;
+	float length = norm(l-r,2);
+	float h = 1;
 	Vector c=r;
 	int p;
 	//printf("[%f %f - %f %f (%f) %d %d]\n",phi0,theta0,phi1,theta1,length,p0,p1);
@@ -117,7 +117,7 @@ double IntegratorNumerical::partitionSearch(int p0, int p1, double phi0, double 
 */
 
 
-Vector IntegratorNumerical::sphericalVector(double phi, double theta){
+Vector IntegratorNumerical::sphericalVector(float phi, float theta){
 	Vector v(3);
 	// Find the position of the current surface segment.
 	v(0) = 1;
@@ -129,12 +129,12 @@ Vector IntegratorNumerical::sphericalVector(double phi, double theta){
 }
 
 	
-bool IntegratorNumerical::occludes(Vector v, vector<double> &lambdas, vector<Vector> &mus, vector<CircularInterfaceForm> &forms, double &conflict){
+bool IntegratorNumerical::occludes(Vector v, vector<float> &lambdas, vector<Vector> &mus, vector<CircularInterfaceForm> &forms, float &conflict){
 	bool occluded;
 	CircularInterfaceForm form;
-	double l;
+	float l;
 	Vector n;
-	double conflict_sasa, conflict_sesa;
+	float conflict_sasa, conflict_sesa;
 	
 	conflict_sasa=99999999999;
 	
@@ -145,7 +145,7 @@ bool IntegratorNumerical::occludes(Vector v, vector<double> &lambdas, vector<Vec
 		l = lambdas[j];
 		form = forms[j];
 		
-		double a=angle(v,n);
+		float a=angle(v,n);
 	
 		if(form==CONVEX){
 			if(a <= l){
@@ -180,23 +180,23 @@ bool IntegratorNumerical::occludes(Vector v, vector<double> &lambdas, vector<Vec
 }
 
 
-double IntegratorNumerical::integrateMolecule(Molecule *molecule, int index){
+float IntegratorNumerical::integrateMolecule(Molecule *molecule, int index){
 	Vector origin;
-	double r_k;
-	double lenv;
+	float r_k;
+	float lenv;
 	Vector normal;
 	Vector mu;
-	double lambda;
+	float lambda;
 	CircularInterfaceForm form;
 	
-	vector<double> lambdas;
+	vector<float> lambdas;
 	vector<Vector> mus;
 	vector<CircularInterfaceForm> forms;
 	
-	double area;
+	float area;
 	Vector v(3);
-	double sasaCount;
-	double sesaCount;
+	float sasaCount;
+	float sesaCount;
 	bool occluded;
 	int detail;
 	boost::mt19937 randomizer;
@@ -208,15 +208,15 @@ double IntegratorNumerical::integrateMolecule(Molecule *molecule, int index){
 	float dots_in_ring;
 	float theta_step;
 	float temp_dtheta;
-	double g,g_normalised;
+	float g,g_normalised;
 	Vector n;
-	double a;
-	double d_i;
-	double r_i,r_l,radius;
+	float a;
+	float d_i;
+	float r_i,r_l,radius;
 	bool internalAtom;
 	Vector v0,v1,v2,v3;
-	double x;
-	double conflict,conflict1;
+	float x;
+	float conflict,conflict1;
 	
 	Vector lineNew, lineOld;
 	
@@ -421,7 +421,7 @@ double IntegratorNumerical::integrateMolecule(Molecule *molecule, int index){
 		
 //		printf("SASA: %d, SESA: %d\n",sasaCount,sesaCount);
 		
-		a = 4*M_PI*(double)sasaCount / ((double)(sasaCount+sesaCount));
+		a = 4*M_PI*(float)sasaCount / ((float)(sasaCount+sesaCount));
 		
 		a = radius*radius * a;
 				

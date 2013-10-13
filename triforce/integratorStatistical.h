@@ -38,7 +38,7 @@ class IntegratorStatistical: public Integrator{
 public:
 	IntegratorStatistical();
 	IntegratorStatistical(int trials);
-	double integrate(Molecule *molecule, Tessellation *tessellation);
+	float integrate(Molecule *molecule, Tessellation *tessellation);
 	
 	
 private:
@@ -46,8 +46,8 @@ private:
 	Molecule* molecule;
 	int trials;
 	
-	double angle(Vector &a, Vector &b);
-	double integrateAtomicSASA(SASAsForAtom sasasForAtom);
+	float angle(Vector &a, Vector &b);
+	float integrateAtomicSASA(SASAsForAtom sasasForAtom);
 	
 };
 

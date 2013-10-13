@@ -11,8 +11,9 @@ using namespace arma;
 using namespace boost;
 
 
-#define doublepi 6.283185307179586231996
-#define halfpi 1.570796326794896557999
+#define floatpi 6.283185307179586231996f
+#define halfpi 1.570796326794896557999f
+#define pi 3.141592653589793238462f
 
 
 Depth3D::Depth3D(){
@@ -44,7 +45,7 @@ Depth3D::Depth3D(Data3D* d, int slack){
 
 
 
-int Depth3D::closestGridPoint(double x){
+int Depth3D::closestGridPoint(float x){
 	unsigned int i_parameter0;
 	
 	i_parameter0 = static_cast<unsigned int>(floor((x-minParameter0)/cellLengthParameter0));
@@ -95,14 +96,14 @@ void Depth3D::closestGridPoint(Vector &x, VectorInt &p, Vector &l){
 
 
 
-double Depth3D::getInterpolatedDepth(double g, double kappa, double psi, double lambda, bool flip, int &p0){
+float Depth3D::getInterpolatedDepth(float g, float kappa, float psi, float lambda, bool flip, int &p0){
 	VectorInt p(3);
 	Vector x(3);
 	Vector l(3);
-	double a,b,c;
-	double base;
-	double offset;
-	double sigma;
+	float a,b,c;
+	float base;
+	float offset;
+	float sigma;
 	
 	x(0)=g;
 	x(1)=psi;
@@ -114,9 +115,9 @@ double Depth3D::getInterpolatedDepth(double g, double kappa, double psi, double 
 	
 	if(p(0)==parameter0Dim-1){
 		a = (*data)[p(0)][p(1)][p(2)];
-		a = min(max(a,0.0), M_PI);
+		a = min(max(a,0.0f), pi);
 		
-		if(flip) a = (doublepi)-a;
+		if(flip) a = (floatpi)-a;
 		return a + kappa;
 	}
 	else{
@@ -125,13 +126,13 @@ double Depth3D::getInterpolatedDepth(double g, double kappa, double psi, double 
 		offset=g-base;
 		sigma=offset/l(0);
 		a = (*data)[p(0)][p(1)][p(2)];
-		a = min(max(a,0.0), M_PI);
+		a = min(max(a,0.0f), pi);
 
 		b = (*data)[p(0)+1][p(1)][p(2)];
-		b = min(max(b,0.0), M_PI);
+		b = min(max(b,0.0f), pi);
 		
 		c = a*(1.0-sigma) + b*sigma;
-		if(flip) c = (doublepi)-c;
+		if(flip) c = (floatpi)-c;
 
 		return  c + kappa;
 		
@@ -143,7 +144,7 @@ double Depth3D::getInterpolatedDepth(double g, double kappa, double psi, double 
 }
 
 
-DepthInformation &Depth3D::getFloorScanlines(double kappa, double psi, double lambda, bool invert){
+DepthInformation &Depth3D::getFloorScanlines(float kappa, float psi, float lambda, bool invert){
 	VectorInt p(3);
 	Vector x(2);
 	x(0)=psi;
@@ -163,7 +164,7 @@ DepthInformation &Depth3D::getFloorScanlines(double kappa, double psi, double la
 
 
 
-DepthInformation &Depth3D::getCeilScanlines(double kappa, double psi, double lambda, bool invert){
+DepthInformation &Depth3D::getCeilScanlines(float kappa, float psi, float lambda, bool invert){
 	VectorInt p(3);
 	Vector x(2);
 	x(0)=psi;
@@ -176,9 +177,9 @@ DepthInformation &Depth3D::getCeilScanlines(double kappa, double psi, double lam
 	
 	
 	
-DepthInformation &Depth3D::getScanlines(double kappa, double psi, double lambda, bool invert, VectorInt &p){
+DepthInformation &Depth3D::getScanlines(float kappa, float psi, float lambda, bool invert, VectorInt &p){
 	Vector x(2);
-	double k;
+	float k;
 	Vector l(3); 
 	
 	x(0)=psi;
@@ -190,23 +191,23 @@ DepthInformation &Depth3D::getScanlines(double kappa, double psi, double lambda,
 		for(unsigned int i=0; i<parameter0Dim; ++i){
 			k = (*data)[i][p(0)][p(1)];
 			if(k<0) depthInfoBuffer.mode[i] = SCANLINE_FULL;
-			else if(k>doublepi) depthInfoBuffer.mode[i] = SCANLINE_EMPTY; 
+			else if(k>floatpi) depthInfoBuffer.mode[i] = SCANLINE_EMPTY; 
 			else{
 				depthInfoBuffer.mode[i] = SCANLINE_PARTIAL;
 				depthInfoBuffer.scanline1[i] = k+kappa;
-				if(depthInfoBuffer.scanline1[i]>doublepi) depthInfoBuffer.scanline1[i]-=doublepi;
-				if(depthInfoBuffer.scanline1[i]>doublepi) depthInfoBuffer.scanline1[i]-=doublepi;
+				if(depthInfoBuffer.scanline1[i]>floatpi) depthInfoBuffer.scanline1[i]-=floatpi;
+				if(depthInfoBuffer.scanline1[i]>floatpi) depthInfoBuffer.scanline1[i]-=floatpi;
 				
-				if(depthInfoBuffer.scanline1[i]<0) depthInfoBuffer.scanline1[i]+=doublepi;
-				if(depthInfoBuffer.scanline1[i]<0) depthInfoBuffer.scanline1[i]+=doublepi;
+				if(depthInfoBuffer.scanline1[i]<0) depthInfoBuffer.scanline1[i]+=floatpi;
+				if(depthInfoBuffer.scanline1[i]<0) depthInfoBuffer.scanline1[i]+=floatpi;
 				
 				
-				depthInfoBuffer.scanline0[i] = (doublepi-k)+kappa;
-				if(depthInfoBuffer.scanline0[i]>doublepi) depthInfoBuffer.scanline0[i]-=doublepi;
-				if(depthInfoBuffer.scanline0[i]>doublepi) depthInfoBuffer.scanline0[i]-=doublepi;
+				depthInfoBuffer.scanline0[i] = (floatpi-k)+kappa;
+				if(depthInfoBuffer.scanline0[i]>floatpi) depthInfoBuffer.scanline0[i]-=floatpi;
+				if(depthInfoBuffer.scanline0[i]>floatpi) depthInfoBuffer.scanline0[i]-=floatpi;
 				
-				if(depthInfoBuffer.scanline0[i]<0) depthInfoBuffer.scanline0[i]+=doublepi;
-				if(depthInfoBuffer.scanline0[i]<0) depthInfoBuffer.scanline0[i]+=doublepi;
+				if(depthInfoBuffer.scanline0[i]<0) depthInfoBuffer.scanline0[i]+=floatpi;
+				if(depthInfoBuffer.scanline0[i]<0) depthInfoBuffer.scanline0[i]+=floatpi;
 				
 			}
 		}
@@ -215,16 +216,16 @@ DepthInformation &Depth3D::getScanlines(double kappa, double psi, double lambda,
 		for(unsigned int i=0; i<parameter0Dim; ++i){
 			k = (*data)[i][p(0)][p(1)];
 			if(k<0) depthInfoBuffer.mode[i] = SCANLINE_EMPTY;
-			else if(k>doublepi) depthInfoBuffer.mode[i] = SCANLINE_FULL; 
+			else if(k>floatpi) depthInfoBuffer.mode[i] = SCANLINE_FULL; 
 			else{
 				depthInfoBuffer.mode[i] = SCANLINE_PARTIAL;
 				depthInfoBuffer.scanline0[i] = k+kappa;
-				if(depthInfoBuffer.scanline0[i]>doublepi) depthInfoBuffer.scanline0[i]-=doublepi;
-				if(depthInfoBuffer.scanline0[i]>doublepi) depthInfoBuffer.scanline0[i]-=doublepi;
+				if(depthInfoBuffer.scanline0[i]>floatpi) depthInfoBuffer.scanline0[i]-=floatpi;
+				if(depthInfoBuffer.scanline0[i]>floatpi) depthInfoBuffer.scanline0[i]-=floatpi;
 				
-				depthInfoBuffer.scanline1[i] = (doublepi-k)+kappa;
-				if(depthInfoBuffer.scanline1[i]>doublepi) depthInfoBuffer.scanline1[i]-=doublepi;
-				if(depthInfoBuffer.scanline1[i]>doublepi) depthInfoBuffer.scanline1[i]-=doublepi;
+				depthInfoBuffer.scanline1[i] = (floatpi-k)+kappa;
+				if(depthInfoBuffer.scanline1[i]>floatpi) depthInfoBuffer.scanline1[i]-=floatpi;
+				if(depthInfoBuffer.scanline1[i]>floatpi) depthInfoBuffer.scanline1[i]-=floatpi;
 			}
 		}
 	}

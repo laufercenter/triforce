@@ -422,7 +422,7 @@ void DataFile::double2charArray(double x, char* data){
 	
 	significand=frexp(x,&exponent);
 	
-	significandInt32 = double2FixedUnsignedInt32(significand, 31);
+	significandInt32 = float2FixedUnsignedInt32(significand, 31);
 	fixedSignedInt322CharArray(significandInt32, data);
 	
 	exponentInt32=int2FixedSignedInt32(exponent);
@@ -431,9 +431,9 @@ void DataFile::double2charArray(double x, char* data){
 }
 */
 
-double DataFile::charArray2Double(char* data){
+float DataFile::charArray2Double(char* data){
 	int exponent;
-	double significand;
+	float significand;
 	int32_t significandInt32, exponentInt32;
 	int32_t t0,t1,t2,t3;
 	int32_t t4,t5,t6,t7;
@@ -457,7 +457,7 @@ double DataFile::charArray2Double(char* data){
 		t5 == 255 &&
 		t6 == 255 &&
 		t7 == 255){
-			return numeric_limits<double>::quiet_NaN();
+			return numeric_limits<float>::quiet_NaN();
 	}
 
 	significandInt32 = charArray2FixedSignedInt32(data);
@@ -511,11 +511,11 @@ int32_t DataFile::double2FixedSignedInt32(double x, short fraction){
 }
 */
 
-double DataFile::fixedSignedInt322Double(int32_t x, unsigned short fraction){
-	double d;
+float DataFile::fixedSignedInt322Double(int32_t x, unsigned short fraction){
+	float d;
 	int32_t factor = 1 << fraction;
 
-	d = (static_cast<double>(x))/factor;
+	d = (static_cast<float>(x))/factor;
 	return d;
 
 }
@@ -544,9 +544,9 @@ int DataFile::fixedSignedInt322Int(int32_t x){
 
 
 
-double DataFile::string2double(string s){
+float DataFile::string2float(string s){
     istringstream strm;
-    double d;
+    float d;
     
     strm.str(s);
     strm >> d;
@@ -601,7 +601,7 @@ Topology* DataFile::digestMapCSV(){
 /*	ifstream *ifs;
 	vector<string> *content;
 	string line;
-	vector<double> v;
+	vector<float> v;
 	string ident;
 	unsigned int i;
 	Topology *data;
@@ -624,7 +624,7 @@ Topology* DataFile::digestMapCSV(){
 			
 			v.clear();
 			for(i=1;i<content->size();i++){
-				v.push_back(string2double((*content)[i]));
+				v.push_back(string2float((*content)[i]));
 			}
 			
 			data->setCell(ident,v);
@@ -643,7 +643,7 @@ Topology* DataFile::digestTOP(TopologyMode topm){
 	ifstream *ifs;
 	vector<string> *content;
 	string line;
-	vector<double> v;
+	vector<float> v;
 	string ident,ident0,ident1;
 	Topology *data;
 	string block;
@@ -685,13 +685,13 @@ Topology* DataFile::digestTOP(TopologyMode topm){
 						if(content->size()>=7){
 							//is it already in the map?
 							if(data->contains(ident)){
-								data->setEpsilonValue(ident,string2double((*content)[6]));
-								data->setSigmaValue(ident,string2double((*content)[5]));
+								data->setEpsilonValue(ident,string2float((*content)[6]));
+								data->setSigmaValue(ident,string2float((*content)[5]));
 							}
 							else{
 								p.mass=-1;
-								p.epsilon=string2double((*content)[6]);
-								p.sigma=string2double((*content)[5])*10;
+								p.epsilon=string2float((*content)[6]);
+								p.sigma=string2float((*content)[5])*10;
 								data->setCell(ident,p);
 							}
 						}
@@ -719,11 +719,11 @@ Topology* DataFile::digestTOP(TopologyMode topm){
 								ident0=string2UpperCase((*content)[4]);
 							//is it already in the map?
 							if(data->contains(ident1)){
-								data->setMassValue(ident1,string2double((*content)[7]));
+								data->setMassValue(ident1,string2float((*content)[7]));
 							}
 							/*
 							else{
-								p.mass=string2double((*content)[7]);
+								p.mass=string2float((*content)[7]);
 								p.epsilon=-1;
 								p.sigma=-1;
 								data->setCell(ident1,p);
@@ -757,7 +757,7 @@ Molecule *DataFile::digestGRO(Topology &top, bool useHydrogens){
 	unsigned int i;
 	string block;
 	Molecule *mol;
-	double x,y,z;
+	float x,y,z;
 	string ident;
 	bool disregardingHydrogens;
 	string residue;
@@ -812,13 +812,13 @@ Molecule *DataFile::digestGRO(Topology &top, bool useHydrogens){
 				trim(atom);
 				xstr = line.substr(20,8);
 				trim(xstr);
-				x=string2double(xstr)*10;
+				x=string2float(xstr)*10;
 				ystr = line.substr(28,8);
 				trim(ystr);
-				y=string2double(ystr)*10;
+				y=string2float(ystr)*10;
 				zstr = line.substr(36,8);
 				trim(zstr);
-				z=string2double(zstr)*10;
+				z=string2float(zstr)*10;
 				
 				
 				
@@ -864,7 +864,7 @@ Molecule *DataFile::digestPDB(Topology &top, bool useHydrogens){
 	unsigned int i;
 	string block;
 	Molecule *mol;
-	double x,y,z;
+	float x,y,z;
 	string ident;
 	bool disregardingHydrogens;
 	string residue;
@@ -918,13 +918,13 @@ Molecule *DataFile::digestPDB(Topology &top, bool useHydrogens){
 				trim(atom);
 				xstr = line.substr(30,8);
 				trim(xstr);
-				x=string2double(xstr);
+				x=string2float(xstr);
 				ystr = line.substr(39,8);
 				trim(ystr);
-				y=string2double(ystr);
+				y=string2float(ystr);
 				zstr = line.substr(46,8);
 				trim(zstr);
-				z=string2double(zstr);
+				z=string2float(zstr);
 				
 				
 				

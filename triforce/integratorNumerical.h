@@ -37,10 +37,10 @@ class IntegratorNumerical: public Integrator{
 	
 public:
 	IntegratorNumerical();
-	IntegratorNumerical(int trials, double fd=0);
-	double integrate(Molecule *molecule, Tessellation *tessellation);
-	double integrate(Molecule *molecule, int index=-1,  void (*feedback)(double)=NULL);
-	double integrateMolecule(Molecule *molecule, int index=-1);
+	IntegratorNumerical(int trials, float fd=0);
+	float integrate(Molecule *molecule, Tessellation *tessellation);
+	float integrate(Molecule *molecule, int index=-1,  void (*feedback)(float)=NULL);
+	float integrateMolecule(Molecule *molecule, int index=-1);
 	
 	
 private:
@@ -48,18 +48,18 @@ private:
 	Molecule* molecule;
 	int trials;
 	FILE* file;
-	vector<double*> areas;
+	vector<float*> areas;
 	
 	vector<Vector> atoms;
-	vector<double> radii;
+	vector<float> radii;
 	
-	double fd;
+	float fd;
 	
 	
-	double angle(Vector &a, Vector &b);
+	float angle(Vector &a, Vector &b);
 	Vector spherical2cartesian(Vector s);
-	bool occludes(Vector v, vector<double> &lambdas, vector<Vector> &mus, vector<CircularInterfaceForm> &forms, double &conflict);
-	Vector sphericalVector(double phi, double theta);
+	bool occludes(Vector v, vector<float> &lambdas, vector<Vector> &mus, vector<CircularInterfaceForm> &forms, float &conflict);
+	Vector sphericalVector(float phi, float theta);
 	
 };
 

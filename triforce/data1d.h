@@ -30,19 +30,19 @@
 using namespace std;
 using namespace arma;
 
-typedef vec Vector;
+typedef fvec Vector;
 //typedef Col<unsigned int> VectorInt;
 
-typedef mat Matrix;
+typedef fmat Matrix;
 
 //#define THRESHOLD_NUMERICAL 0.00001
 
-//typedef boost::numeric::ublas::vector<double> Vector;
-//typedef boost::numeric::ublas::matrix<double> Matrix;
+//typedef boost::numeric::ublas::vector<float> Vector;
+//typedef boost::numeric::ublas::matrix<float> Matrix;
 
 
 
-typedef boost::multi_array<double,1> Table1dDouble;
+typedef boost::multi_array<float,1> Table1dDouble;
 
 
 class Data1D{
@@ -50,26 +50,26 @@ class Data1D{
 public:
 	Data1D();
 	Data1D(unsigned int parameter0Dim, bool containsAuxiliaryData);
-	void setHeaderParameter0Cell(unsigned int x, double value);
-	double getHeaderParameter0Cell(unsigned int x);
-	void setDataCell(unsigned int x, double value);
-	void setAuxiliaryCell(unsigned int x, double value);
+	void setHeaderParameter0Cell(unsigned int x, float value);
+	float getHeaderParameter0Cell(unsigned int x);
+	void setDataCell(unsigned int x, float value);
+	void setAuxiliaryCell(unsigned int x, float value);
 	void print();
-	double getDataCell(unsigned int x);
-	double getAuxiliaryCell(unsigned int x);
+	float getDataCell(unsigned int x);
+	float getAuxiliaryCell(unsigned int x);
 	
 	Vector getHeaderVector(unsigned int parameter0);
 	
 	
-	virtual void closestGridPoint(double x, unsigned int &p, double &l);
-	bool isWithinNumericalLimits(double x, double t);
+	virtual void closestGridPoint(float x, unsigned int &p, float &l);
+	bool isWithinNumericalLimits(float x, float t);
 	void init();
 	
 
 	
 	unsigned int parameter0Dim;
-	double minParameter0;
-	double cellLengthParameter0;
+	float minParameter0;
+	float cellLengthParameter0;
 	Table1dDouble *headerParameter0;
 	Table1dDouble *data;
 	Table1dDouble *auxiliary;

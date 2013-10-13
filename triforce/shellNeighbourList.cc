@@ -1,7 +1,7 @@
 #include "shellNeighbourList.h"
 
 
-ShellNeighbourList::ShellNeighbourList(Vector center, Vector dim, double searchRadius, int sphericalDetail, int cubicalDetail){
+ShellNeighbourList::ShellNeighbourList(Vector center, Vector dim, float searchRadius, int sphericalDetail, int cubicalDetail){
 	this->dim = dim;
 	this->shellRadius = shellRadius;
 	this->center = center;
@@ -15,7 +15,7 @@ ShellNeighbourList::ShellNeighbourList(Vector center, Vector dim, double searchR
 	Vector c(3);
 	Vector s(3);
 	Vector v(3);
-	double d0, d1;
+	float d0, d1;
 	vector<Coordinate>::iterator it;
 	CubicalTemporaryGrid *cubicalTemporaryGrid;
 	
@@ -54,7 +54,7 @@ ShellNeighbourList::ShellNeighbourList(Vector center, Vector dim, double searchR
 	for(int x=0; x<numCubes(0); ++x)
 		for(int y=0; y<numCubes(1); ++y)
 			for(int z=0; z<numCubes(2); ++z){
-				(*cubicalTemporaryGrid)[x][y][z]=numeric_limits<double>::max();
+				(*cubicalTemporaryGrid)[x][y][z]=numeric_limits<float>::max();
 			}
 	
 	

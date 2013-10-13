@@ -31,23 +31,23 @@ using namespace arma;
 
 
 
-typedef vec Vector;
-typedef mat Matrix;
+typedef fvec Vector;
+typedef fmat Matrix;
 
 
 class Spline{
 	
 public:
 	Spline(vector<Vector> geometry);
-	double f(double x);
+	float f(float x);
 	
 
 	
 private:
-	int logSearch(double x);
+	int logSearch(float x);
 	
 	Matrix B;
-	vector<double> X;
+	vector<float> X;
 	vector<Vector> G;
 	
 };

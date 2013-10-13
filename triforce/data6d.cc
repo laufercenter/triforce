@@ -50,55 +50,55 @@ void Data6D::init(){
 }
 
 
-void Data6D::setHeaderParameter0Cell(unsigned int x, double value){
+void Data6D::setHeaderParameter0Cell(unsigned int x, float value){
 	(*headerParameter0)[x] = value;
 }
 
-void Data6D::setHeaderParameter1Cell(unsigned int x, double value){
+void Data6D::setHeaderParameter1Cell(unsigned int x, float value){
 	(*headerParameter1)[x] = value;
 }
 
-void Data6D::setHeaderParameter2Cell(unsigned int x, double value){
+void Data6D::setHeaderParameter2Cell(unsigned int x, float value){
 	(*headerParameter2)[x] = value;
 }
 
-void Data6D::setHeaderParameter3Cell(unsigned int x, double value){
+void Data6D::setHeaderParameter3Cell(unsigned int x, float value){
 	(*headerParameter3)[x] = value;
 }
 
-void Data6D::setHeaderParameter4Cell(unsigned int x, double value){
+void Data6D::setHeaderParameter4Cell(unsigned int x, float value){
 	(*headerParameter4)[x] = value;
 }
 
-void Data6D::setHeaderParameter5Cell(unsigned int x, double value){
+void Data6D::setHeaderParameter5Cell(unsigned int x, float value){
 	(*headerParameter5)[x] = value;
 }
 
-double Data6D::getHeaderParameter0Cell(unsigned int x){
+float Data6D::getHeaderParameter0Cell(unsigned int x){
 	return (*headerParameter0)[x];
 }
 
-double Data6D::getHeaderParameter1Cell(unsigned int x){
+float Data6D::getHeaderParameter1Cell(unsigned int x){
 	return (*headerParameter1)[x];
 }
 
-double Data6D::getHeaderParameter2Cell(unsigned int x){
+float Data6D::getHeaderParameter2Cell(unsigned int x){
 	return (*headerParameter2)[x];
 }
 
-double Data6D::getHeaderParameter3Cell(unsigned int x){
+float Data6D::getHeaderParameter3Cell(unsigned int x){
 	return (*headerParameter3)[x];
 }
 
-double Data6D::getHeaderParameter4Cell(unsigned int x){
+float Data6D::getHeaderParameter4Cell(unsigned int x){
 	return (*headerParameter4)[x];
 }
 
-double Data6D::getHeaderParameter5Cell(unsigned int x){
+float Data6D::getHeaderParameter5Cell(unsigned int x){
 	return (*headerParameter5)[x];
 }
 
-void Data6D::setDataCell(unsigned int x, unsigned int y, unsigned int z, unsigned int u, unsigned int v, unsigned int w, double value){
+void Data6D::setDataCell(unsigned int x, unsigned int y, unsigned int z, unsigned int u, unsigned int v, unsigned int w, float value){
 	(*data)[x][y][z][u][v][w] = value;
 }
 
@@ -121,11 +121,11 @@ Vector Data6D::getHeaderVector(unsigned int parameter0, unsigned int parameter1,
 
 
 
-double Data6D::getDataCell(unsigned int x, unsigned int y, unsigned int z, unsigned int u, unsigned int v, unsigned int w){
+float Data6D::getDataCell(unsigned int x, unsigned int y, unsigned int z, unsigned int u, unsigned int v, unsigned int w){
 	return (*data)[x][y][z][u][v][w];
 }
 
-bool Data6D::isWithinNumericalLimits(double x, double t){
+bool Data6D::isWithinNumericalLimits(float x, float t){
 	if(abs(x-t) <= THRESHOLD_NUMERICAL) return true;
 	else return false;
 }
@@ -178,34 +178,140 @@ void Data6D::closestGridPoint(Vector &x, VectorInt &p, Vector &l){
 
 
 void Data6D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Vector &lengths){
-	VectorInt v2(3);
-	unsigned int i,j,k;
-	VectorInt v(3);
-	
+	VectorInt v2(6);
+	Vector v3(64);
+	float d;
+	VectorInt v(6);
+	unsigned int discontinuity;
+	float vpsi,vlambda;
+	Vector excess(6);
 	closestGridPoint(x, v, lengths);
+	Vector p(6);
 	
+	VectorInt r0,r1(6);
 	
-	//printf("CLOSEST GRIDPOINT: %d %d %d (%f, %f, %f)\n",v(0),v(1),v(2),(*headerParameter0)[v(0)],(*headerParameter1)[v(1)],(*headerParameter2)[v(2)]);
 	//printf("CLOSEST GRIDPOINT: %d %d %d\n",v(0),v(1),v(2));
+	
+	if(v(0)>=parameter0Dim || v(1)>=parameter1Dim || v(2)>=parameter2Dim || v(3)>=parameter3Dim || v(4)>=parameter4Dim || v(5)>=parameter5Dim) return;
+	
+	
+	for(unsigned int i=0; i<6; ++i)
+		p(i) = x(i) / lengths(i);
+	
+	excess = p-v;
+	
+	for(unsigned int i=0; i<6; ++i)
+		if(excess(i)<=0.5) r0(i)=0;
+			else r0(i)=1;
+			
+	r.push_back(r0);
+	for(unsigned int i=0; i<6; ++i){
+		if(r0(i)==0){
+			r0(i)=1;
+			push_back(v+r0);
+			r0(i)=0;
+		}
+		else{
+			r0(i)=0;
+			push_back(v+r0);
+			r0(i)=1;
+		}
+	}
+	
+	return;
+	
+	/*
+	
+	
+	//decide on which side of the discontinuities x lies.
+	
+	if(x(1) < x(2)){
+		discontinuity = 0;
+	}
+	else if(x(1)+x(2) < M_PI){
+		discontinuity = 1;
+	}
+	else{
+		discontinuity = 2;
+	}
+	
+	
+	
+	
+	//printf("DISCONTINUITY: %d\n",discontinuity);
 	
 	
 	r.clear();
-	for(i=0;i<2;++i)
-		for(j=0;j<2;++j)
-			for(k=0;k<2;++k){
-				v2(0)=v(0)+i;
-				v2(1)=v(1)+j;
-				v2(2)=v(2)+k;
-				if(v2(0)<parameter0Dim && v2(1)<parameter1Dim && v2(2)<parameter2Dim && v2(3)<parameter3Dim && v2(4)<parameter4Dim && v2(5)<parameter5Dim){
-					if(!isnan((*data)[v2(0)][v2(1)][v2(2)][v2(3)][v2(4)][v2(5)])){
-							r.push_back(v2);
-							printf("ACCEPTED\n");
-						
-					}
-					else printf("REJECTED NAN\n");
-				}
-				else printf("REJECTED OUT OF LIMIT\n");
-			}
+	for(unsigned int i=0;i<2;++i)
+		for(unsigned int j=0;j<2;++j)
+			for(unsigned int k=0;k<2;++k)
+				for(unsigned int l=0;l<2;++l)
+					for(unsigned int m=0;m<2;++m)
+						for(unsigned int n=0;n<2;++n){
+							v2(0)=v(0)+i;
+							v2(1)=v(1)+j;
+							v2(2)=v(2)+k;
+							v2(3)=v(2)+l;
+							v2(4)=v(2)+m;
+							v2(5)=v(2)+n;
+							//printf("v2: %d %d %d, par: %d %d %d, bool: %d\n",v2(0),v2(1),v2(2),parameter0Dim,parameter1Dim,parameter2Dim, v2(0)<parameter0Dim && v2(1)<parameter1Dim && v2(2)<parameter2Dim);
+							if(v2(0)<parameter0Dim && v2(1)<parameter1Dim && v2(2)<parameter2Dim && v2(3)<parameter3Dim && v2(4)<parameter4Dim && v2(5)<parameter5Dim){
+								//if(!isnan((*data)[v2(0)][v2(1)][v2(2)][v2(3)][v2(4)][v2(5)])){
+									vpsi = (*headerParameter1)[v2(1)];
+									vlambda = (*headerParameter2)[v2(2)];
+									
+									if(discontinuity==0){
+										if(vpsi < vlambda) r.push_back(v2);
+									}
+									else if(discontinuity==1){
+										if(vpsi >= vlambda && vpsi + vlambda < M_PI && !isWithinNumericalLimits(vpsi + vlambda,M_PI)) r.push_back(v2);
+									}
+									else{
+										if(vpsi >= vlambda && vpsi + vlambda >= M_PI) r.push_back(v2);
+									}
+										//printf("ACCEPTED %d %d %d (%f %f [%d/%d])\n",v2(0),v2(1),v2(2),(*headerParameter1)[v2(1)],(*headerParameter2)[v2(2)],neg,isWithinNumericalLimits((*headerParameter1)[v2(1)]+(*headerParameter2)[v2(2)],M_PI));
+									
+									//else	printf("REJECTED 0 %d %d %d (%f %f [%d/%d])\n",v2(0),v2(1),v2(2),(*headerParameter1)[v2(1)],(*headerParameter2)[v2(2)],neg,isWithinNumericalLimits((*headerParameter1)[v2(1)]+(*headerParameter2)[v2(2)],M_PI));
+
+								//}
+								//else	printf("REJECTED 1 %d %d %d\n",v2(0),v2(1),v2(2));
+
+							}
+							//else	printf("PRE-REJECTED 2 %d %d %d\n",v2(0),v2(1),v2(2));
+						}
+					
+				
+			
+			
+			
+			
+	if(r.size()==0){
+		for(unsigned int i=0;i<2;++i)
+			for(unsigned int j=0;j<2;++j)
+				for(unsigned int k=0;k<2;++k)
+					for(unsigned int l=0;l<2;++l)
+						for(unsigned int m=0;m<2;++m)
+							for(unsigned int n=0;n<2;++n){
+					
+								v2(0)=v(0)+i;
+								v2(1)=v(1)+j;
+								v2(2)=v(2)+k;
+								v2(3)=v(2)+l;
+								v2(4)=v(2)+m;
+								v2(5)=v(2)+n;
+								
+								if(v2(0)<parameter0Dim && v2(1)<parameter1Dim && v2(2)<parameter2Dim && v2(3)<parameter3Dim && v2(4)<parameter4Dim && v2(5)<parameter5Dim){
+									//if(!isnan((*data)[v2(0)][v2(1)][v2(2)][v2(3)][v2(4)][v2(5)])){
+										//printf("RE-ACCEPTED %d %d %d (%f %f [%d/%d])\n",v2(0),v2(1),v2(2),(*headerParameter1)[v2(1)],(*headerParameter2)[v2(2)],neg,isWithinNumericalLimits((*headerParameter1)[v2(1)]+(*headerParameter2)[v2(2)],M_PI));
+											r.push_back(v2);
+									}
+
+								}
+							}
+		
+	}
+
+	*/		
 			
 }
 

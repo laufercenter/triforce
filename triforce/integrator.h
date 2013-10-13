@@ -40,13 +40,13 @@ using namespace arma;
 
 typedef struct
 {
-	double area;
+	float integral;
 	Vector force_i;
 	Vector force_j;
 	Vector force_k;
 	Vector force_l;
 }
-Area;
+Integral;
 
 typedef struct
 {
@@ -61,7 +61,7 @@ ForceElement;
 
 class Integrator{
 public:
-	virtual double integrate(Molecule *molecule, Tessellation *tessellation)=0;
+	virtual float integrate(Molecule *molecule, Tessellation *tessellation)=0;
 };
 
 
@@ -71,9 +71,9 @@ class IntegratorTriforce: public Integrator{
 	
 public:
 	IntegratorTriforce();
-	IntegratorTriforce(Interpolation *dataConcave, Interpolation *forcesConcave1, Interpolation *forcesConcave2, Interpolation *forcesConcave3);
+	IntegratorTriforce(vector<Interpolation*> data);
 	
-	double integrate(Molecule *molecule, Tessellation *tessellation);
+	virtual float integrate(Molecule *molecule, Tessellation *tessellation);
 	void outputIntegrationData(string filename, Vector &integrationOrigin, list<IntersectionNode*> &frontHemisphere, list<IntersectionNode*> &backHemisphere);
 	Benchmark getBenchmark();
 	
@@ -88,36 +88,39 @@ private:
 	vector<vector<double*> > forces;
 	vector<ForceElement> forcesDelayed;
 	vector<Vector> atoms;
-	vector<double> radii;
+	vector<float> radii;
+	Benchmark benchmark;
 	Benchmark benchmark;
 	
 	
-	double csc(double a);
-	int sgn(double d);
-	double complAngle(Vector &a, Vector &b);
-	double complLongAngle(Vector &n, Vector &o, Vector &a);
-	double angle(Vector &a, Vector &b);
-	Area integrateTriangle(int l, SASASegment &x, Vector integrationOrigin, double &phi);
-	double integrateSASA(int l, SASASegmentList &s, double radius);
-	Vector lookUp(double PHI, double psi, double lambda, double &phi, CircularInterfaceForm form);
-	Vector lookUp2(double PHI, double psi, double lambda);
-	Vector lookUp3(double PHI, double psi, double lambda);
+	float csc(float a);
+	int sgn(float d);
+	float complAngle(Vector &a, Vector &b);
+	float complLongAngle(Vector &n, Vector &o, Vector &a);
+	float angle(Vector &a, Vector &b);
+	Integral integrateTriangle(int l, SASASegment &x, Vector integrationOrigin);
+	float integrateSASA(int l, SASASegmentList &s, float radius);
+	Vector lookUp(float PHI, float psi, float lambda, CircularInterfaceForm form);
+	Vector lookUp2(float PHI, float psi, float lambda);
+	Vector lookUp3(float PHI, float psi, float lambda);
 	void addForce(int i, Vector force);
 	void clearForces();
-	double PHI2phi(double PHI, double psi, double lambda);
-	double PHI2phi2(Vector integrationOrigin, double PHI, double psi, double lambda);
-	bool isInPositiveEpsilonRange(double v, double eps);
-	double V2phi(Vector &integrationOrigin, Vector cv, Vector &v);
-	mat33 rotz(double theta);
+	float PHI2phi(float PHI, float psi, float lambda);
+	float PHI2phi2(Vector integrationOrigin, float PHI, float psi, float lambda);
+	bool isInPositiveEpsilonRange(float v, float eps);
+	float V2phi(Vector &integrationOrigin, Vector cv, Vector &v);
+	fmat33 rotz(float theta);
 
-	Vector recoverCircularInterface(Vector p, double psi_b, double lambda_b, double PHI_b0);
-	Vector recoverCircularInterface(double psi_a, double lambda_a, double PHI_a1, double psi_b, double lambda_b, double PHI_b0);
-	Vector intersectionPoint(Vector c, double psi, double lambda, double PHI);
-	bool isWithinNumericalLimits(double x, double l);
-	double logisticSmoother(double lambda);
-	double dlogisticSmoother(double lambda);
-	Vector areaSmoother(Vector &x, double area, double radius);
-	double sech(double x);
+	Vector recoverCircularInterface(Vector p, float psi_b, float lambda_b, float PHI_b0);
+	Vector recoverCircularInterface(float psi_a, float lambda_a, float PHI_a1, float psi_b, float lambda_b, float PHI_b0);
+	Vector intersectionPoint(Vector c, float psi, float lambda, float PHI);
+	bool isWithinNumericalLimits(float x, float l);
+	float logisticSmoother(float lambda);
+	float dlogisticSmoother(float lambda);
+	Vector areaSmoother(Vector &x, float area, float radius);
+	float sech(float x);
+	void pushForces();
+	void purgeForces();
 	void pushForces();
 	void purgeForces();
 	

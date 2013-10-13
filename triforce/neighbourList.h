@@ -45,7 +45,7 @@ typedef boost::multi_array<set<int>,3> Grid;
 class NeighbourList{
 	
 public:
-	NeighbourList(Vector center, Vector dim, double searchRadius);
+	NeighbourList(Vector center, Vector dim, float searchRadius);
 	
 	void addSphere(Vector &x, int id);
 	vector<int> getNeighbors(Vector &x);
@@ -57,7 +57,7 @@ private:
 	Vector center;
 	VectorInt numCubes;
 	Vector origin;
-	double searchRadius;
+	float searchRadius;
 	
 	Grid *cubicalGrid;
 

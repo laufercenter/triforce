@@ -14,22 +14,22 @@ Interpolation::Interpolation(Data3D *data, TaylorTermination degree){
 	this->degree=degree;
 }
 
-double Interpolation::taylorExtension(VectorInt &r, Vector &x){
+float Interpolation::taylorExtension(VectorInt &r, Vector &x){
 	return taylorExtension(r(0),r(1),r(2),x);
 }
 
-double Interpolation::taylorExtension(int i_PHI, int i_psi, int i_lambda, Vector &x){
+float Interpolation::taylorExtension(int i_PHI, int i_psi, int i_lambda, Vector &x){
 	Vector p;
-	double f;
+	float f;
 	Vector g;
 	Matrix h;
-	double v;
+	float v;
 	Vector d;
 	Vector htmp;
 	bool quadratic=false;
 	bool cubic=false;
-	double quadratic_term=0;
-	double cubic_term=0;
+	float quadratic_term=0;
+	float cubic_term=0;
 	if(degree==TAYLOR_QUADRATIC || degree==TAYLOR_CUBIC) quadratic=true;
 	if(degree==TAYLOR_CUBIC) cubic=true;
 	
@@ -61,13 +61,13 @@ double Interpolation::taylorExtension(int i_PHI, int i_psi, int i_lambda, Vector
 	return v;
 }
 
-vector<double> Interpolation::weights(vector<VectorInt> &sp, Vector &x, Vector &lengths){
+vector<float> Interpolation::weights(vector<VectorInt> &sp, Vector &x, Vector &lengths){
 	Vector d=Vector(3);
-	vector<double> *r;
+	vector<float> *r;
 	Vector stddist;
-	double w;
-	double maxw=0;
-	r = new vector<double>;
+	float w;
+	float maxw=0;
+	r = new vector<float>;
 	Vector p;
 	
 	//printf("stddist: %f, %f, %f\n",stddist(0),stddist(1),stddist(2));
@@ -93,38 +93,19 @@ vector<double> Interpolation::weights(vector<VectorInt> &sp, Vector &x, Vector &
 
 
 
-double Interpolation::interpolate(Vector &x){
-	double phi;
-	return multiPointTaylor(x, phi);
-}
-
-
-double Interpolation::interpolate(Vector &x, double &phi){
-	return multiPointTaylor(x, phi);
-}
-
-
-double Interpolation::interpolate(double PHI, double psi, double lambda){
-	double phi;
-	return interpolate(PHI, psi, lambda, phi);
-}
-
-double Interpolation::interpolate(double PHI, double psi, double lambda, double &phi){
-	Vector v(3);
-	v(0) = PHI;
-	v(1) = psi;
-	v(2) = lambda;
-	return multiPointTaylor(v, phi);
+float Interpolation::interpolate(Vector &x){
+	return multiPointTaylor(x);
 }
 
 
 
-double Interpolation::multiPointTaylor(Vector &x, double &phi){
+
+float Interpolation::multiPointTaylor(Vector &x){
 	vector<VectorInt> sp;
-	vector<double> w;
-	double v=0;
+	vector<float> w;
+	float v=0;
 	Vector lengths(3);
-	double closestSPWeight;
+	float closestSPWeight;
 	int closestSP;
 	
 	
@@ -145,7 +126,7 @@ double Interpolation::multiPointTaylor(Vector &x, double &phi){
 		//data->printGradientCell(sp[i](0),sp[i](1),sp[i](2));
 		//data->printHessianCell(sp[i](0),sp[i](1),sp[i](2));
 		
-		double t = taylorExtension(sp[i],x);
+		float t = taylorExtension(sp[i],x);
 		
 		//printf("taylor %d: %f [%f]\n",i,t,w[i]);
 		v+=w[i]*t;
@@ -154,12 +135,12 @@ double Interpolation::multiPointTaylor(Vector &x, double &phi){
 			closestSP = i;
 	}
 	
-	phi = data->getAuxiliaryCell(sp[closestSP](0),sp[closestSP](1),sp[closestSP](2));
+	//phi = data->getAuxiliaryCell(sp[closestSP](0),sp[closestSP](1),sp[closestSP](2));
 	
 	
 	/*
 	for(int i=0;i<sp.size();i++){
-		double t = taylorExtension(sp[i],x);
+		float t = taylorExtension(sp[i],x);
 		
 		if(abs(t-v) > 0.1){
 			printf("THIS INTERPOLATION IS OUTRAGEOUS: %f\n",abs(t-v));

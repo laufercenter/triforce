@@ -33,8 +33,8 @@ enum ScanlineMode{
 
 typedef struct
 {
-	vector<double> scanline0;
-	vector<double> scanline1;
+	vector<float> scanline0;
+	vector<float> scanline1;
 	vector<ScanlineMode> mode;
 }
 DepthInformation;
@@ -48,10 +48,10 @@ public:
 	Depth3D(Data3D* d, int slack);
 	
 	
-	DepthInformation &getFloorScanlines(double kappa, double psi, double lambda, bool invert);
-	DepthInformation &getCeilScanlines(double kappa, double psi, double lambda, bool invert);
-	double getInterpolatedDepth(double g, double kappa, double psi, double lambda, bool flip, int &p0);
-	int closestGridPoint(double x);
+	DepthInformation &getFloorScanlines(float kappa, float psi, float lambda, bool invert);
+	DepthInformation &getCeilScanlines(float kappa, float psi, float lambda, bool invert);
+	float getInterpolatedDepth(float g, float kappa, float psi, float lambda, bool flip, int &p0);
+	int closestGridPoint(float x);
 	void closestGridPoint(Vector &x, VectorInt &p);
 	void closestGridPoint(Vector &x, VectorInt &p, Vector &l);
 	
@@ -59,7 +59,7 @@ public:
 private:
 	int slack;
 	DepthInformation depthInfoBuffer;
-	DepthInformation &getScanlines(double kappa, double psi, double lambda, bool invert, VectorInt &p);
+	DepthInformation &getScanlines(float kappa, float psi, float lambda, bool invert, VectorInt &p);
 	
 	
 };

@@ -36,27 +36,27 @@ enum TaylorTermination{
 	TAYLOR_CUBIC
 };
 
+class Interpolator{
+	virtual float interpolate(Vector &x)=0;
+};
 
 
 
-class Interpolation{
+class Interpolation: public Interpolator{
 	
 public:
 	Interpolation(Data3D *data, TaylorTermination degree);
-	double interpolate(Vector &x);
-	double interpolate(Vector &x, double &phi);
-	double interpolate(double PHI, double psi, double lambda);
-	double interpolate(double PHI, double psi, double lambda, double &phi);
+	float interpolate(Vector &x);
 
 	
 private:
 	Data3D *data;
 	TaylorTermination degree;
 
-	double taylorExtension(VectorInt &r, Vector &x);
-	double taylorExtension(int i_PHI, int i_psi, int i_lambda, Vector &x);
-	vector<double> weights(vector<VectorInt> &sp, Vector &x, Vector &length);
-	double multiPointTaylor(Vector &x, double &phi);
+	float taylorExtension(VectorInt &r, Vector &x);
+	float taylorExtension(int i_PHI, int i_psi, int i_lambda, Vector &x);
+	vector<float> weights(vector<VectorInt> &sp, Vector &x, Vector &length);
+	float multiPointTaylor(Vector &x);
 	
 	
 };

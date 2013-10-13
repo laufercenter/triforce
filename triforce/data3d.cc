@@ -115,7 +115,7 @@ Vector Data3D::getHeaderVector(unsigned int parameter0, unsigned int parameter1,
 
 
 
-double Data3D::parameter2GridLength(){
+float Data3D::parameter2GridLength(){
 	return abs((*headerParameter2)[parameter2Dim-1]-(*headerParameter2)[0]);
 }
 
@@ -145,7 +145,7 @@ Matrix &Data3D::getHessian(unsigned int x, unsigned int y, unsigned int z){
 	return (*hessian)[x][y][z];
 }
 
-bool Data3D::isWithinNumericalLimits(double x, double t){
+bool Data3D::isWithinNumericalLimits(float x, float t){
 	if(abs(x-t) <= THRESHOLD_NUMERICAL) return true;
 	else return false;
 }

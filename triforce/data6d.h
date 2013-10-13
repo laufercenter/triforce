@@ -30,21 +30,21 @@
 using namespace std;
 using namespace arma;
 
-typedef vec Vector;
+typedef fvec Vector;
 typedef Col<unsigned int> VectorInt;
 
-typedef mat Matrix;
+typedef fmat Matrix;
 
 //#define THRESHOLD_NUMERICAL 0.00001
 
-//typedef boost::numeric::ublas::vector<double> Vector;
-//typedef boost::numeric::ublas::matrix<double> Matrix;
+//typedef boost::numeric::ublas::vector<float> Vector;
+//typedef boost::numeric::ublas::matrix<float> Matrix;
 
 
 
-typedef boost::multi_array<double,1> Table1dDouble;
-typedef boost::multi_array<double,2> Table2dDouble;
-typedef boost::multi_array<double,6> Table6dDouble;
+typedef boost::multi_array<float,1> Table1dDouble;
+typedef boost::multi_array<float,2> Table2dDouble;
+typedef boost::multi_array<float,6> Table6dDouble;
 typedef boost::multi_array<Vector,6> Table6dVector;
 typedef boost::multi_array<Matrix,6> Table6dMatrix;
 
@@ -54,25 +54,25 @@ class Data6D{
 public:
 	Data6D();
 	Data6D(unsigned int parameter0Dim, unsigned int parameter1Dim, unsigned int parameter2Dim, unsigned int parameter3Dim, unsigned int parameter4Dim, unsigned int parameter5Dim);
-	void setHeaderParameter0Cell(unsigned int x, double value);
-	void setHeaderParameter1Cell(unsigned int x, double value);
-	void setHeaderParameter2Cell(unsigned int x, double value);
-	void setHeaderParameter3Cell(unsigned int x, double value);
-	void setHeaderParameter4Cell(unsigned int x, double value);
-	void setHeaderParameter5Cell(unsigned int x, double value);
-	double getHeaderParameter0Cell(unsigned int x);
-	double getHeaderParameter1Cell(unsigned int x);
-	double getHeaderParameter2Cell(unsigned int x);
-	double getHeaderParameter3Cell(unsigned int x);
-	double getHeaderParameter4Cell(unsigned int x);
-	double getHeaderParameter5Cell(unsigned int x);
-	void setDataCell(unsigned int x, unsigned int y, unsigned int z, unsigned int u, unsigned int v, unsigned int w, double value);
-	//void setAuxiliaryCell(unsigned int x, unsigned int y, unsigned int z, unsigned int u, unsigned int v, unsigned int w, double value);
-	//void setGradientCell(unsigned int x, unsigned int y, unsigned int z, unsigned int u, unsigned int v, unsigned int w, unsigned int i, double value);
-	//void setHessianCell(unsigned int x, unsigned int y, unsigned int z, unsigned int u, unsigned int v, unsigned int w, unsigned int i, unsigned int j, double value);
+	void setHeaderParameter0Cell(unsigned int x, float value);
+	void setHeaderParameter1Cell(unsigned int x, float value);
+	void setHeaderParameter2Cell(unsigned int x, float value);
+	void setHeaderParameter3Cell(unsigned int x, float value);
+	void setHeaderParameter4Cell(unsigned int x, float value);
+	void setHeaderParameter5Cell(unsigned int x, float value);
+	float getHeaderParameter0Cell(unsigned int x);
+	float getHeaderParameter1Cell(unsigned int x);
+	float getHeaderParameter2Cell(unsigned int x);
+	float getHeaderParameter3Cell(unsigned int x);
+	float getHeaderParameter4Cell(unsigned int x);
+	float getHeaderParameter5Cell(unsigned int x);
+	void setDataCell(unsigned int x, unsigned int y, unsigned int z, unsigned int u, unsigned int v, unsigned int w, float value);
+	//void setAuxiliaryCell(unsigned int x, unsigned int y, unsigned int z, unsigned int u, unsigned int v, unsigned int w, float value);
+	//void setGradientCell(unsigned int x, unsigned int y, unsigned int z, unsigned int u, unsigned int v, unsigned int w, unsigned int i, float value);
+	//void setHessianCell(unsigned int x, unsigned int y, unsigned int z, unsigned int u, unsigned int v, unsigned int w, unsigned int i, unsigned int j, float value);
 	void print();
-	double getDataCell(unsigned int x, unsigned int y, unsigned int z, unsigned int u, unsigned int v, unsigned int w);
-	//double getAuxiliaryCell(unsigned int x, unsigned int y, unsigned int z);
+	float getDataCell(unsigned int x, unsigned int y, unsigned int z, unsigned int u, unsigned int v, unsigned int w);
+	//float getAuxiliaryCell(unsigned int x, unsigned int y, unsigned int z);
 	//Vector &getGradient(unsigned int x, unsigned int y, unsigned int z);
 	//Matrix &getHessian(unsigned int x, unsigned int y, unsigned int z);
 	
@@ -85,7 +85,7 @@ public:
 	
 	virtual void closestGridPoint(Vector &x, VectorInt &p, Vector &l);
 	virtual void surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Vector &lengths);
-	bool isWithinNumericalLimits(double x, double t);
+	bool isWithinNumericalLimits(float x, float t);
 	void init();
 	
 
@@ -96,18 +96,18 @@ public:
 	unsigned int parameter3Dim;
 	unsigned int parameter4Dim;
 	unsigned int parameter5Dim;
-	double minParameter0;
-	double minParameter1;
-	double minParameter2;
-	double minParameter3;
-	double minParameter4;
-	double minParameter5;
-	double cellLengthParameter0;
-	double cellLengthParameter1;
-	double cellLengthParameter2;
-	double cellLengthParameter3;
-	double cellLengthParameter4;
-	double cellLengthParameter5;
+	float minParameter0;
+	float minParameter1;
+	float minParameter2;
+	float minParameter3;
+	float minParameter4;
+	float minParameter5;
+	float cellLengthParameter0;
+	float cellLengthParameter1;
+	float cellLengthParameter2;
+	float cellLengthParameter3;
+	float cellLengthParameter4;
+	float cellLengthParameter5;
 	Table1dDouble *headerParameter0;
 	Table1dDouble *headerParameter1;
 	Table1dDouble *headerParameter2;

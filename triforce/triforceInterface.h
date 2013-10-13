@@ -37,7 +37,7 @@ public:
 	TriforceInterface(string path);
 	TriforceInterface(string path, unsigned int buffer, unsigned int slack);
 	
-	double calculateSurfaceArea(Molecule &mol);
+	float calculateSurfaceArea(Molecule &mol);
 	
 	Benchmark getBenchmark();
 	void printBenchmark(FILE* outputfile);
