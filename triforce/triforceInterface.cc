@@ -115,7 +115,7 @@ float TriforceInterface::calculateSurfaceArea(Molecule &mol){
 	if(withDepthBuffer) t = new Tessellation(mol,buffer,*depth0,*dat5,*dat6);
 	else t = new Tessellation(mol);
 	t->build(true);
-	t->outputTessellation(string("patches.csv"));
+// 	t->outputTessellation(string("patches.csv"));
 	area = integrator->integrate(&mol, t);
 	tessellationBenchmark=t->getBenchmark();
 	delete(t);

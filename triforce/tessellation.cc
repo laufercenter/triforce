@@ -253,16 +253,16 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 	}
 	else circles=precircles;
 	
-	if(i==0){
-		FILE* file;
-		file = fopen ("segmentRays.csv","w");
-		
-		for(unsigned int j=0;j<precircles.size();j++){
-			for(unsigned int m=0; m<precircles[j].exposedVectors.size(); ++m){
-				fprintf(file,"%f %f %f 0\n", precircles[j].exposedVectors[m](0), precircles[j].exposedVectors[m](1), precircles[j].exposedVectors[m](2));
-			}
-		}
-	}
+// 	if(i==0){
+// 		FILE* file;
+// 		file = fopen ("segmentRays.csv","w");
+// 		
+// 		for(unsigned int j=0;j<precircles.size();j++){
+// 			for(unsigned int m=0; m<precircles[j].exposedVectors.size(); ++m){
+// 				fprintf(file,"%f %f %f 0\n", precircles[j].exposedVectors[m](0), precircles[j].exposedVectors[m](1), precircles[j].exposedVectors[m](2));
+// 			}
+// 		}
+// 	}
 	
 	
 	benchmark.addQuantity("interfaces found",precircles.size());
