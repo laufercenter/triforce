@@ -121,8 +121,6 @@ float IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 void IntegratorTriforce::addForce(int i, Vector force){
 	ForceElement fe;
 	if(i>=0){
-		if(i==142) printf("FORCE: %f %f %f\n",force(0),force(1),force(2));
-		
 		fe.i=i;
 		fe.force=force;
 		forcesDelayed.push_back(fe);
