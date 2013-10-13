@@ -15,7 +15,7 @@ NeighbourList::NeighbourList(Vector center, Vector dim, float searchRadius){
 	//prepare some quantities
 	
 	for(int i=0; i<3; i++)
-		numCubes(i) = max(1.0,ceil(dim(i) / searchRadius));
+		numCubes(i) = max(1.0f,ceil(dim(i) / searchRadius));
 	
 	//printf("creating neighbourlist with dim (%f, %f, %f), center (%f, %f, %f) searchRadius (%f) gridcells (%d %d %d)\n",dim(0),dim(1),dim(2),center(0),center(1),center(2),searchRadius,numCubes(0),numCubes(1),numCubes(2));
 	

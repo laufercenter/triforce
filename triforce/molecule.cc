@@ -118,7 +118,7 @@ void Molecule::addInternallyStoredAtom(float x, float y, float z, string name, s
 	Parameters p;
 	p=topology.getAssociatedCell(string2UpperCase(type));
 	
-	addInternallyStoredAtom(x,y,z, 0.5*p.sigma+1.4, name,i);
+	addInternallyStoredAtom(x,y,z, p.sigma, name,i);
 	
 }
 
@@ -130,8 +130,7 @@ void Molecule::addInternallyStoredAtom(float x, float y, float z, float eps, flo
 	addInternallyStoredAtom(x,y,z, sig, eps, sig, name,i);
 }
 	
-	
-void Molecule::addInternallyStoredAtom(double x, double y, double z, double radius, string name, int i){
+void Molecule::addInternallyStoredAtom(float x, float y, float z, float radius, float eps, float sig, string name, int i){
 	if(i<0) i = atomicPointers.size();
 	
 	if(i>=(signed int) atomicPointers.size()){
@@ -143,7 +142,7 @@ void Molecule::addInternallyStoredAtom(double x, double y, double z, double radi
 	atoms[i](2)=z;
 	
 	
-	addAtom(&atoms[i](0),&atoms[i](1),&atoms[i](2),&realArea[realArea.size()-1],&realForceX[realForceX.size()-1],&realForceY[realForceY.size()-1],&realForceZ[realForceZ.size()-1], radius, name,i);
+	addAtom(&atoms[i](0),&atoms[i](1),&atoms[i](2),&realArea[realArea.size()-1],&realForceX[realForceX.size()-1],&realForceY[realForceY.size()-1],&realForceZ[realForceZ.size()-1], radius, eps, sig, name,i);
 	
 	source[i] = INTERNAL_SOURCE;
 	
@@ -194,15 +193,24 @@ void Molecule::addAtom(float* x, float* y, float* z, float* area, float* forceX,
 	Parameters p;
 	p=topology.getAssociatedCell(string2UpperCase(type));
 	
-	addAtom(x,y,z,area, forceX, forceY, forceZ, 0.5*p.sigma+1.4, name,i);
+	addAtom(x,y,z,area, forceX, forceY, forceZ, p.sigma, name,i);
 	
 	
 }
 
 
+void Molecule::addAtom(float* x, float* y, float* z, float* area, float* forceX, float* forceY, float* forceZ, float radius, string name, int i){
+	addAtom(x,y,z,area, forceX, forceY, forceZ, radius, 0, 0, name,i);
+}
+
+
+void Molecule::addAtom(float* x, float* y, float* z, float* area, float* forceX, float* forceY, float* forceZ, float eps, float sig, string name, int i){
+	addAtom(x,y,z,area, forceX, forceY, forceZ, sig, eps, sig, name,i);
+}
+
 	
 	
-void Molecule::addAtom(double* x, double* y, double* z, double* area, double* forceX, double* forceY, double* forceZ, double radius, string name, int i){
+void Molecule::addAtom(float* x, float* y, float* z, float* area, float* forceX, float* forceY, float* forceZ, float radius, float eps, float sig, string name, int i){
 	AtomicPointers c;
 	vector<float*> force;
 	c.x=x;
@@ -222,7 +230,7 @@ void Molecule::addAtom(double* x, double* y, double* z, double* area, double* fo
 	}
 		
 	atomicPointers[i]=c;
-	radii[i]=radius;
+	radii[i]=0.5*radius+1.4;
 	
 	//sea water modifications
 	epsilons[i]=sqrt(eps);

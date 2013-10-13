@@ -64,11 +64,15 @@ class Molecule{
 public:
 	Molecule();
 	Molecule(Topology topology);
-	void addAtom(double* x, double* y, double* z, double* area, double* forceX, double* forceY, double* forceZ, string name, string type, int i=-1);
-	void addAtom(double* x, double* y, double* z, double* area, double* forceX, double* forceY, double* forceZ, double radius, string name, int i=-1);
+	void addAtom(float* x, float* y, float* z, float* area, float* forceX, float* forceY, float* forceZ, string name, string type, int i=-1);
+	void addAtom(float* x, float* y, float* z, float* area, float* forceX, float* forceY, float* forceZ, float radius, string name, int i=-1);
+	void addAtom(float* x, float* y, float* z, float* area, float* forceX, float* forceY, float* forceZ, float eps, float sig, string name, int i=-1);
+	void addAtom(float* x, float* y, float* z, float* area, float* forceX, float* forceY, float* forceZ, float radius, float eps, float sig, string name, int i=-1);
 	void update();
-	void addInternallyStoredAtom(double x, double y, double z, string name, string type, int i=-1);
-	void addInternallyStoredAtom(double x, double y, double z, double radius, string name, int i=-1);
+	void addInternallyStoredAtom(float x, float y, float z, string name, string type, int i=-1);
+	void addInternallyStoredAtom(float x, float y, float z, float radius, string name, int i=-1);
+	void addInternallyStoredAtom(float x, float y, float z, float eps, float sig, string name, int i=-1);
+	void addInternallyStoredAtom(float x, float y, float z, float radius, float eps, float sig, string name, int i=-1);
 	Vector getInternallyStoredAtomCoordinates(int i);
 	void setInternallyStoredAtomCoordinates(int i, Vector &v);
 	void perturbInternallyStoredAtomCoordinates(int i, Vector p);

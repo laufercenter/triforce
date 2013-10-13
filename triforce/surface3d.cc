@@ -41,7 +41,7 @@ void Surface3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r,
 	VectorInt v2(3);
 	VectorInt v(3);
 	unsigned int discontinuity;
-	double vpsi,vlambda;
+	float vpsi,vlambda;
 	closestGridPoint(x, v, lengths);
 	
 	//printf("CLOSEST GRIDPOINT: %d %d %d\n",v(0),v(1),v(2));
