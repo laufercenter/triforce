@@ -873,8 +873,8 @@ Molecule *DataFile::digestPDB(Topology &top, bool useHydrogens){
 	unsigned int chain;
 	string chainstr;
 	string residuenumstr;
-	unsigned int residuenum;
-	unsigned int prev_residuenum;
+	int residuenum;
+	int prev_residuenum;
 	
 	disregardingHydrogens=false;
 	
@@ -887,7 +887,7 @@ Molecule *DataFile::digestPDB(Topology &top, bool useHydrogens){
 	
 	chain=0;
 	chainstr=string("0");
-	prev_residuenum=std::numeric_limits<unsigned int>::min();
+	prev_residuenum=std::numeric_limits<int>::min();
 
 		
 	while(ifs->good()){

@@ -95,6 +95,7 @@ float IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 	
 	for(unsigned int i=0;i<sasas.size();++i){
 		radius = radii[i];
+		tradius=radius;
 		a = integrateSASA(i, sasas[i], radius);
 		
 		
@@ -121,6 +122,7 @@ float IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 void IntegratorTriforce::addForce(int i, Vector force){
 	ForceElement fe;
 	if(i>=0){
+// 		if(i==749) printf("FORCE: %f %f %f\n",force(0),force(1),force(2));
 		fe.i=i;
 		fe.force=force;
 		forcesDelayed.push_back(fe);
@@ -477,7 +479,11 @@ Integral IntegratorTriforce::integrateTriangle(int l, SASASegment &x, Vector int
 	PHIjk = x.rotation1;
 	
 	
-	
+		int i0,i1,i2;
+	i0=749;
+	i1=748;
+	i2=746;
+
 	
 	
 	s_convex=1;
@@ -495,6 +501,7 @@ Integral IntegratorTriforce::integrateTriangle(int l, SASASegment &x, Vector int
 	Tij = lookUp(PHIij.rotation, psi.rotation, lambda.rotation, form);
 	Tjk = lookUp(PHIjk.rotation, psi.rotation, lambda.rotation, form);
 	
+
 	
 	/*
 	if(x1.form == CONVEX && psi.rotation < lambda.rotation){
@@ -526,6 +533,24 @@ Integral IntegratorTriforce::integrateTriangle(int l, SASASegment &x, Vector int
 	force_j = q*(Tjk(1) * PHIjk.drotation_dxi + Tjk(2) * psi.drotation_dxi + Tjk(3) * lambda.drotation_dxi) - q*(Tij(1) * PHIij.drotation_dxi + Tij(2) * psi.drotation_dxi + Tij(3) * lambda.drotation_dxi);
 	force_k = q*(Tjk(1) * PHIjk.drotation_dxj);
 	force_l = q*((Tjk(1) * PHIjk.drotation_dxl + Tjk(2) * psi.drotation_dxl + Tjk(3) * lambda.drotation_dxl) - (Tij(1) * PHIij.drotation_dxl + Tij(2) * psi.drotation_dxl + Tij(3) * lambda.drotation_dxl));
+	
+	
+	
+  	if(//(l==i0 || x.index0==i0 || x.index1==i0 || x.index2==i0) ||
+ 		(l==i0 && ((x.index0==i1 && x.index1==i2) || (x.index0==i2 && x.index1==i1) || (x.index1==i1 && x.index2==i2) || (x.index1==i2 && x.index2==i1))) ||
+ 		(l==i1 && ((x.index0==i0 && x.index1==i2) || (x.index0==i2 && x.index1==i0) || (x.index1==i0 && x.index2==i2) || (x.index1==i2 && x.index2==i0))) ||
+ 		(l==i2 && ((x.index0==i1 && x.index1==i0) || (x.index0==i0 && x.index1==i1) || (x.index1==i1 && x.index2==i0) || (x.index1==i0 && x.index2==i1))))
+ 	{
+// 		printf("ROT: %f %f\n",PHIjk.rotation,PHIij.rotation);
+	}
+ 	
+// 		printf("X: %d (%d %d %d)\n",l,x.index0,x.index1,x.index2);
+// 	}
+//  		printf("PHIij dxi : (%f %f %f) \t PHIij dxj : (%f %f %f) \t PHIij dxl : (%f %f %f)\n",PHIij.drotation_dxi(0),PHIij.drotation_dxi(1),PHIij.drotation_dxi(2),PHIij.drotation_dxj(0),PHIij.drotation_dxj(1),PHIij.drotation_dxj(2),PHIij.drotation_dxl(0),PHIij.drotation_dxl(1),PHIij.drotation_dxl(2));
+//  		printf("PHIjk dxi : (%f %f %f) \t PHIjk dxj : (%f %f %f) \t PHIjk dxl : (%f %f %f)\n",PHIjk.drotation_dxi(0),PHIjk.drotation_dxi(1),PHIjk.drotation_dxi(2),PHIjk.drotation_dxj(0),PHIjk.drotation_dxj(1),PHIjk.drotation_dxj(2),PHIjk.drotation_dxl(0),PHIjk.drotation_dxl(1),PHIjk.drotation_dxl(2));
+//  		printf("psi dxi   : (%f %f %f) \t psi dxj   : (%f %f %f) \t psi dxl   : (%f %f %f)\n",psi.drotation_dxi(0),psi.drotation_dxi(1),psi.drotation_dxi(2),psi.drotation_dxj(0),psi.drotation_dxj(1),psi.drotation_dxj(2),psi.drotation_dxl(0),psi.drotation_dxl(1),psi.drotation_dxl(2));
+//  		printf("lambda dxi: (%f %f %f) \t lambda dxj: (%f %f %f) \t lambda dxl: (%f %f %f)\n",lambda.drotation_dxi(0),lambda.drotation_dxi(1),lambda.drotation_dxi(2),lambda.drotation_dxj(0),lambda.drotation_dxj(1),lambda.drotation_dxj(2),lambda.drotation_dxl(0),lambda.drotation_dxl(1),lambda.drotation_dxl(2));
+//  	}
 	
 	/*
 	int ti=12;
@@ -569,7 +594,18 @@ Integral IntegratorTriforce::integrateTriangle(int l, SASASegment &x, Vector int
 	a.force_l = q* force_l;
 	
 	
-	
+// 	if(	(l==i0 && ((x.index0==i1 && x.index1==i2) || (x.index0==i2 && x.index1==i1) || (x.index1==i1 && x.index2==i2) || (x.index1==i2 && x.index2==i1))) ||
+// 		(l==i1 && ((x.index0==i0 && x.index1==i2) || (x.index0==i2 && x.index1==i0) || (x.index1==i0 && x.index2==i2) || (x.index1==i2 && x.index2==i0))) ||
+// 		(l==i2 && ((x.index0==i1 && x.index1==i0) || (x.index0==i0 && x.index1==i1) || (x.index1==i1 && x.index2==i0) || (x.index1==i0 && x.index2==i1))))
+// 	
+// 	{
+// 		printf("forcei: %f %f %f\n",force_i(0)*tradius*tradius,force_i(1)*tradius*tradius,force_i(2)*tradius*tradius);
+// 		printf("forcej: %f %f %f\n",force_j(0)*tradius*tradius,force_j(1)*tradius*tradius,force_j(2)*tradius*tradius);
+// 		printf("forcek: %f %f %f\n",force_k(0)*tradius*tradius,force_k(1)*tradius*tradius,force_k(2)*tradius*tradius);
+// 		printf("forcel: %f %f %f\n",force_l(0)*tradius*tradius,force_l(1)*tradius*tradius,force_l(2)*tradius*tradius);
+// 		printf("---\n");
+// 	}
+// 	
 	
 	
 	/*

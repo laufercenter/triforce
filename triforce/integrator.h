@@ -83,7 +83,7 @@ private:
 	vector<Interpolation*> data;
 	Tessellation* tessellation;
 	Molecule* molecule;
-	
+	float tradius;
 	vector<float*> areas;
 	vector<vector<float*> > forces;
 	vector<ForceElement> forcesDelayed;

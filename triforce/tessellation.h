@@ -48,12 +48,14 @@ using namespace arma;
 #define EPSILON 0.01
 #define ORDER_CLOCKWISE 0
 #define ORDER_COUNTERCLOCKWISE 1
-#define THRESHOLD_INTERFACE 0.0001
+#define THRESHOLD_INTERFACE 0.01
+#define THRESHOLD_GENERAL_POSITION 0.01
 
-#define FD 0.000001
-#define FDT 10.0025
 
-#define MINISCULE 0.00001
+#define FD 0.001
+#define FDT 1.0025
+
+#define MINISCULE 0.0000001
 
 
 
@@ -138,6 +140,8 @@ typedef struct
 	float dij;
 	Vector ni;
 	Vector nij;
+	Vector vi;
+	Vector vij;
 	float dot_ni_nij;
 	float s0;
 	float s2;
@@ -471,7 +475,7 @@ public:
 	void calculateProjectionAndDerivatives(Vector &tessellationAxis, CircularInterface &circle);
 	Benchmark getBenchmark();
 	void outputTessellation(string filename);
-	
+// 	Vector generalPosition(CircularInterfacesPerAtom &circles);
 	
 	float V2PHI(Vector tessellationAxis, Hemisphere hemisphere, Vector v, Vector &normal, float g);
 	float cot(float a);
@@ -487,6 +491,7 @@ public:
 	float complLongAngle(Vector &vi, Vector &vj, Vector &vk);
 	
 
+	Vector generalPosition(CircularInterfacesPerAtom &circles);
 	
 	
 private:
@@ -500,6 +505,8 @@ private:
 	Vector torigin;
 	float tradius;
 	int ti;
+	CircularInterfacesPerAtom tcircles;
+	Vector ttessellationAxis;
 	//#atoms #circularregions
 	//#atoms #sasas #circularregions
 	SASAs sasasForMolecule;

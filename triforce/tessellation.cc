@@ -197,13 +197,13 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 	*/
 	
 	
-	frontTessellationAxis = frontTessellationAxis/norm(frontTessellationAxis,2);
+// 	frontTessellationAxis = frontTessellationAxis/norm(frontTessellationAxis,2);
 	
 	
 	
 
 
-	backTessellationAxis = -frontTessellationAxis;
+// 	backTessellationAxis = -frontTessellationAxis;
 	SASASegmentList *newSasas;
 	
 	srand(2);
@@ -289,6 +289,14 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 	survivedInterfaces+=circles.size();
 	
 	
+	frontTessellationAxis = generalPosition(circles);
+	backTessellationAxis = -frontTessellationAxis;
+	
+// 	frontTessellationAxis = frontTessellationAxis/norm(frontTessellationAxis,2);
+// 	backTessellationAxis = -frontTessellationAxis;
+	
+	
+	
 	//there is room for optimisation here...
 	if(split){
 	
@@ -323,7 +331,7 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 	}
 	else{
 		printf("not supported\n");
-		exit(-1);
+		printf("DIVERGENCE\n");
 		
 		filterCircularInterfaces(frontTessellationAxis, radius, circles);
 		reindexCircularInterfaces(circles);
@@ -336,6 +344,48 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 	
 
 	
+}
+
+
+
+
+
+
+Vector Tessellation::generalPosition(CircularInterfacesPerAtom &circles){
+	Vector chi(3),n(3),y(3);
+	chi(0)=1;
+	chi(1)=0;
+	chi(2)=0;
+	y(0)=0;
+	y(1)=1;
+	y(2)=0;
+	n(0)=0;
+	n(1)=0;
+	n(2)=1;
+	
+	float d0,d1;
+	Vector ni;
+	
+	bool degenerate;
+	do{
+		degenerate=false;
+		for(unsigned int i=0; i<circles.size() && !degenerate; ++i){
+			d0=abs(1-abs(norm_dot(chi,circles[i].normal)));
+			if(d0<=THRESHOLD_GENERAL_POSITION){
+				degenerate=true;
+			}
+		}
+		if(degenerate){
+			chi = randu<fvec>(3);
+			chi(0) = chi(0)-0.5;
+			chi(1) = chi(1)-0.5;
+			chi(2) = chi(2)-0.5;
+			chi=normalise(chi);
+		}
+	}while(degenerate);
+	
+	
+	return chi;
 }
 
 
@@ -1319,11 +1369,13 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 	Vector pp(3),p(3),p2(3);
 	float di;
 	float dij;
+	Vector vi,vij;
 	
 	dotChi_mui = dot(tessellationAxis,mu_i);
 	
+	
 	s2 = 1;
-	if(isWithinStrongNumericalLimits(dotChi_mui,1.0)){
+	if(isWithinStrongNumericalLimits(dotChi_mui,1.0) || form_i==SPLITTER){
 		/*pp(0) = 0;
 		pp(1) = 0;
 		pp(2) = 1;
@@ -1337,7 +1389,10 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 		
 		ni=normalise(cross(tessellationAxis,p),di);
 		di=1;
+		vi=cross(tessellationAxis,p);
+		
 		problem=true;
+		
 		
 		if(dot(ni,mu_j)<0)
 			s2 = -1;
@@ -1349,6 +1404,7 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 		p(2) = 0;
 		
 		ni=normalise(cross(tessellationAxis,p),di);
+		vi=cross(tessellationAxis,p);
 		di=1;
 		if(dot(ni,mu_j)<0)
 			s2 = -1;
@@ -1356,11 +1412,11 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 	else{
 		p = mu_i;
 		ni = normalise(cross(tessellationAxis,p),di);
+		vi=cross(tessellationAxis,p);
 		
 		
 	}
 		
-	
 	
 	
 	dotmui_muj = rhoContainer.dot_mui_muj;
@@ -1369,6 +1425,7 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 		p2(1) = -1;
 		p2(2) = 0;
 		nij = normalise(cross(tessellationAxis,p2),dij);
+		vij=cross(tessellationAxis,p2);
 		dij=1;
 		//exit(-2);
 	}
@@ -1377,11 +1434,13 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 		p2(1) = 1;
 		p2(2) = 0;
 		nij = normalise(cross(tessellationAxis,p2),dij);
+		vij=cross(tessellationAxis,p2);
 		dij=1;
 		//exit(-3);
 	}
 	else{
 		nij = normalise(cross(mu_i, mu_j),dij);
+		vij=cross(mu_i, mu_j);
 	}
 	
 	
@@ -1389,7 +1448,6 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 	dot_ni_nij = dot(ni,nij);
 	
 
-	
 	
 	
 	if(dot_ni_nij > 1.0) dot_ni_nij=1.0;
@@ -1409,7 +1467,7 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 	
 	
 	if(isnan(omega.rotation)){
-		fprintf(stderr,"omega evaluated to nan\n");
+		fprintf(stdout,"omega evaluated to nan\n");
 		exit(-2);
 	}
 	
@@ -1418,6 +1476,8 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 	omega.dij = dij;
 	omega.ni = ni;
 	omega.nij = nij;
+	omega.vi = vi;
+	omega.vij = vij;
 	omega.dot_ni_nij = dot_ni_nij;
 	omega.id_i = id_i;
 	omega.id_j = id_j;
@@ -1427,9 +1487,7 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 	return omega;
 	
 }
-	
-	
-	
+
 	
 Rotation Tessellation::calculateOmegaDerivatives(OmegaRotation &r, CircularInterfacesPerAtom &circles, Vector &tessellationAxis){
 	Matrix dmui_dxl, dmuj_dxl;
@@ -1438,7 +1496,8 @@ Rotation Tessellation::calculateOmegaDerivatives(OmegaRotation &r, CircularInter
 	Matrix dvi_dmui, dvij_dmui, dvij_dmuj;
 	Matrix dni_dvi, dnij_dvij;
 	Vector domega_dxi, domega_dxj, domega_dxl;
-
+	Vector domeganew_dxi, domeganew_dxj, domeganew_dxl;
+	Vector dextra_dxi, dextra_dxj, dextra_dxl;
 	float di,dij;
 	Vector ni(3);
 	Vector nij(3);
@@ -1456,13 +1515,16 @@ Rotation Tessellation::calculateOmegaDerivatives(OmegaRotation &r, CircularInter
 	int id_j;
 	float s0,s2;
 	float denominator;
-	
+	Vector chi,chi1,chi2;
+	Vector vi,vij;
 	omega.rotation=r.rotation;
 	
 	di = r.di;
 	dij = r.dij;
 	ni = r.ni;
 	nij = r.nij;
+	vi = r.vi;
+	vij = r.vij;
 	dot_ni_nij = r.dot_ni_nij;
 	
 	id_i = r.id_i;
@@ -1479,15 +1541,113 @@ Rotation Tessellation::calculateOmegaDerivatives(OmegaRotation &r, CircularInter
 	
 	
 	
+	Vector dextra_dniold, dextra_dni, extra_term_dxi, extra_term_dxl, n2;
+	Matrix dniold_dvi, dviold_dmui;
+	bool extra=false;
+	Vector a0,a1,b0,b1;
+	float dot_ni_niold,dot_n2_nij,dot_n2_ni;
+	int q0,q1;
+	float a_ni_nij, a_ni_niold;
+	float q2,q3,q4,q5;
+	if(abs(dot_ni_nij) >= 0.80 && circles[id_i].form!=SPLITTER && circles[id_j].form!=SPLITTER){
+		
+		extra=true;
+		dniold_dvi = (1.0/(di))*(Identity - kron(ni,ni.t())).t();
+		
+		
+		chi1=Vector(3);
+		chi1(0)=0;
+		chi1(1)=-1;
+		chi1(2)=0;
+		chi2=Vector(3);
+		chi2(0)=0;
+		chi2(1)=0;
+		chi2(2)=-1;
+		
+		chi = cross(chi1,tessellationAxis);
+		ni = normalise(cross(chi,mu_i),di);
+		dot_ni_nij=norm_dot(ni,nij);
+		
+
+		if(abs(dot(chi,mu_i))>0.90 || abs(dot_ni_nij)>0.80){
+			chi=cross(chi2,tessellationAxis);
+		}
+		
+		
+
+		ni = normalise(cross(chi,mu_i),di);
+		vi = cross(chi,mu_i);
+		dot_ni_nij=norm_dot(ni,nij);
+		
+		dot_ni_niold = dot(r.ni,ni);
+
+		n2 = normalise(cross(r.ni,mu_i));
+		dot_n2_nij = dot(n2,nij);
+		dot_n2_ni = dot(n2,ni);
+		q0 = sgn(dot_n2_nij);
+		q1 = sgn(dot_n2_ni);
+		
+		dextra_dniold = -ni/(sqrt(1-dot(ni,r.ni)*dot(ni,r.ni)));
+		dextra_dni = -r.ni/(sqrt(1-dot(ni,r.ni)*dot(ni,r.ni)));
+		dviold_dmui=-matrixCross(Identity,tessellationAxis);
+		
+		a_ni_nij=acos(dot_ni_nij);
+		a_ni_niold=acos(dot_ni_niold);
+		
+		q2=1;
+		q3=1;
+		q4=1;
+		q5=1;
+		
+		//flip
+		if(q0!=q1){
+			a_ni_nij=M_PI-a_ni_nij;
+			a_ni_niold=M_PI-a_ni_niold;
+			q2=-1.0;
+			q3=-1.0;
+		}
+		
+		float A;
+		if(acos(r.dot_ni_nij) > a_ni_niold)
+			A=a_ni_nij+a_ni_niold;
+		else{
+			if(a_ni_niold>a_ni_nij){
+				A=a_ni_niold-a_ni_nij;
+				q4=-q4;
+			}
+			else{
+				A=a_ni_nij-a_ni_niold;
+				q5=-q5;
+			}
+		}
+		
+		a_ni_nij=acos(dot_ni_nij);
+		a_ni_niold=acos(dot_ni_niold);
+		
+		
+		A=0.5*M_PI*(q4-q2*q4+q5-q3*q5) + q2*q4*a_ni_nij + q3*q5*a_ni_niold;
+		if(abs(acos(r.dot_ni_nij)- A)>0.1) exit(-2);
+		
+		
+	}
+	else chi=tessellationAxis;
+	
+	
+	
+	
 	
 	
 	dmui_dxl = -dmui_dxi;
 	dmuj_dxl = -dmuj_dxj;
 	
-	if(s2>0)
-		dvi_dmui=-matrixCross(Identity,tessellationAxis);
-	else
+	if(s2>0){
+		dvi_dmui=-matrixCross(Identity,chi);
+		
+	}
+	else{
 		dvi_dmui = Matrix(3,3).zeros();
+		
+	}
 	
 	
 	
@@ -1500,46 +1660,66 @@ Rotation Tessellation::calculateOmegaDerivatives(OmegaRotation &r, CircularInter
 	
 	domega_dvarpi = s0;
 	
-	
-	
-	if(isWithinStrongNumericalLimits(abs(dot_ni_nij),1.0)){
 		
-		dvarpi_dni = Vector(3).zeros();
-		dvarpi_dnij = Vector(3).zeros();
-		domega_dxi = Vector(3).zeros();
-		domega_dxj = Vector(3).zeros();
-		domega_dxl = Vector(3).zeros();
 		
-	
+	if(extra){
+		a0 = (dextra_dni.t() * dni_dvi * dvi_dmui * dmui_dxi).t();
+		b0 = (dextra_dniold.t() * dniold_dvi * dviold_dmui * dmui_dxi).t();
 		
+		a1 = (dextra_dni.t() * dni_dvi * dvi_dmui * dmui_dxl).t();
+		b1 = (dextra_dniold.t() * dniold_dvi * dviold_dmui * dmui_dxl).t();
+		extra_term_dxi =  (a0+b0);
+		extra_term_dxl =  (a1+b1);
 	}
-	else{
+		
+		if(dot_ni_nij >= 1.0) dot_ni_nij = 1.0-MINISCULE;
+		if(dot_ni_nij <= -1.0) dot_ni_nij = -1.0+MINISCULE;
+		
+		
 
-		if(dot_ni_nij > 1.0-MINISCULE) dot_ni_nij = 1.0-MINISCULE;
-		if(dot_ni_nij < -1.0+MINISCULE) dot_ni_nij = -1.0+MINISCULE;
-
-	
 		denominator = (sqrt(1-dot_ni_nij*dot_ni_nij));
 		
-	
 		dvarpi_dni = -(nij) / denominator;
 		dvarpi_dnij = -(ni) / denominator;
 		
-		
-		//if(norm(dvarpi_dni,2) > 1.0) dvarpi_dni = normalise(dvarpi_dni);
-		//if(norm(dvarpi_dnij,2) > 1.0) dvarpi_dnij = normalise(dvarpi_dnij);
-
-		
+	
 		domega_dxi = s2* domega_dvarpi * ((dvarpi_dni.t() * dni_dvi * dvi_dmui * dmui_dxi).t() + (dvarpi_dnij.t() * dnij_dvij * dvij_dmui * dmui_dxi).t() );
-		
 		domega_dxj = s2* domega_dvarpi * (dvarpi_dnij.t() * dnij_dvij * dvij_dmuj * dmuj_dxj).t();
-
 		domega_dxl = s2* domega_dvarpi * ( (dvarpi_dni.t() * dni_dvi * dvi_dmui * dmui_dxl).t() +  (dvarpi_dnij.t() * (dnij_dvij * dvij_dmui * dmui_dxl + dnij_dvij * dvij_dmuj * dmuj_dxl) ).t() );
-	}
+		
+		
+		
+		if(extra){
+			domega_dxi =  ((dvarpi_dni.t() * dni_dvi * dvi_dmui * dmui_dxi).t() + (dvarpi_dnij.t() * dnij_dvij * dvij_dmui * dmui_dxi).t() );
+			domega_dxj =  (dvarpi_dnij.t() * dnij_dvij * dvij_dmuj * dmuj_dxj).t();
+			domega_dxl =  ( (dvarpi_dni.t() * dni_dvi * dvi_dmui * dmui_dxl).t() +  (dvarpi_dnij.t() * (dnij_dvij * dvij_dmui * dmui_dxl + dnij_dvij * dvij_dmuj * dmuj_dxl) ).t() );
+			
+			domeganew_dxi = q2*q4*domega_dxi;
+			domeganew_dxj = q2*q4*domega_dxj;
+			domeganew_dxl = q2*q4*domega_dxl;
+			
+			
+			
+			domega_dxi= s2*domega_dvarpi*(q2*q4*domega_dxi + q3*q5*extra_term_dxi);
+			domega_dxl= s2*domega_dvarpi*(q2*q4*domega_dxl + q3*q5*extra_term_dxl);
+			domega_dxj= s2*domega_dvarpi*(q2*q4*domega_dxj);
+			
+			dextra_dxi = q3*q5*extra_term_dxi;
+			dextra_dxj = Vector(3).zeros();
+			dextra_dxl = q3*q5*extra_term_dxl;
+		}
 	
 	omega.drotation_dxi = domega_dxi;
 	omega.drotation_dxj = domega_dxj;
 	omega.drotation_dxl = domega_dxl;
+	
+	
+	
+	
+	
+	
+	
+	
 	
 
 
@@ -1616,6 +1796,8 @@ EtaRotation Tessellation::calculateEta(Vector &tessellationAxis, Vector &mu_i, V
 		sig1 = cos(lambda_j.rotation)*csc_lambda_i*csc_rho;
 		sig2 = sig0-sig1;
 		
+// 		printf("sigs: %f %f %f %f %f %f\n",sig0,sig1,sig2, lambda_i.rotation, lambda_j.rotation, rho);
+		
 		
 		eta.rotation = acos(sig2);
 		
@@ -1631,10 +1813,10 @@ EtaRotation Tessellation::calculateEta(Vector &tessellationAxis, Vector &mu_i, V
 	}
 	
 	if(isnan(eta.rotation)){
-		fprintf(stderr,"eta evaluated to nan\n");
-		fprintf(stderr,"sig: %f %f %f\n",sig0,sig1,sig2);
-		fprintf(stderr,"angles: %f %f %f\n",lambda_i.rotation, lambda_j.rotation, rho);
-		exit(-2);
+		fprintf(stdout,"eta evaluated to nan\n");
+		fprintf(stdout,"sig: %f %f %f\n",sig0,sig1,sig2);
+		fprintf(stdout,"angles: %f %f %f\n",lambda_i.rotation, lambda_j.rotation, rho);
+		//exit(-2);
 	}
 	
 	
@@ -1711,6 +1893,7 @@ Rotation Tessellation::calculateEtaDerivatives(EtaRotation &r, CircularInterface
 		if(sig2 > 1.0-MINISCULE) sig2 = 1.0-MINISCULE;
 		if(sig2 < -1.0+MINISCULE) sig2 = -1.0+MINISCULE;
 		
+// 		printf("rotation: %f %f %f %f %f\n",lambda_i.rotation, lambda_j.rotation, sig0, sig1, sig2);
 		
 		deta_dlambdai = csc(lambda_i.rotation) * (sig0/cos(lambda_i.rotation) - sig1*cos(lambda_i.rotation)) / sqrt(1-sig2*sig2);
 		deta_dlambdaj =  -sin(lambda_j.rotation)*csc(lambda_i.rotation)*csc(rho) / sqrt(1-sig2*sig2);
@@ -1726,9 +1909,7 @@ Rotation Tessellation::calculateEtaDerivatives(EtaRotation &r, CircularInterface
 		eta.drotation_dxj = deta_dxj;
 		eta.drotation_dxl = deta_dxl;
 	}
-		
-
-
+	
 	
 	
 	return eta;
@@ -1808,6 +1989,8 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 	Rotation PHI;
 	int s;
 	
+	
+	
 	omega = calculateOmegaDerivatives(r.omega, circles, tessellationAxis);
 	eta = calculateEtaDerivatives(r.eta, circles);
 	
@@ -1817,6 +2000,274 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 	PHI.drotation_dxi = s*eta.drotation_dxi + omega.drotation_dxi;
 	PHI.drotation_dxj = s*eta.drotation_dxj + omega.drotation_dxj;
 	PHI.drotation_dxl = s*eta.drotation_dxl + omega.drotation_dxl;
+	
+	
+	
+	
+/*	
+	
+	
+	printf("=====================================================================\n");
+	
+	printf("TAX: %f %f %f\n",tessellationAxis(0),tessellationAxis(1),tessellationAxis(2));
+	
+	
+	
+	
+	
+	
+		Vector ai(3), aj(3), al(3), x(3), xp(3), xn(3);
+		Vector nip,nin,nj;
+		Vector njp,njn,ni;
+		int indexi, indexl, indexj,idi,idj;
+		float ri, rl, rj;
+		Rotation lambdaip;
+		Rotation lambdain;
+		Rotation lambdaj;
+		float dip,din,dj;
+		Vector fd_dPHIij_dxi_in(3);
+		Vector fd_dPHIij_dxi_out(3);
+		Vector fd_detaij_dxi_in(3);
+		Vector fd_detaij_dxi_out(3);
+		Vector fd_domegaij_dxi_in(3);
+		Vector fd_domegaij_dxi_out(3);
+		Vector fd_dPHIij_dxj_in(3);
+		Vector fd_dPHIij_dxj_out(3);
+		Vector fd_detaij_dxj_in(3);
+		Vector fd_detaij_dxj_out(3);
+		Vector fd_domegaij_dxj_in(3);
+		Vector fd_domegaij_dxj_out(3);
+		Vector fd_dPHIij_dxl_in(3);
+		Vector fd_dPHIij_dxl_out(3);
+		Vector fd_detaij_dxl_in(3);
+		Vector fd_detaij_dxl_out(3);
+		Vector fd_domegaij_dxl_in(3);
+		Vector fd_domegaij_dxl_out(3);
+		PHIContainer PHIp, PHIn;
+		Rotation lambdajp;
+		Rotation lambdajn;
+		Rotation lambdai;
+		float djp,djn,di;
+		RhoContainer rhop,rhon;
+		float etap,etan,omegap,omegan;
+
+
+		
+		//dphi_dxi
+		indexi = circles[r.eta.id_i].index;
+		indexj = circles[r.eta.id_j].index;
+		
+		printf("INDEX: %d %d %d\n",ti,indexi,indexj);
+		
+		idi=r.eta.id_i;
+		idj=r.eta.id_j;
+		if(indexi >= 0 && indexj >= 0){
+			ai = atoms[indexi];
+			aj = atoms[indexj];
+			al = torigin;
+			ri = radii[indexi];
+			rj = radii[indexj];
+			rl = tradius;
+			
+			
+			
+			nip = calculateInterfaceNormal(al, ai, dip);
+			nj = calculateInterfaceNormal(al, aj, dj);
+			
+			lambdaip.rotation = calculateLambda(dip, rl, ri, nip).rotation;
+			lambdaj.rotation = calculateLambda(dj, rl, rj, nj).rotation;
+			
+			
+			rhop.rho = calculateRho(nip,nj);
+			
+			
+			PHIp = calculatePHI(tessellationAxis, nip, nj, lambdaip, lambdaj, idi, idj, circles[idi].form, circles[idj].form, rhop);
+			etap = calculateEta(tessellationAxis, nip, nj, lambdaip, lambdaj, idi, idj, circles[idi].form, circles[idj].form, rhop).rotation;
+			omegap = calculateOmega(tessellationAxis, nip, nj, idi, idj, circles[idi].form, circles[idj].form, rhop).rotation;
+
+			
+			printf("PRECOMPARE: %f / %f %f\n",PHI.rotation, PHIp.in.rotation, PHIp.out.rotation);
+			printf("PRECOMPARE e: %f / %f\n",eta.rotation, etap);
+			printf("PRECOMPARE o: %f / %f\n",omega.rotation, omegap);
+			
+			
+			
+			x=ai;
+			for(int j=0; j<3; ++j){
+				xp=x;
+				xp(j) = x(j) + FD;
+				xn=x;
+				xn(j) = x(j) - FD;
+				
+				nip = calculateInterfaceNormal(al, xp, dip);
+				nin = calculateInterfaceNormal(al, xn, din);
+				nj = calculateInterfaceNormal(al, aj, dj);
+				
+				lambdaip.rotation = calculateLambda(dip, rl, ri, nip).rotation;
+				lambdain.rotation = calculateLambda(din, rl, ri, nin).rotation;
+				lambdaj.rotation = calculateLambda(dj, rl, rj, nj).rotation;
+				
+				rhop.rho = calculateRho(nip,nj);
+				rhon.rho = calculateRho(nin,nj);
+				
+				
+				
+				
+				PHIp = calculatePHI(tessellationAxis, nip, nj, lambdaip, lambdaj, idi, idj, circles[idi].form, circles[idj].form, rhop);
+				PHIn = calculatePHI(tessellationAxis, nin, nj, lambdain, lambdaj, idi, idj, circles[idi].form, circles[idj].form, rhon);
+				etap = calculateEta(tessellationAxis, nip, nj, lambdaip, lambdaj, idi, idj, circles[idi].form, circles[idj].form, rhop).rotation;
+				etan = calculateEta(tessellationAxis, nin, nj, lambdain, lambdaj, idi, idj, circles[idi].form, circles[idj].form, rhon).rotation;
+				omegap = calculateOmega(tessellationAxis, nip, nj, idi, idj, circles[idi].form, circles[idj].form, rhop).rotation;
+				omegan = calculateOmega(tessellationAxis, nin, nj, idi, idj, circles[idi].form, circles[idj].form, rhon).rotation;
+				
+				fd_dPHIij_dxi_out(j) = (PHIp.out.rotation - PHIn.out.rotation) / (2*FD);
+				fd_dPHIij_dxi_in(j) = (PHIp.in.rotation - PHIn.in.rotation) / (2*FD);
+				fd_detaij_dxi_out(j) = (etap - etan) / (2*FD);
+				fd_detaij_dxi_in(j) = (etap - etan) / (2*FD);
+				fd_domegaij_dxi_out(j) = (omegap - omegan) / (2*FD);
+				fd_domegaij_dxi_in(j) = (omegap - omegan) / (2*FD);
+			}
+			printf("dPHIij_dxi: (%f %f %f) FD: (%f, %f, %f) FD: (%f %f %f)\n",PHI.drotation_dxi(0),PHI.drotation_dxi(1),PHI.drotation_dxi(2), fd_dPHIij_dxi_in(0), fd_dPHIij_dxi_in(1), fd_dPHIij_dxi_in(2), fd_dPHIij_dxi_out(0), fd_dPHIij_dxi_out(1), fd_dPHIij_dxi_out(2));
+			printf("detaij_dxi: (%f %f %f) FD: (%f, %f, %f) FD: (%f %f %f)\n",eta.drotation_dxi(0),eta.drotation_dxi(1),eta.drotation_dxi(2), fd_detaij_dxi_in(0), fd_detaij_dxi_in(1), fd_detaij_dxi_in(2), fd_detaij_dxi_out(0), fd_detaij_dxi_out(1), fd_detaij_dxi_out(2));
+			printf("domegaij_dxi: (%f %f %f) FD: (%f, %f, %f) FD: (%f %f %f)\n",omega.drotation_dxi(0),omega.drotation_dxi(1),omega.drotation_dxi(2), fd_domegaij_dxi_in(0), fd_domegaij_dxi_in(1), fd_domegaij_dxi_in(2), fd_domegaij_dxi_out(0), fd_domegaij_dxi_out(1), fd_domegaij_dxi_out(2));
+			for(int i=0; i<3; ++i){
+// 				if(abs(PHI.drotation_dxi(i) - fd_dPHIij_dxi_in(i)) > FDT && abs(PHI.drotation_dxi(i) - fd_dPHIij_dxi_out(i)) > FDT) printf("ERROR\n");//printf("DIVERGENCE\n");
+				if(abs(omega.drotation_dxi(i) - fd_domegaij_dxi_in(i)) > FDT && abs(omega.drotation_dxi(i) - fd_domegaij_dxi_out(i)) > FDT) printf("ERROR\n");//printf("DIVERGENCE\n");
+			}
+			
+		}
+	
+		
+		
+		
+		
+		//dphi_dxj
+		if(indexi >= 0 && indexj >= 0){
+			ai = atoms[indexi];
+			aj = atoms[indexj];
+			al = torigin;
+			ri = radii[indexi];
+			rj = radii[indexj];
+			rl = tradius;
+			
+			
+			x=aj;
+			for(int j=0; j<3; ++j){
+				xp=x;
+				xp(j) = x(j) + FD;
+				xn=x;
+				xn(j) = x(j) - FD;
+				
+				njp = calculateInterfaceNormal(al, xp, djp);
+				njn = calculateInterfaceNormal(al, xn, djn);
+				ni = calculateInterfaceNormal(al, ai, di);
+				
+				
+
+				
+				lambdajp.rotation = calculateLambda(djp, rl, rj, njp).rotation;
+				lambdajn.rotation = calculateLambda(djn, rl, rj, njn).rotation;
+				lambdai.rotation = calculateLambda(di, rl, ri, ni).rotation;
+				
+				rhop.rho = calculateRho(ni,njp);
+				rhon.rho = calculateRho(ni,njn);
+				
+				
+				PHIp = calculatePHI(tessellationAxis, ni, njp, lambdai, lambdajp, idi, idj, circles[idi].form, circles[idj].form, rhop);
+				PHIn = calculatePHI(tessellationAxis, ni, njn, lambdai, lambdajn, idi, idj, circles[idi].form, circles[idj].form, rhon);
+				etap = calculateEta(tessellationAxis, ni, njp, lambdai, lambdajp, idi, idj, circles[idi].form, circles[idj].form, rhop).rotation;
+				etan = calculateEta(tessellationAxis, ni, njn, lambdai, lambdajn, idi, idj, circles[idi].form, circles[idj].form, rhon).rotation;
+				omegap = calculateOmega(tessellationAxis, ni, njp, idi, idj, circles[idi].form, circles[idj].form, rhop).rotation;
+				omegan = calculateOmega(tessellationAxis, ni, njn, idi, idj, circles[idi].form, circles[idj].form, rhon).rotation;
+				
+				fd_dPHIij_dxj_out(j) = (PHIp.out.rotation - PHIn.out.rotation) / (2*FD);
+				fd_dPHIij_dxj_in(j) = (PHIp.in.rotation - PHIn.in.rotation) / (2*FD);
+				fd_detaij_dxj_out(j) = (etap - etan) / (2*FD);
+				fd_detaij_dxj_in(j) = (etap - etan) / (2*FD);
+				fd_domegaij_dxj_out(j) = (omegap - omegan) / (2*FD);
+				fd_domegaij_dxj_in(j) = (omegap - omegan) / (2*FD);
+			}
+			printf("dPHIij_dxj: (%f %f %f) FD: (%f, %f, %f) FD: (%f %f %f)\n",PHI.drotation_dxj(0),PHI.drotation_dxj(1),PHI.drotation_dxj(2), fd_dPHIij_dxj_in(0), fd_dPHIij_dxj_in(1), fd_dPHIij_dxj_in(2), fd_dPHIij_dxj_out(0), fd_dPHIij_dxj_out(1), fd_dPHIij_dxj_out(2));
+			printf("detaij_dxj: (%f %f %f) FD: (%f, %f, %f) FD: (%f %f %f)\n",eta.drotation_dxj(0),eta.drotation_dxj(1),eta.drotation_dxj(2), fd_detaij_dxj_in(0), fd_detaij_dxj_in(1), fd_detaij_dxj_in(2), fd_detaij_dxj_out(0), fd_detaij_dxj_out(1), fd_detaij_dxj_out(2));
+			printf("domegaij_dxj: (%f %f %f) FD: (%f, %f, %f) FD: (%f %f %f)\n",omega.drotation_dxj(0),omega.drotation_dxj(1),omega.drotation_dxj(2), fd_domegaij_dxj_in(0), fd_domegaij_dxj_in(1), fd_domegaij_dxj_in(2), fd_domegaij_dxj_out(0), fd_domegaij_dxj_out(1), fd_domegaij_dxj_out(2));
+			for(int i=0; i<3; ++i){
+// 				if(abs(PHI.drotation_dxj(i) - fd_dPHIij_dxj_in(i)) > FDT && abs(PHI.drotation_dxj(i) - fd_dPHIij_dxj_out(i)) > FDT) printf("ERROR\n");//printf("DIVERGENCE\n");
+				if(abs(omega.drotation_dxj(i) - fd_domegaij_dxj_in(i)) > FDT && abs(omega.drotation_dxj(i) - fd_domegaij_dxj_out(i)) > FDT) printf("ERROR\n");//printf("DIVERGENCE\n");
+			}
+		}
+			
+		
+		
+		//dphi_dxl
+		if(indexi >= 0 && indexj >= 0){
+			ai = atoms[indexi];
+			aj = atoms[indexj];
+			al = torigin;
+			ri = radii[indexi];
+			rj = radii[indexj];
+			rl = tradius;
+			
+			
+			x=al;
+			for(int j=0; j<3; ++j){
+				xp=x;
+				xp(j) = x(j) + FD;
+				xn=x;
+				xn(j) = x(j) - FD;
+				
+// 				printf("XP: %f %f %f , %f %f %f\n",xp(0),xp(1),xp(2),xn(0),xn(1),xn(2));
+				
+				njp = calculateInterfaceNormal(xp, aj, djp);
+				njn = calculateInterfaceNormal(xn, aj, djn);
+				nip = calculateInterfaceNormal(xp, ai, dip);
+				nin = calculateInterfaceNormal(xn, ai, din);
+				
+				
+				
+// 				printf("RHO: %f %f\n",rhop.rho, rhon.rho);
+				
+				
+				lambdajp.rotation = calculateLambda(djp, rl, rj, njp).rotation;
+				lambdajn.rotation = calculateLambda(djn, rl, rj, njn).rotation;
+				lambdaip.rotation = calculateLambda(dip, rl, ri, nip).rotation;
+				lambdain.rotation = calculateLambda(din, rl, ri, nin).rotation;
+				
+				rhop.rho = calculateRho(nip,njp);
+				rhon.rho = calculateRho(nin,njn);
+				
+				
+// 				printf("LAMBDA: %f %f %f %f\n",lambdaip.rotation,lambdain.rotation,lambdajp.rotation,lambdajp.rotation);
+				
+				
+				PHIp = calculatePHI(tessellationAxis, nip, njp, lambdaip, lambdajp, idi, idj, circles[idi].form, circles[idj].form, rhop);
+				PHIn = calculatePHI(tessellationAxis, nin, njn, lambdain, lambdajn, idi, idj, circles[idi].form, circles[idj].form, rhon);
+				etap = calculateEta(tessellationAxis, nip, njp, lambdaip, lambdajp, idi, idj, circles[idi].form, circles[idj].form, rhop).rotation;
+				etan = calculateEta(tessellationAxis, nin, njn, lambdain, lambdajn, idi, idj, circles[idi].form, circles[idj].form, rhon).rotation;
+				omegap = calculateOmega(tessellationAxis, nip, njp, idi, idj, circles[idi].form, circles[idj].form, rhop).rotation;
+				omegan = calculateOmega(tessellationAxis, nin, njn, idi, idj, circles[idi].form, circles[idj].form, rhon).rotation;
+				
+// 				printf("eta: %f %f\n",etap,etan);
+// 				printf("omega: %f %f\n",omegap,omegan);
+				
+				
+				fd_dPHIij_dxl_out(j) = (PHIp.out.rotation - PHIn.out.rotation) / (2*FD);
+				fd_dPHIij_dxl_in(j) = (PHIp.in.rotation - PHIn.in.rotation) / (2*FD);
+				fd_detaij_dxl_out(j) = (etap - etan) / (2*FD);
+				fd_detaij_dxl_in(j) = (etap - etan) / (2*FD);
+				fd_domegaij_dxl_out(j) = (omegap - omegan) / (2*FD);
+				fd_domegaij_dxl_in(j) = (omegap - omegan) / (2*FD);
+			}
+			printf("dPHIij_dxl: (%f %f %f) FD: (%f, %f, %f) FD: (%f %f %f)\n",PHI.drotation_dxl(0),PHI.drotation_dxl(1),PHI.drotation_dxl(2), fd_dPHIij_dxl_in(0), fd_dPHIij_dxl_in(1), fd_dPHIij_dxl_in(2), fd_dPHIij_dxl_out(0), fd_dPHIij_dxl_out(1), fd_dPHIij_dxl_out(2));
+			printf("detaij_dxl: (%f %f %f) FD: (%f, %f, %f) FD: (%f %f %f)\n",eta.drotation_dxl(0),eta.drotation_dxl(1),eta.drotation_dxl(2), fd_detaij_dxl_in(0), fd_detaij_dxl_in(1), fd_detaij_dxl_in(2), fd_detaij_dxl_out(0), fd_detaij_dxl_out(1), fd_detaij_dxl_out(2));
+			printf("domegaij_dxl: (%f %f %f) FD: (%f, %f, %f) FD: (%f %f %f)\n",omega.drotation_dxl(0),omega.drotation_dxl(1),omega.drotation_dxl(2), fd_domegaij_dxl_in(0), fd_domegaij_dxl_in(1), fd_domegaij_dxl_in(2), fd_domegaij_dxl_out(0), fd_domegaij_dxl_out(1), fd_domegaij_dxl_out(2));
+			for(int i=0; i<3; ++i){
+// 				if(abs(PHI.drotation_dxl(i) - fd_dPHIij_dxl_in(i)) > FDT && abs(PHI.drotation_dxl(i) - fd_dPHIij_dxl_out(i)) > FDT) printf("ERROR\n");//printf("DIVERGENCE\n");
+				if(abs(omega.drotation_dxl(i) - fd_domegaij_dxl_in(i)) > FDT && abs(omega.drotation_dxl(i) - fd_domegaij_dxl_out(i)) > FDT) printf("ERROR\n");//printf("DIVERGENCE\n");
+			}
+		}
+	
+	
+	*/
 	
 	
 	
