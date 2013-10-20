@@ -352,20 +352,28 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 
 
 Vector Tessellation::generalPosition(CircularInterfacesPerAtom &circles){
-	Vector chi(3),n(3),y(3);
+	Vector chi(3),y(3);
 	chi(0)=1;
 	chi(1)=0;
 	chi(2)=0;
 	y(0)=0;
 	y(1)=1;
 	y(2)=0;
-	n(0)=0;
-	n(1)=0;
-	n(2)=1;
 	
 	float d0,d1;
 	Vector ni;
 	
+	Vector n(3);
+	n=Vector(3).zeros();
+	for(unsigned int i=0; i<circles.size(); ++i){
+		n+=circles[i].normal;
+	}
+	n=n/(float)circles.size();
+	n=-n;
+	chi=normalise(n);
+	
+	
+	srand(50);
 	bool degenerate;
 	do{
 		degenerate=false;
@@ -383,6 +391,9 @@ Vector Tessellation::generalPosition(CircularInterfacesPerAtom &circles){
 			chi=normalise(chi);
 		}
 	}while(degenerate);
+	
+	
+	
 	
 	
 	return chi;
@@ -1384,8 +1395,8 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 		*/
 		
 		p(0) = 0;
-		p(1) = 1;
-		p(2) = 0;
+		p(1) = 0;
+		p(2) = 1;
 		
 		ni=normalise(cross(tessellationAxis,p),di);
 		di=1;
@@ -1442,6 +1453,7 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 		nij = normalise(cross(mu_i, mu_j),dij);
 		vij=cross(mu_i, mu_j);
 	}
+	
 	
 	
 	
@@ -2004,9 +2016,9 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 	
 	
 	
-/*	
 	
 	
+	/*
 	printf("=====================================================================\n");
 	
 	printf("TAX: %f %f %f\n",tessellationAxis(0),tessellationAxis(1),tessellationAxis(2));
@@ -2058,26 +2070,40 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 		indexj = circles[r.eta.id_j].index;
 		
 		printf("INDEX: %d %d %d\n",ti,indexi,indexj);
+			printf("PC_dxi: (%f %f %f)\n",PHI.drotation_dxi(0),PHI.drotation_dxi(1),PHI.drotation_dxi(2));
+			printf("PC_dxj: (%f %f %f)\n",PHI.drotation_dxj(0),PHI.drotation_dxj(1),PHI.drotation_dxj(2));
+			printf("PC_dxl: (%f %f %f)\n",PHI.drotation_dxl(0),PHI.drotation_dxl(1),PHI.drotation_dxl(2));
+		
 		
 		idi=r.eta.id_i;
 		idj=r.eta.id_j;
-		if(indexi >= 0 && indexj >= 0){
+		if(indexi >= 0){
 			ai = atoms[indexi];
-			aj = atoms[indexj];
 			al = torigin;
 			ri = radii[indexi];
 			rj = radii[indexj];
 			rl = tradius;
 			
+			if(indexj<0){
+				nip = calculateInterfaceNormal(al, ai, dip);
+				nj = tessellationAxis;
+				
+				lambdaip.rotation = calculateLambda(dip, rl, ri, nip).rotation;
+				lambdaj.rotation = M_PI/2.0;
+				
+			}
+			else{
+				aj = atoms[indexj];
+				rj = radii[indexj];
+				nip = calculateInterfaceNormal(al, ai, dip);
+				nj = calculateInterfaceNormal(al, aj, dj);
+				
+				lambdaip.rotation = calculateLambda(dip, rl, ri, nip).rotation;
+				lambdaj.rotation = calculateLambda(dj, rl, rj, nj).rotation;
+			}
 			
 			
-			nip = calculateInterfaceNormal(al, ai, dip);
-			nj = calculateInterfaceNormal(al, aj, dj);
-			
-			lambdaip.rotation = calculateLambda(dip, rl, ri, nip).rotation;
-			lambdaj.rotation = calculateLambda(dj, rl, rj, nj).rotation;
-			
-			
+						
 			rhop.rho = calculateRho(nip,nj);
 			
 			
@@ -2091,7 +2117,6 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 			printf("PRECOMPARE o: %f / %f\n",omega.rotation, omegap);
 			
 			
-			
 			x=ai;
 			for(int j=0; j<3; ++j){
 				xp=x;
@@ -2099,13 +2124,28 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 				xn=x;
 				xn(j) = x(j) - FD;
 				
-				nip = calculateInterfaceNormal(al, xp, dip);
-				nin = calculateInterfaceNormal(al, xn, din);
-				nj = calculateInterfaceNormal(al, aj, dj);
 				
-				lambdaip.rotation = calculateLambda(dip, rl, ri, nip).rotation;
-				lambdain.rotation = calculateLambda(din, rl, ri, nin).rotation;
-				lambdaj.rotation = calculateLambda(dj, rl, rj, nj).rotation;
+				if(indexj<0){
+					nip = calculateInterfaceNormal(al, xp, dip);
+					nin = calculateInterfaceNormal(al, xn, din);
+					nj = tessellationAxis;
+					
+					lambdaip.rotation = calculateLambda(dip, rl, ri, nip).rotation;
+					lambdain.rotation = calculateLambda(din, rl, ri, nin).rotation;
+					lambdaj.rotation = M_PI/2.0;
+					
+				}
+				else{
+					nip = calculateInterfaceNormal(al, xp, dip);
+					nin = calculateInterfaceNormal(al, xn, din);
+					nj = calculateInterfaceNormal(al, aj, dj);
+					
+					lambdaip.rotation = calculateLambda(dip, rl, ri, nip).rotation;
+					lambdain.rotation = calculateLambda(din, rl, ri, nin).rotation;
+					lambdaj.rotation = calculateLambda(dj, rl, rj, nj).rotation;
+				}
+				
+				
 				
 				rhop.rho = calculateRho(nip,nj);
 				rhon.rho = calculateRho(nin,nj);
@@ -2131,7 +2171,7 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 			printf("detaij_dxi: (%f %f %f) FD: (%f, %f, %f) FD: (%f %f %f)\n",eta.drotation_dxi(0),eta.drotation_dxi(1),eta.drotation_dxi(2), fd_detaij_dxi_in(0), fd_detaij_dxi_in(1), fd_detaij_dxi_in(2), fd_detaij_dxi_out(0), fd_detaij_dxi_out(1), fd_detaij_dxi_out(2));
 			printf("domegaij_dxi: (%f %f %f) FD: (%f, %f, %f) FD: (%f %f %f)\n",omega.drotation_dxi(0),omega.drotation_dxi(1),omega.drotation_dxi(2), fd_domegaij_dxi_in(0), fd_domegaij_dxi_in(1), fd_domegaij_dxi_in(2), fd_domegaij_dxi_out(0), fd_domegaij_dxi_out(1), fd_domegaij_dxi_out(2));
 			for(int i=0; i<3; ++i){
-// 				if(abs(PHI.drotation_dxi(i) - fd_dPHIij_dxi_in(i)) > FDT && abs(PHI.drotation_dxi(i) - fd_dPHIij_dxi_out(i)) > FDT) printf("ERROR\n");//printf("DIVERGENCE\n");
+ 				if(abs(PHI.drotation_dxi(i) - fd_dPHIij_dxi_in(i)) > FDT && abs(PHI.drotation_dxi(i) - fd_dPHIij_dxi_out(i)) > FDT) printf("ERROR\n");//printf("DIVERGENCE\n");
 				if(abs(omega.drotation_dxi(i) - fd_domegaij_dxi_in(i)) > FDT && abs(omega.drotation_dxi(i) - fd_domegaij_dxi_out(i)) > FDT) printf("ERROR\n");//printf("DIVERGENCE\n");
 			}
 			
@@ -2142,13 +2182,14 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 		
 		
 		//dphi_dxj
-		if(indexi >= 0 && indexj >= 0){
+		if(indexj >= 0){
 			ai = atoms[indexi];
 			aj = atoms[indexj];
 			al = torigin;
-			ri = radii[indexi];
 			rj = radii[indexj];
 			rl = tradius;
+			
+			
 			
 			
 			x=aj;
@@ -2157,6 +2198,25 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 				xp(j) = x(j) + FD;
 				xn=x;
 				xn(j) = x(j) - FD;
+				
+				
+				
+			if(indexi<0){
+				njp = calculateInterfaceNormal(al, xp, djp);
+				njn = calculateInterfaceNormal(al, xn, djn);
+				ni = tessellationAxis;
+				
+				
+
+				
+				lambdajp.rotation = calculateLambda(djp, rl, rj, njp).rotation;
+				lambdajn.rotation = calculateLambda(djn, rl, rj, njn).rotation;
+				lambdai.rotation = M_PI/2.0;
+
+			}
+			else{
+				ai = atoms[indexi];
+				ri = radii[indexi];
 				
 				njp = calculateInterfaceNormal(al, xp, djp);
 				njn = calculateInterfaceNormal(al, xn, djn);
@@ -2168,6 +2228,10 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 				lambdajp.rotation = calculateLambda(djp, rl, rj, njp).rotation;
 				lambdajn.rotation = calculateLambda(djn, rl, rj, njn).rotation;
 				lambdai.rotation = calculateLambda(di, rl, ri, ni).rotation;
+
+			}
+						
+				
 				
 				rhop.rho = calculateRho(ni,njp);
 				rhon.rho = calculateRho(ni,njn);
@@ -2191,7 +2255,7 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 			printf("detaij_dxj: (%f %f %f) FD: (%f, %f, %f) FD: (%f %f %f)\n",eta.drotation_dxj(0),eta.drotation_dxj(1),eta.drotation_dxj(2), fd_detaij_dxj_in(0), fd_detaij_dxj_in(1), fd_detaij_dxj_in(2), fd_detaij_dxj_out(0), fd_detaij_dxj_out(1), fd_detaij_dxj_out(2));
 			printf("domegaij_dxj: (%f %f %f) FD: (%f, %f, %f) FD: (%f %f %f)\n",omega.drotation_dxj(0),omega.drotation_dxj(1),omega.drotation_dxj(2), fd_domegaij_dxj_in(0), fd_domegaij_dxj_in(1), fd_domegaij_dxj_in(2), fd_domegaij_dxj_out(0), fd_domegaij_dxj_out(1), fd_domegaij_dxj_out(2));
 			for(int i=0; i<3; ++i){
-// 				if(abs(PHI.drotation_dxj(i) - fd_dPHIij_dxj_in(i)) > FDT && abs(PHI.drotation_dxj(i) - fd_dPHIij_dxj_out(i)) > FDT) printf("ERROR\n");//printf("DIVERGENCE\n");
+ 				if(abs(PHI.drotation_dxj(i) - fd_dPHIij_dxj_in(i)) > FDT && abs(PHI.drotation_dxj(i) - fd_dPHIij_dxj_out(i)) > FDT) printf("ERROR\n");//printf("DIVERGENCE\n");
 				if(abs(omega.drotation_dxj(i) - fd_domegaij_dxj_in(i)) > FDT && abs(omega.drotation_dxj(i) - fd_domegaij_dxj_out(i)) > FDT) printf("ERROR\n");//printf("DIVERGENCE\n");
 			}
 		}
@@ -2199,12 +2263,8 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 		
 		
 		//dphi_dxl
-		if(indexi >= 0 && indexj >= 0){
-			ai = atoms[indexi];
-			aj = atoms[indexj];
+		if(true){
 			al = torigin;
-			ri = radii[indexi];
-			rj = radii[indexj];
 			rl = tradius;
 			
 			
@@ -2215,22 +2275,50 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 				xn=x;
 				xn(j) = x(j) - FD;
 				
-// 				printf("XP: %f %f %f , %f %f %f\n",xp(0),xp(1),xp(2),xn(0),xn(1),xn(2));
 				
-				njp = calculateInterfaceNormal(xp, aj, djp);
-				njn = calculateInterfaceNormal(xn, aj, djn);
+				
+			if(indexi<0){
+				nip=tessellationAxis;
+				nin=tessellationAxis;
+				lambdaip.rotation = M_PI/2.0;
+				lambdain.rotation = M_PI/2.0;
+				
+			}
+			else{
+				ai = atoms[indexi];
+				ri = radii[indexi];
 				nip = calculateInterfaceNormal(xp, ai, dip);
 				nin = calculateInterfaceNormal(xn, ai, din);
+				lambdaip.rotation = calculateLambda(dip, rl, ri, nip).rotation;
+				lambdain.rotation = calculateLambda(din, rl, ri, nin).rotation;
+			}
+				
+				
+			if(indexj<0){
+				njp=tessellationAxis;
+				njn=tessellationAxis;
+				lambdajp.rotation = M_PI/2.0;
+				lambdajn.rotation = M_PI/2.0;
+			}
+			else{
+				aj = atoms[indexj];
+				rj = radii[indexj];
+				njp = calculateInterfaceNormal(xp, aj, djp);
+				njn = calculateInterfaceNormal(xn, aj, djn);
+				lambdajp.rotation = calculateLambda(djp, rl, rj, njp).rotation;
+				lambdajn.rotation = calculateLambda(djn, rl, rj, njn).rotation;
+			}
+				
+				
+				
+// 				printf("XP: %f %f %f , %f %f %f\n",xp(0),xp(1),xp(2),xn(0),xn(1),xn(2));
+				
 				
 				
 				
 // 				printf("RHO: %f %f\n",rhop.rho, rhon.rho);
 				
 				
-				lambdajp.rotation = calculateLambda(djp, rl, rj, njp).rotation;
-				lambdajn.rotation = calculateLambda(djn, rl, rj, njn).rotation;
-				lambdaip.rotation = calculateLambda(dip, rl, ri, nip).rotation;
-				lambdain.rotation = calculateLambda(din, rl, ri, nin).rotation;
 				
 				rhop.rho = calculateRho(nip,njp);
 				rhon.rho = calculateRho(nin,njn);
@@ -2261,13 +2349,13 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 			printf("detaij_dxl: (%f %f %f) FD: (%f, %f, %f) FD: (%f %f %f)\n",eta.drotation_dxl(0),eta.drotation_dxl(1),eta.drotation_dxl(2), fd_detaij_dxl_in(0), fd_detaij_dxl_in(1), fd_detaij_dxl_in(2), fd_detaij_dxl_out(0), fd_detaij_dxl_out(1), fd_detaij_dxl_out(2));
 			printf("domegaij_dxl: (%f %f %f) FD: (%f, %f, %f) FD: (%f %f %f)\n",omega.drotation_dxl(0),omega.drotation_dxl(1),omega.drotation_dxl(2), fd_domegaij_dxl_in(0), fd_domegaij_dxl_in(1), fd_domegaij_dxl_in(2), fd_domegaij_dxl_out(0), fd_domegaij_dxl_out(1), fd_domegaij_dxl_out(2));
 			for(int i=0; i<3; ++i){
-// 				if(abs(PHI.drotation_dxl(i) - fd_dPHIij_dxl_in(i)) > FDT && abs(PHI.drotation_dxl(i) - fd_dPHIij_dxl_out(i)) > FDT) printf("ERROR\n");//printf("DIVERGENCE\n");
+ 				if(abs(PHI.drotation_dxl(i) - fd_dPHIij_dxl_in(i)) > FDT && abs(PHI.drotation_dxl(i) - fd_dPHIij_dxl_out(i)) > FDT) printf("ERROR\n");//printf("DIVERGENCE\n");
 				if(abs(omega.drotation_dxl(i) - fd_domegaij_dxl_in(i)) > FDT && abs(omega.drotation_dxl(i) - fd_domegaij_dxl_out(i)) > FDT) printf("ERROR\n");//printf("DIVERGENCE\n");
 			}
 		}
 	
-	
 	*/
+	
 	
 	
 	
