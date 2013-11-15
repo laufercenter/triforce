@@ -20,10 +20,22 @@ boost/multi_array.hpp
 boost/numeric/ublas/matrix.hpp ;
 
 
+variant double : release : 	<define>DOUBLE_COORDINATE_POINTERS
+				<define>DOUBLE_AREA_POINTERS
+				<define>DOUBLE_FORCE_POINTERS				
+				;
+
+variant float : release : 	<define>FLOAT_COORDINATE_POINTERS
+				<define>FLOAT_AREA_POINTERS
+				<define>FLOAT_FORCE_POINTERS				
+				;
+
+
 lib armadillo : : <search>$(LIBRARIES_SEARCH_DIRECTORIES) ;
 
 
-project triforce-config : requirements <include>$(INCLUDES) ;
+
+project triforce-config : requirements <include>$(INCLUDES) <variant>double ;
 
 SOURCES = 
 tessellation.cc
@@ -59,8 +71,6 @@ neighbourList.h
 multiLayeredDepthBuffer.h
 benchmark.h
 depth3d.h ;
-
-
 
 
 lib triforce : armadillo triforce/$(SOURCES) ;

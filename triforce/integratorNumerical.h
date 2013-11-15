@@ -48,7 +48,7 @@ private:
 	Molecule* molecule;
 	int trials;
 	FILE* file;
-	vector<float*> areas;
+	vector<AreasDT*> areas;
 	
 	vector<Vector> atoms;
 	vector<float> radii;

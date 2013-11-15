@@ -137,12 +137,12 @@ void Molecule::addInternallyStoredAtom(float x, float y, float z, float radius, 
 		constructAtoms(i);
 	}
 	
-	atoms[i](0)=x;
-	atoms[i](1)=y;
-	atoms[i](2)=z;
+	realAtoms[i](0)=x;
+	realAtoms[i](1)=y;
+	realAtoms[i](2)=z;
 	
 	
-	addAtom(&atoms[i](0),&atoms[i](1),&atoms[i](2),&realArea[realArea.size()-1],&realForceX[realForceX.size()-1],&realForceY[realForceY.size()-1],&realForceZ[realForceZ.size()-1], radius, eps, sig, name,i);
+	addAtom(&realAtoms[i](0),&realAtoms[i](1),&realAtoms[i](2),&realArea[realArea.size()-1],&realForceX[realForceX.size()-1],&realForceY[realForceY.size()-1],&realForceZ[realForceZ.size()-1], radius, eps, sig, name,i);
 	
 	source[i] = INTERNAL_SOURCE;
 	
@@ -153,9 +153,9 @@ void Molecule::addInternallyStoredAtom(float x, float y, float z, float radius, 
 void Molecule::refreshInternalPointers(){
 	for(unsigned int i=0; i < source.size(); ++i){
 		if(source[i]==INTERNAL_SOURCE){
-			atomicPointers[i].x = &(atoms[i](0));
-			atomicPointers[i].y = &(atoms[i](1));
-			atomicPointers[i].z = &(atoms[i](2));
+			atomicPointers[i].x = &(realAtoms[i](0));
+			atomicPointers[i].y = &(realAtoms[i](1));
+			atomicPointers[i].z = &(realAtoms[i](2));
 			areas[i] = &(realArea[i]);
 			forces[i][0] = &(realForceX[i]);
 			forces[i][1] = &(realForceY[i]);
@@ -173,12 +173,13 @@ void Molecule::constructAtoms(unsigned int end){
 	if(end>=atomicPointers.size()){
 		atomicPointers.resize(end+1,c);
 		atoms.resize(end+1,Vector(3));
+		realAtoms.resize(end+1,VectorCoordinates(3));
 		epsilons.resize(end+1,0);
 		sigmas.resize(end+1,0);
 		radii.resize(end+1,0);
 		species.resize(end+1,0);
 		areas.resize(end+1,0);
-		forces.resize(end+1,vector<float*>());
+		forces.resize(end+1,vector<ForcesDT*>());
 		realArea.resize(end+1,0);
 		realForceX.resize(end+1,0);
 		realForceY.resize(end+1,0);
@@ -189,7 +190,7 @@ void Molecule::constructAtoms(unsigned int end){
 }
 
 
-void Molecule::addAtom(float* x, float* y, float* z, float* area, float* forceX, float* forceY, float* forceZ, string name, string type, int i){
+void Molecule::addAtom(CoordinatesDT* x, CoordinatesDT* y, CoordinatesDT* z, AreasDT* area, ForcesDT* forceX, ForcesDT* forceY, ForcesDT* forceZ, string name, string type, int i){
 	Parameters p;
 	p=topology.getAssociatedCell(string2UpperCase(type));
 	
@@ -199,20 +200,20 @@ void Molecule::addAtom(float* x, float* y, float* z, float* area, float* forceX,
 }
 
 
-void Molecule::addAtom(float* x, float* y, float* z, float* area, float* forceX, float* forceY, float* forceZ, float radius, string name, int i){
+void Molecule::addAtom(CoordinatesDT* x, CoordinatesDT* y, CoordinatesDT* z, AreasDT* area, ForcesDT* forceX, ForcesDT* forceY, ForcesDT* forceZ, float radius, string name, int i){
 	addAtom(x,y,z,area, forceX, forceY, forceZ, radius, 0, 0, name,i);
 }
 
 
-void Molecule::addAtom(float* x, float* y, float* z, float* area, float* forceX, float* forceY, float* forceZ, float eps, float sig, string name, int i){
+void Molecule::addAtom(CoordinatesDT* x, CoordinatesDT* y, CoordinatesDT* z, AreasDT* area, ForcesDT* forceX, ForcesDT* forceY, ForcesDT* forceZ, float eps, float sig, string name, int i){
 	addAtom(x,y,z,area, forceX, forceY, forceZ, sig, eps, sig, name,i);
 }
 
 	
 	
-void Molecule::addAtom(float* x, float* y, float* z, float* area, float* forceX, float* forceY, float* forceZ, float radius, float eps, float sig, string name, int i){
+void Molecule::addAtom(CoordinatesDT* x, CoordinatesDT* y, CoordinatesDT* z, AreasDT* area, ForcesDT* forceX, ForcesDT* forceY, ForcesDT* forceZ, float radius, float eps, float sig, string name, int i){
 	AtomicPointers c;
-	vector<float*> force;
+	vector<ForcesDT*> force;
 	c.x=x;
 	c.y=y;
 	c.z=z;
@@ -251,9 +252,9 @@ void Molecule::update(){
 	AtomicPointers c;
 	for(unsigned i=0; i<atomicPointers.size(); ++i){
 		c=atomicPointers[i];
-		atoms[i](0)=*c.x;
-		atoms[i](1)=*c.y;
-		atoms[i](2)=*c.z;
+		atoms[i](0)=static_cast<float>(*c.x);
+		atoms[i](1)=static_cast<float>(*c.y);
+		atoms[i](2)=static_cast<float>(*c.z);
 	}
 }
 
@@ -276,11 +277,11 @@ vector<unsigned int> &Molecule::fetchSpecies(){
 	return species;
 }
 
-vector<vector<float*> > &Molecule::fetchForcePointers(){
+vector<vector<ForcesDT*> > &Molecule::fetchForcePointers(){
 	return forces;
 }
 
-vector<float*> &Molecule::fetchAreaPointers(){
+vector<AreasDT*> &Molecule::fetchAreaPointers(){
 	return areas;
 }
 
@@ -323,8 +324,8 @@ void Molecule::printxyz(){
 
 void Molecule::printDifference(Molecule *mol){
 	//we assume here that the two molecules have same number of atoms etc..
-	vector<float*> areas2 = mol->fetchAreaPointers();
-	vector<vector<float*> > forces2 = mol->fetchForcePointers();
+	vector<AreasDT*> areas2 = mol->fetchAreaPointers();
+	vector<vector<ForcesDT*> > forces2 = mol->fetchForcePointers();
 	
 	fprintf(stdout,"index\tname\tarea\tgradx\tgrady\tgradz\tradius\n");
 	for(unsigned int i=0;i<areas.size();++i){

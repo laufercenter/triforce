@@ -84,8 +84,8 @@ private:
 	Tessellation* tessellation;
 	Molecule* molecule;
 	float tradius;
-	vector<float*> areas;
-	vector<vector<float*> > forces;
+	vector<AreasDT*> areas;
+	vector<vector<ForcesDT*> > forces;
 	vector<ForceElement> forcesDelayed;
 	vector<Vector> atoms;
 	vector<float> radii;

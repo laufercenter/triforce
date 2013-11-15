@@ -15,6 +15,9 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+
+	
+
 #ifndef MOLECULE_H_
 #define MOLECULE_H_
 
@@ -36,14 +39,6 @@ using namespace arma;
 
 typedef fvec Vector;
 
-typedef struct
-{
-	float* x;
-	float* y;
-	float* z;
-}
-AtomicPointers; 
-
 
 enum ForceField {
 	Amber99SBildn,
@@ -59,15 +54,48 @@ enum Source {
 
 
 
+
+
+#ifndef DOUBLE_COORDINATE_POINTERS
+	typedef float CoordinatesDT;
+	typedef fvec VectorCoordinates;
+#else
+	typedef double CoordinatesDT; 
+	typedef vec VectorCoordinates;
+#endif
+	
+#ifndef DOUBLE_AREA_POINTERS
+	typedef float AreasDT;
+#else
+	typedef double AreasDT; 
+#endif
+
+#ifndef DOUBLE_COORDINATE_POINTERS
+	typedef float ForcesDT;
+#else
+	typedef double ForcesDT; 
+#endif
+
+	
+typedef struct
+{
+	CoordinatesDT* x;
+	CoordinatesDT* y;
+	CoordinatesDT* z;
+}
+AtomicPointers; 
+
+
+
 class Molecule{
 	
 public:
 	Molecule();
 	Molecule(Topology topology);
-	void addAtom(float* x, float* y, float* z, float* area, float* forceX, float* forceY, float* forceZ, string name, string type, int i=-1);
-	void addAtom(float* x, float* y, float* z, float* area, float* forceX, float* forceY, float* forceZ, float radius, string name, int i=-1);
-	void addAtom(float* x, float* y, float* z, float* area, float* forceX, float* forceY, float* forceZ, float eps, float sig, string name, int i=-1);
-	void addAtom(float* x, float* y, float* z, float* area, float* forceX, float* forceY, float* forceZ, float radius, float eps, float sig, string name, int i=-1);
+	void addAtom(CoordinatesDT* x, CoordinatesDT* y, CoordinatesDT* z, AreasDT* area, ForcesDT* forceX, ForcesDT* forceY, ForcesDT* forceZ, string name, string type, int i=-1);
+	void addAtom(CoordinatesDT* x, CoordinatesDT* y, CoordinatesDT* z, AreasDT* area, ForcesDT* forceX, ForcesDT* forceY, ForcesDT* forceZ, float radius, string name, int i=-1);
+	void addAtom(CoordinatesDT* x, CoordinatesDT* y, CoordinatesDT* z, AreasDT* area, ForcesDT* forceX, ForcesDT* forceY, ForcesDT* forceZ, float eps, float sig, string name, int i=-1);
+	void addAtom(CoordinatesDT* x, CoordinatesDT* y, CoordinatesDT* z, AreasDT* area, ForcesDT* forceX, ForcesDT* forceY, ForcesDT* forceZ, float radius, float eps, float sig, string name, int i=-1);
 	void update();
 	void addInternallyStoredAtom(float x, float y, float z, string name, string type, int i=-1);
 	void addInternallyStoredAtom(float x, float y, float z, float radius, string name, int i=-1);
@@ -84,8 +112,8 @@ public:
 	
 	vector<Vector> &fetchCoordinates();
 	vector<float> &fetchRadii();
-	vector<float*> &fetchAreaPointers();
-	vector<vector<float*> > &fetchForcePointers();
+	vector<AreasDT*> &fetchAreaPointers();
+	vector<vector<ForcesDT*> > &fetchForcePointers();
 	vector<float> &fetchEpsilons();
 	vector<float> &fetchSigmas();
 	vector<float*> &fetchNonpolarPointers();
@@ -108,8 +136,8 @@ private:
 	vector<float> sigmas;
 	vector<float> radii;
 	vector<unsigned int> species;
-	vector<float*> areas;
-	vector<vector<float*> >forces;
+	vector<AreasDT*> areas;
+	vector<vector<ForcesDT*> >forces;
 	vector<float*> nonpolarFreeEnergies;
 	vector<Source> source;
 	vector<string> names;
@@ -120,10 +148,11 @@ private:
 	
 	
 	//this will only be needed for usage with the tool. Amber and Adun will provide their own structures
-	vector<float> realArea;
-	vector<float> realForceX;
-	vector<float> realForceY;
-	vector<float> realForceZ;
+	vector<AreasDT> realArea;
+	vector<VectorCoordinates> realAtoms;
+	vector<ForcesDT> realForceX;
+	vector<ForcesDT> realForceY;
+	vector<ForcesDT> realForceZ;
 	
 
 	NeighbourList *neighbourList;

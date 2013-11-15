@@ -46,7 +46,7 @@ float IntegratorNumerical::integrate(Molecule *molecule, int index, void (*feedb
 	Vector coordinate(3);
 	Vector pp(3),pn(3);
 	float areap,arean;
-	vector<vector<float*> > forces;	
+	vector<vector<ForcesDT*> > forces;	
 	
 	
 	//numerical derivatives

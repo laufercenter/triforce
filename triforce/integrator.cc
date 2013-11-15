@@ -54,7 +54,7 @@ void IntegratorTriforce::clearForces(){
 void IntegratorTriforce::pushForces(){
 	for(unsigned int i=0; i<forcesDelayed.size(); ++i)
 		for(unsigned int j=0; j<3; ++j){
-			*(forces[forcesDelayed[i].i][j]) += forcesDelayed[i].force(j);
+			*(forces[forcesDelayed[i].i][j]) += static_cast<ForcesDT>(forcesDelayed[i].force(j));
 		}
 }
 
@@ -101,7 +101,7 @@ float IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 		
 		a = radius*radius * a;
 		
-		*(areas[i]) = a;
+		*(areas[i]) = static_cast<AreasDT>(a);
 		area += a;
 		
 		if(a>0) pushForces();
