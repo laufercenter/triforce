@@ -45,6 +45,7 @@ typedef struct
 	Vector force_j;
 	Vector force_k;
 	Vector force_l;
+	Vector force_t;
 }
 Integral;
 

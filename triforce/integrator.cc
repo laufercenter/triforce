@@ -200,7 +200,7 @@ float IntegratorTriforce::integrateSASA(int l, SASASegmentList &sasa, float radi
 	area1=0;
 	for(it = sasa.begin(); it!=sasa.end(); ++it){
 		x=*it;
-		integral = integrateTriangle(l, x, x.tessellationAxis);
+		integral = integrateTriangle(l, x, x.tessellationAxis.v);
 		
 		a = integral.integral;
 		
@@ -208,6 +208,9 @@ float IntegratorTriforce::integrateSASA(int l, SASASegmentList &sasa, float radi
 		addForce(x.index1, integral.force_j * r_square);
 		addForce(x.index2, integral.force_k * r_square);
 		addForce(l, integral.force_l * r_square);
+		if(x.tessellationAxis.mode==ALIGNED){
+			addForce(x.tessellationAxis.index, integral.force_t * r_square);
+		}
 		
 		
 
@@ -442,7 +445,7 @@ Integral IntegratorTriforce::integrateTriangle(int l, SASASegment &x, Vector int
 	Integral a;
 	Vector Tij(4), Tjk(4);
 	Vector Tij2(4), Tjk2(4);
-	Vector force_i(3), force_j(3), force_k(3), force_l(3);
+	Vector force_i(3), force_j(3), force_k(3), force_l(3), force_t(3);
 	float q, q0, q1;
 	CircularInterfaceForm form;
 	CircularInterfaceForm formi;
@@ -533,7 +536,14 @@ Integral IntegratorTriforce::integrateTriangle(int l, SASASegment &x, Vector int
 	force_j = q*(Tjk(1) * PHIjk.drotation_dxi + Tjk(2) * psi.drotation_dxi + Tjk(3) * lambda.drotation_dxi) - q*(Tij(1) * PHIij.drotation_dxi + Tij(2) * psi.drotation_dxi + Tij(3) * lambda.drotation_dxi);
 	force_k = q*(Tjk(1) * PHIjk.drotation_dxj);
 	force_l = q*((Tjk(1) * PHIjk.drotation_dxl + Tjk(2) * psi.drotation_dxl + Tjk(3) * lambda.drotation_dxl) - (Tij(1) * PHIij.drotation_dxl + Tij(2) * psi.drotation_dxl + Tij(3) * lambda.drotation_dxl));
+
 	
+	//printf("SIZES: %d %d %d %d %d %d\n",Tjk.size(), Tij.size(), PHIjk.drotation_dxt.size(), psi.drotation_dxt.size(), PHIij.drotation_dxt.size(), psi.drotation_dxt.size());
+	
+	force_t = q*((Tjk(1) * PHIjk.drotation_dxt + Tjk(2) * psi.drotation_dxt) - (Tij(1) * PHIij.drotation_dxt + Tij(2) * psi.drotation_dxt));
+	
+	//printf("Tij: %f, Tjk: %f, PSI: (%f %f %f)\n",Tij(2),Tjk(2),psi.drotation_dxj(0),psi.drotation_dxj(1),psi.drotation_dxj(2));
+	//printf("FORCE_T: (%f %f %f)\n",force_t(0),force_t(1),force_t(2));
 	
 	
   	if(//(l==i0 || x.index0==i0 || x.index1==i0 || x.index2==i0) ||
@@ -576,6 +586,8 @@ Integral IntegratorTriforce::integrateTriangle(int l, SASASegment &x, Vector int
 		force_j = q* (2*(M(2)*psi.drotation_dxi + M(3)*lambda.drotation_dxi)) - force_j;
 		force_k = -force_k;
 		force_l = q*(2*(M(2)*psi.drotation_dxl + M(3)*lambda.drotation_dxl)) - force_l;
+		force_t = q*(2*(M(2)*psi.drotation_dxt)) - force_t;
+		//force_t =  -force_t;
 	}
 	
 	//if(l==0) fprintf(stderr,"T2: %f\n",area);
@@ -592,6 +604,8 @@ Integral IntegratorTriforce::integrateTriangle(int l, SASASegment &x, Vector int
 	a.force_j = q* force_j;
 	a.force_k = q* force_k;
 	a.force_l = q* force_l;
+	//a.force_t = Vector(3).zeros();
+	a.force_t = q* force_t;
 	
 	
 // 	if(	(l==i0 && ((x.index0==i1 && x.index1==i2) || (x.index0==i2 && x.index1==i1) || (x.index1==i1 && x.index2==i2) || (x.index1==i2 && x.index2==i1))) ||

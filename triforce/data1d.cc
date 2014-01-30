@@ -21,10 +21,10 @@ Data1D::Data1D(unsigned int parameter0Dim, bool containsAuxiliaryData){
 		
 	this->containsAuxiliaryData = containsAuxiliaryData;
 		
-	headerParameter0 = new Table1dDouble(boost::extents[parameter0Dim]);
-	data = new Table1dDouble(boost::extents[parameter0Dim]);
+	headerParameter0 = new Table1dFloat(boost::extents[parameter0Dim]);
+	data = new Table1dFloat(boost::extents[parameter0Dim]);
 	if(containsAuxiliaryData){
-		auxiliary = new Table1dDouble(boost::extents[parameter0Dim]);
+		auxiliary = new Table1dFloat(boost::extents[parameter0Dim]);
 	}
 	
 }

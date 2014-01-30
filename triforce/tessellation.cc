@@ -20,19 +20,73 @@ Tessellation::Tessellation(Molecule &m, unsigned int numbBuffer, Depth3D &depthD
 	this->numbBuffer=numbBuffer;
 	
 	benchmark=Benchmark(string("Tessellation"));
-	
+
 
 }
 
 
-void Tessellation::build(bool split){
+
+void Tessellation::update(){
+	if(hasDepthBuffer)
+		prevSasasForMolecule=SASAs(sasasForMolecule);
+	molecule.update();
+}	
+/*	
+	bool split;
 	CircularInterfacesPerAtom circlesPerAtom;
 	vector<int> neighbourlist;
+	
+	//always perform a split, no-split is not supported to this date
+	split=true;
+	
+	
+	molecule.update();
+	atoms = molecule.fetchCoordinates();
+	radii = molecule.fetchRadii();
+	
+	if(hasDepthBuffer)
+		prevSasasForMolecule=SASAs(sasasForMolecule);
+	
+	
+	
+	sasasForMolecule.clear();
+	//iterate over all atoms
+	for(unsigned int i=0; i<atoms.size(); ++i){
+		benchmark.start(string("initialisation"));
+		
+		neighbourlist = molecule.getNeighborListFor(i);
+
+		benchmark.stop();
+		benchmark.start(string("gauss-bonnet path"));
+	
+		
+		buildGaussBonnetPath(i, atoms, radii, sasasForMolecule, split, neighbourlist, useDepthBuffer);
+		
+		benchmark.stop();
+	}
+	
+	
+	
+}
+
+*/
+
+
+
+
+void Tessellation::build(bool useDepthBuffer){
+	bool split;
+	CircularInterfacesPerAtom circlesPerAtom;
+	vector<int> neighbourlist;
+	vector<int> closestNeighbours;
+	
+	//always perform a split, no-split is not supported to this date
+	split=true;
 	
 	//molecule.update();
 	atoms = molecule.fetchCoordinates();
 	radii = molecule.fetchRadii();
-	
+	closestNeighbours = molecule.fetchClosestNeighbours();
 	totalInterfaces=0;
 	survivedInterfaces=0;
 	
@@ -40,6 +94,7 @@ void Tessellation::build(bool split){
 	sasasForMolecule.clear();
 	//iterate over all atoms and build the tessellation for each of them
 	for(unsigned int i=0; i<atoms.size(); ++i){
+		//printf("COORDS %f %f %f\n",atoms[i](0),atoms[i](1),atoms[i](2));
 		benchmark.start(string("initialisation"));
 		
 		//int i=12;{Tessellation
@@ -52,8 +107,7 @@ void Tessellation::build(bool split){
 		benchmark.stop();
 		benchmark.start(string("gauss-bonnet path"));
 	
-		
-		buildGaussBonnetPath(i, atoms, radii, sasasForMolecule, split, neighbourlist);
+		buildGaussBonnetPath(i, atoms, radii, sasasForMolecule, split, neighbourlist, closestNeighbours[i], useDepthBuffer);
 		
 		benchmark.stop();
 		
@@ -80,13 +134,15 @@ void Tessellation::build(bool split){
 
 
 
-CircularInterfacesPerAtom Tessellation::coverHemisphere(Vector tessellationAxis, float radius, CircularInterfacesPerAtom circles, CircularInterfaceForm form){
+
+
+CircularInterfacesPerAtom Tessellation::coverHemisphere(TessellationAxis &tessellationAxis, float radius, CircularInterfacesPerAtom circles, CircularInterfaceForm form){
 	CircularInterface C;
 	Vector v(3);
 	Matrix NullMatrix(3,3);
 	NullMatrix.zeros();
 	
-	v = tessellationAxis;
+	v = tessellationAxis.v;
 	
 	C.lambdaRotation.rotation = M_PI * 0.5;
 	C.lambda.rotation = M_PI * 0.5;
@@ -104,10 +160,12 @@ CircularInterfacesPerAtom Tessellation::coverHemisphere(Vector tessellationAxis,
 	C.lambda.drotation_dxi = Vector(3).zeros();
 	C.lambda.drotation_dxj = Vector(3).zeros();
 	C.lambda.drotation_dxl = Vector(3).zeros();
+	C.lambda.drotation_dxt = Vector(3).zeros();
 
 	C.psi.drotation_dxi = Vector(3).zeros();
 	C.psi.drotation_dxj = Vector(3).zeros();
 	C.psi.drotation_dxl = Vector(3).zeros();
+	C.psi.drotation_dxt = Vector(3).zeros();
 	
 	
 	circles.push_back(C);
@@ -141,10 +199,12 @@ void Tessellation::addLimitingInterface(LimitingInterface &limit, CircularInterf
 	C.lambda.drotation_dxi = Vector(3).zeros();
 	C.lambda.drotation_dxj = Vector(3).zeros();
 	C.lambda.drotation_dxl = Vector(3).zeros();
+	C.lambda.drotation_dxt = Vector(3).zeros();
 
 	C.psi.drotation_dxi = Vector(3).zeros();
 	C.psi.drotation_dxj = Vector(3).zeros();
 	C.psi.drotation_dxl = Vector(3).zeros();
+	C.psi.drotation_dxt = Vector(3).zeros();
 	
 	
 	circles.push_back(C);
@@ -152,16 +212,66 @@ void Tessellation::addLimitingInterface(LimitingInterface &limit, CircularInterf
 }
 
 
-void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<float> &radii, SASAs &sasas, bool split, vector<int> &neighbourlist){
+void Tessellation::setupTessellationAxis(TessellationAxis &tessellationAxis, Hemisphere hemisphere, int closestNeighbour, vector<Vector> &atoms, vector<float> &radii, Vector &origin, float radius, DerivativeMode dmode, CircularInterfacesPerAtom &circles){
+	float d;
+	Vector mu(3);
+	Matrix Identity(3,3);
+	Matrix dchi_dx(3,3);
+	Identity.eye();
+	dchi_dx.zeros();
+	tessellationAxis.v=Vector(3);
+	float g;
+	float r_i,r_l;
+	
+	if(dmode==GENERAL_POSITION){
+		tessellationAxis.v(0) = 1.0;
+		tessellationAxis.v(1) = 0.0;
+		tessellationAxis.v(2) = 0.0;
+		tessellationAxis.dchi_dx=dchi_dx;
+		tessellationAxis.index=-2;
+	}
+	tessellationAxis.hemisphere=hemisphere;
+	tessellationAxis.mode=dmode;
+	
+	if(dmode==ALIGNED){
+		tessellationAxis.index=closestNeighbour;
+		Vector cn(3);
+		cn=atoms[closestNeighbour];
+		mu=calculateInterfaceNormal(origin, atoms[closestNeighbour], d);
+		tessellationAxis.v=mu;
+		tessellationAxis.dchi_dx= (1.0/d)*(Identity - kron(mu,mu.t())).t();
+		
+		//printf("TAX: %f %f %f, d: %d, origin: %f %f %f, CN: %f %f %f\n",mu(0),mu(1),mu(2),d,origin(0),origin(1),origin(2),cn(0),cn(1),cn(2));
+		r_i = radii[closestNeighbour];
+		r_l = radius;
+		g = (d * d + r_l * r_l - r_i * r_i ) / (2 * d * r_l);
+
+		if(g<0){
+			tessellationAxis.v=-tessellationAxis.v;
+		}
+	}
+	
+	if(hemisphere==BACKHEMISPHERE){
+		tessellationAxis.v=-tessellationAxis.v;
+		tessellationAxis.dchi_dx=-tessellationAxis.dchi_dx;
+	}
+	
+	
+	
+}
+
+void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<float> &radii, SASAs &sasas, bool split, vector<int> &neighbourlist, int closestNeighbour, bool useDepthBuffer){
 	CircularInterfacesPerAtom circles,precircles;
 	CircularInterfacesPerAtom circlesFrontHemisphere;
 	CircularInterfacesPerAtom circlesBackHemisphere;
 	CircularInterface *splitter0, *splitter1;
 	bool pass0, pass1;
+	
+	bool tessellationComplete;
 	//printf("BUILDING PATH %d\n",i);
 	
-	Vector frontTessellationAxis(3);
-	Vector backTessellationAxis(3);
+	TessellationAxis frontTessellationAxis;
+	TessellationAxis backTessellationAxis;
 	Vector origin;
 	float radius;
 	bool isInsideAnotherSphere;
@@ -169,7 +279,11 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 	MultiLayeredDepthBuffer depthBuffer0;
 	MultiLayeredDepthBuffer depthBuffer1;
 	
-	if(hasDepthBuffer){
+	tessellationComplete=false;
+	
+	if(hasDepthBuffer && prevSasasForMolecule.size()==0) useDepthBuffer=false;
+	
+	if(hasDepthBuffer && useDepthBuffer){
 		if(numbBuffer>1)
 			depthBuffer0 = MultiLayeredDepthBuffer(depthData, occludedDistribution, exposedDistribution, 0);
 		depthBuffer1 = MultiLayeredDepthBuffer(depthData, occludedDistribution, exposedDistribution, 1);
@@ -183,10 +297,7 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 	ti = i;
 	
 	
-	
-	frontTessellationAxis(0) = 1.0;
-	frontTessellationAxis(1) = 0.0;
-	frontTessellationAxis(2) = 0.0;
+
 	
 	/*
 	v = randu<fvec>(3);
@@ -229,116 +340,128 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 	
 	totalInterfaces+=precircles.size();
 	
-	if(hasDepthBuffer){
-		for(unsigned int j=0;j<precircles.size();j++){
-			if(numbBuffer>1)
-				depthBuffer0.addSphere(precircles[j].normal, precircles[j].lambda.rotation, precircles[j].form!=CONVEX, precircles[j].kappa[0], precircles[j].psi2[0]);
-			depthBuffer1.addSphere(precircles[j].normal, precircles[j].lambda.rotation, precircles[j].form!=CONVEX, precircles[j].kappa[1], precircles[j].psi2[1]);
-		}
-
-		pass0=false;
-		for(unsigned int j=0;j<precircles.size();j++){
-			if(numbBuffer>1)
-				pass0=depthBuffer0.passesBuffer(precircles[j].kappa[0], precircles[j].psi2[0], precircles[j].lambda.rotation, precircles[j].form!=CONVEX, precircles[j].exposedVectors);
-			
-			pass1=depthBuffer1.passesBuffer(precircles[j].kappa[1], precircles[j].psi2[1], precircles[j].lambda.rotation, precircles[j].form!=CONVEX, precircles[j].exposedVectors);
-			
-			
-			if(pass0 || pass1){
-				circles.push_back(precircles[j]);
-			}
+	
+	
+	while(!tessellationComplete){
+	
 		
+		if(hasDepthBuffer && useDepthBuffer){
+			for(unsigned int j=0;j<precircles.size();j++){
+				if(numbBuffer>1)
+					depthBuffer0.addSphere(precircles[j].normal, precircles[j].lambda.rotation, precircles[j].form!=CONVEX, precircles[j].kappa[0], precircles[j].psi2[0]);
+				depthBuffer1.addSphere(precircles[j].normal, precircles[j].lambda.rotation, precircles[j].form!=CONVEX, precircles[j].kappa[1], precircles[j].psi2[1]);
+			}
+
+			pass0=false;
+			for(unsigned int j=0;j<precircles.size();j++){
+				if(numbBuffer>1)
+					pass0=depthBuffer0.passesBuffer(precircles[j].kappa[0], precircles[j].psi2[0], precircles[j].lambda.rotation, precircles[j].form!=CONVEX, precircles[j].exposedVectors);
+				
+				pass1=depthBuffer1.passesBuffer(precircles[j].kappa[1], precircles[j].psi2[1], precircles[j].lambda.rotation, precircles[j].form!=CONVEX, precircles[j].exposedVectors);
+				
+				
+				if(pass0 || pass1){
+					circles.push_back(precircles[j]);
+				}
+			
+				
+			}
+		}
+		else circles=precircles;
+		
+	// 	if(i==0){
+	// 		FILE* file;
+	// 		file = fopen ("segmentRays.csv","w");
+	// 		
+	// 		for(unsigned int j=0;j<precircles.size();j++){
+	// 			for(unsigned int m=0; m<precircles[j].exposedVectors.size(); ++m){
+	// 				fprintf(file,"%f %f %f 0\n", precircles[j].exposedVectors[m](0), precircles[j].exposedVectors[m](1), precircles[j].exposedVectors[m](2));
+	// 			}
+	// 		}
+	// 	}
+		
+		
+		benchmark.addQuantity("interfaces found",precircles.size());
+		benchmark.addQuantity("interfaces kept",circles.size());
+		
+		
+		if(circles.size()==0) return;
+		
+		depthBufferEstimatedArea=-1;
+		if(hasDepthBuffer && useDepthBuffer){
+			if(numbBuffer>1){
+				depthBufferEstimatedArea=(depthBuffer0.exposedArea()+depthBuffer1.exposedArea())/2.0;
+			}
+			else{
+				depthBufferEstimatedArea=depthBuffer1.exposedArea();
+			}
+
+			//this will delete very small areas. It is not necessary for correctness of the method, but speeds things up a bit more
+			if(depthBufferEstimatedArea<0.01) return;
 			
 		}
-	}
-	else circles=precircles;
-	
-// 	if(i==0){
-// 		FILE* file;
-// 		file = fopen ("segmentRays.csv","w");
-// 		
-// 		for(unsigned int j=0;j<precircles.size();j++){
-// 			for(unsigned int m=0; m<precircles[j].exposedVectors.size(); ++m){
-// 				fprintf(file,"%f %f %f 0\n", precircles[j].exposedVectors[m](0), precircles[j].exposedVectors[m](1), precircles[j].exposedVectors[m](2));
-// 			}
-// 		}
-// 	}
-	
-	
-	benchmark.addQuantity("interfaces found",precircles.size());
-	benchmark.addQuantity("interfaces kept",circles.size());
-	
-	
-	if(circles.size()==0) return;
-	
-	depthBufferEstimatedArea=-1;
-	if(hasDepthBuffer){
-		if(numbBuffer>1){
-			depthBufferEstimatedArea=(depthBuffer0.exposedArea()+depthBuffer1.exposedArea())/2.0;
+		
+		
+		survivedInterfaces+=circles.size();
+		
+		
+		//frontTessellationAxis = generalPosition(circles);
+		//DerivativeMode dmode=ALIGNED;
+		DerivativeMode dmode=GENERAL_POSITION;
+		setupTessellationAxis(frontTessellationAxis, FRONTHEMISPHERE, closestNeighbour, atoms, radii, atoms[i], radii[i], dmode, circles);
+		setupTessellationAxis(backTessellationAxis, BACKHEMISPHERE, closestNeighbour, atoms, radii, atoms[i], radii[i], dmode, circles);
+			
+		
+		
+		//there is room for optimisation here...
+		if(split){
+		
+			circlesFrontHemisphere = coverHemisphere(frontTessellationAxis, radius, circles, SPLITTER);
+			circlesBackHemisphere = coverHemisphere(backTessellationAxis, radius, circles, SPLITTER);
+			
+			
+			
+			splitter0 = &circlesFrontHemisphere[circlesFrontHemisphere.size()-1];
+			splitter1 = &circlesBackHemisphere[circlesBackHemisphere.size()-1];
+			
+			if(hasDepthBuffer && useDepthBuffer){
+				//we use only the buffer which is aligned with the auxiliary axis to maximize its scanning performance
+				depthBuffer1.getSplitterExposedVectors(splitter0->exposedVectors);
+				depthBuffer1.getSplitterExposedVectors(splitter1->exposedVectors);
+			}
+			
+			//this will remove interaces that are completely inside other interfaces
+			filterCircularInterfaces(frontTessellationAxis,radius, circlesFrontHemisphere);
+			filterCircularInterfaces(backTessellationAxis,radius, circlesBackHemisphere);
+			
+			
+			reindexCircularInterfaces(circlesFrontHemisphere);
+			reindexCircularInterfaces(circlesBackHemisphere);
+			
+			determineCircularIntersections(circlesFrontHemisphere);
+			determineCircularIntersections(circlesBackHemisphere);
+			
+			bool tessellationComplete0, tessellationComplete1;
+			tessellationComplete0=buildIntersectionGraph(i, radius, frontTessellationAxis, circlesFrontHemisphere, sasas[sasas.size()-1], FRONTHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer);
+			tessellationComplete1=buildIntersectionGraph(i, radius, backTessellationAxis, circlesBackHemisphere, sasas[sasas.size()-1], BACKHEMISPHERE, string("gbonnet1.csv"), depthBuffer0, depthBuffer1, useDepthBuffer);
+			
+			tessellationComplete=tessellationComplete0 && tessellationComplete1;
+			if(!tessellationComplete){
+				sasas[sasas.size()-1].clear();
+				useDepthBuffer=false;
+			}
 		}
 		else{
-			depthBufferEstimatedArea=depthBuffer1.exposedArea();
+			printf("not supported\n");
+			printf("DIVERGENCE\n");
+			
+			filterCircularInterfaces(frontTessellationAxis, radius, circles);
+			reindexCircularInterfaces(circles);
+			
+			determineCircularIntersections(circles);
+			
+			tessellationComplete=buildIntersectionGraph(i, radius, frontTessellationAxis, circles, *newSasas, FRONTHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer);
 		}
-
-		//this will delete very small areas. It is not necessary for correctness of the method, but speeds things up a bit more
-		if(depthBufferEstimatedArea<0.01) return;
-		
-	}
-	
-	
-	survivedInterfaces+=circles.size();
-	
-	
-	frontTessellationAxis = generalPosition(circles);
-	backTessellationAxis = -frontTessellationAxis;
-	
-// 	frontTessellationAxis = frontTessellationAxis/norm(frontTessellationAxis,2);
-// 	backTessellationAxis = -frontTessellationAxis;
-	
-	
-	
-	//there is room for optimisation here...
-	if(split){
-	
-		circlesFrontHemisphere = coverHemisphere(frontTessellationAxis, radius, circles, SPLITTER);
-		circlesBackHemisphere = coverHemisphere(backTessellationAxis, radius, circles, SPLITTER);
-		
-		
-		
-		splitter0 = &circlesFrontHemisphere[circlesFrontHemisphere.size()-1];
-		splitter1 = &circlesBackHemisphere[circlesBackHemisphere.size()-1];
-		
-		if(hasDepthBuffer){
-			//we use only the buffer which is aligned with the auxiliary axis to maximize its scanning performance
-			depthBuffer1.getSplitterExposedVectors(splitter0->exposedVectors);
-			depthBuffer1.getSplitterExposedVectors(splitter1->exposedVectors);
-		}
-		
-		//this will remove interaces that are completely inside other interfaces
-		filterCircularInterfaces(frontTessellationAxis,radius, circlesFrontHemisphere);
-		filterCircularInterfaces(backTessellationAxis,radius, circlesBackHemisphere);
-		
-		
-		reindexCircularInterfaces(circlesFrontHemisphere);
-		reindexCircularInterfaces(circlesBackHemisphere);
-		
-		determineCircularIntersections(circlesFrontHemisphere);
-		determineCircularIntersections(circlesBackHemisphere);
-		
-		
-		buildIntersectionGraph(radius, frontTessellationAxis, circlesFrontHemisphere, sasas[sasas.size()-1], FRONTHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1);
-		buildIntersectionGraph(radius, backTessellationAxis, circlesBackHemisphere, sasas[sasas.size()-1], BACKHEMISPHERE, string("gbonnet1.csv"), depthBuffer0, depthBuffer1);
-	}
-	else{
-		printf("not supported\n");
-		printf("DIVERGENCE\n");
-		
-		filterCircularInterfaces(frontTessellationAxis, radius, circles);
-		reindexCircularInterfaces(circles);
-		
-		determineCircularIntersections(circles);
-		
-		buildIntersectionGraph(radius, frontTessellationAxis, circles, *newSasas, FRONTHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1);
 	}
 	
 	
@@ -544,6 +667,7 @@ Rotation Tessellation::calculateLambdaDerivatives(LambdaRotation &r, CircularInt
 	lambda.drotation_dxi = dlambda_dxi;
 	lambda.drotation_dxj = Vector(3).zeros();
 	lambda.drotation_dxl = dlambda_dxl;
+	lambda.drotation_dxt = Vector(3).zeros();
 	
 	
 	
@@ -564,7 +688,7 @@ void Tessellation::determineProjection(Vector &origin, float r_l, CircularInterf
 
 
 
-void Tessellation::calculateProjectionAndDerivatives(Vector &tessellationAxis, CircularInterface &circle){
+void Tessellation::calculateProjectionAndDerivatives(TessellationAxis &tessellationAxis, CircularInterface &circle){
 	Matrix Identity(3,3);
 	Matrix dmu_dx(3,3);
 	Matrix fd_dmu_dx(3,3);
@@ -597,7 +721,7 @@ void Tessellation::calculateProjectionAndDerivatives(Vector &tessellationAxis, C
 
 
 
-void Tessellation::determinePsiRotations(Vector &tessellationAxis, CircularInterfacesPerAtom &circles){
+void Tessellation::determinePsiRotations(TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles){
 	for(unsigned i=0; i < circles.size(); ++i)
 		circles[i].psi=calculatePsi(tessellationAxis, circles[i]);
 }
@@ -715,14 +839,15 @@ bool Tessellation::makeCircularInterfaces(int l,Vector &origin, float r_l, vecto
 
 
 
-void Tessellation::depleteCircularInterfaces(Vector tessellationAxis, float radius, vector<CircularInterface> &circles){
+void Tessellation::depleteCircularInterfaces(TessellationAxis &tessellationAxis, float radius, vector<CircularInterface> &circles){
 	circles.clear();
-	Vector t;
-	t = -tessellationAxis;
+	TessellationAxis t;
+	t=tessellationAxis;
+	t.v = -tessellationAxis.v;
 	circles = coverHemisphere(t, radius, circles, CONCAVE);
 }
 
-int Tessellation::filterCircularInterfaces(Vector tessellationAxis, float radius, vector<CircularInterface> &circles){
+int Tessellation::filterCircularInterfaces(TessellationAxis &tessellationAxis, float radius, vector<CircularInterface> &circles){
 	vector<CircularInterface>::iterator it;
 	float angle;
 	bool erased;
@@ -830,7 +955,7 @@ void Tessellation::reindexCircularInterfaces(CircularInterfacesPerAtom &circles)
 
 
 
-void Tessellation::insertArtificialIntersectionPoints(CircularInterface &I, Vector &tessellationAxis, Hemisphere hemisphere, SASASegmentList &sasa){
+void Tessellation::insertArtificialIntersectionPoints(CircularInterface &I, TessellationAxis &tessellationAxis, Hemisphere hemisphere, SASASegmentList &sasa){
 	Rotation f,f_reverse;
 	SASASegment sasaSegment;
 	
@@ -844,11 +969,13 @@ void Tessellation::insertArtificialIntersectionPoints(CircularInterface &I, Vect
 	f.drotation_dxi=Vector(3).zeros();
 	f.drotation_dxj=Vector(3).zeros();
 	f.drotation_dxl=Vector(3).zeros();
+	f.drotation_dxt=Vector(3).zeros();
 
 	f_reverse.rotation = M_PI/2;
 	f_reverse.drotation_dxi=Vector(3).zeros();
 	f_reverse.drotation_dxj=Vector(3).zeros();
 	f_reverse.drotation_dxl=Vector(3).zeros();
+	f_reverse.drotation_dxt=Vector(3).zeros();
 	
 	
 	
@@ -897,7 +1024,7 @@ void Tessellation::insertArtificialIntersectionPoints(CircularInterface &I, Vect
 /*
 
 
-void Tessellation::insertArtificialIntersectionPoints(CircularInterface &I, IntersectionGraph &intersectionGraph, Vector &tessellationAxis){
+void Tessellation::insertArtificialIntersectionPoints(CircularInterface &I, IntersectionGraph &intersectionGraph, TessellationAxis &tessellationAxis){
 	Vector v,v2,o,o2;
 	int k;
 	IntersectionNode a,b;
@@ -1080,7 +1207,7 @@ float Tessellation::angularInterface(Vector &x0, Vector &v, Vector &p0, Vector &
 	
 }
 
-void Tessellation::measurementPoints(Vector &p0, Vector &p1, Vector &tessellationAxis, CircularInterface &I){
+void Tessellation::measurementPoints(Vector &p0, Vector &p1, TessellationAxis &tessellationAxis, CircularInterface &I){
 	Vector v(3);
 	Vector o(3);
 	Vector vx(3);
@@ -1132,7 +1259,7 @@ void Tessellation::measurementPoints(Vector &p0, Vector &p1, Vector &tessellatio
 	
 }
 
-Interfaces Tessellation::angularInterfaces(Vector &x0, Vector &x1, Vector &tessellationAxis, CircularInterface &I, CircularInterface &J){
+Interfaces Tessellation::angularInterfaces(Vector &x0, Vector &x1, TessellationAxis &tessellationAxis, CircularInterface &I, CircularInterface &J){
 	Vector p0(3), p1(3);
 	Interfaces res;
 	Vector v(3);
@@ -1174,7 +1301,7 @@ Interfaces Tessellation::angularInterfaces(Vector &x0, Vector &x1, Vector &tesse
 
 
 
-PHIContainer Tessellation::retrieveInterfaces(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J, float dij, float radius){
+PHIContainer Tessellation::retrieveInterfaces(TessellationAxis &tessellationAxis, CircularInterface &I, CircularInterface &J, float dij, float radius){
 	float gij;
 	float eta;
 	float mu;
@@ -1222,7 +1349,7 @@ PHIContainer Tessellation::retrieveInterfaces(Vector &tessellationAxis, Circular
 
 
 
-float Tessellation::rotationalAngle(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J){
+float Tessellation::rotationalAngle(TessellationAxis &tessellationAxis, CircularInterface &I, CircularInterface &J){
 	Vector ex(3);
 	Vector ez(3);
 	Vector n0(3);
@@ -1341,19 +1468,19 @@ float Tessellation::l(Vector &a){
 }
 
 
-OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J, RhoContainer &rhoContainer){
-	return calculateOmega(tessellationAxis, I.normal, J.normal, I.id-1, J.id-1, I.form, J.form, rhoContainer);
+OmegaRotation Tessellation::calculateOmega(TessellationAxis &tessellationAxis, CircularInterface &I, CircularInterface &J, RhoContainer &rhoContainer){
+	return calculateOmega(tessellationAxis, I.normal, J.normal, I.id-1, J.id-1, I.form, J.form, rhoContainer,I.index);
 
 }
 
 
-OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, RhoContainer &rhoContainer){
-	return calculateOmega(tessellationAxis, mu_i, mu_j, 0, 0, CONVEX, CONVEX, rhoContainer);
+OmegaRotation Tessellation::calculateOmega(TessellationAxis &tessellationAxis, Vector &mu_i, Vector &mu_j, RhoContainer &rhoContainer, int index_i){
+	return calculateOmega(tessellationAxis, mu_i, mu_j, 0, 0, CONVEX, CONVEX, rhoContainer, index_i);
 }
 
 
 
-OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, RhoContainer &rhoContainer){
+OmegaRotation Tessellation::calculateOmega(TessellationAxis &tessellationAxis, Vector &mu_i, Vector &mu_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, RhoContainer &rhoContainer, int index_i){
 	Vector ex(3);
 	Vector ez(3);
 	Vector ey(3);
@@ -1382,11 +1509,11 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 	float dij;
 	Vector vi,vij;
 	
-	dotChi_mui = dot(tessellationAxis,mu_i);
+	dotChi_mui = dot(tessellationAxis.v,mu_i);
 	
 	
 	s2 = 1;
-	if(isWithinStrongNumericalLimits(dotChi_mui,1.0) || form_i==SPLITTER){
+	if(isWithinNumericalLimits(dotChi_mui,1.0) || form_i==SPLITTER || (tessellationAxis.index==index_i && tessellationAxis.hemisphere==FRONTHEMISPHERE)){
 		/*pp(0) = 0;
 		pp(1) = 0;
 		pp(2) = 1;
@@ -1398,9 +1525,9 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 		p(1) = 0;
 		p(2) = 1;
 		
-		ni=normalise(cross(tessellationAxis,p),di);
+		ni=normalise(cross(tessellationAxis.v,p),di);
 		di=1;
-		vi=cross(tessellationAxis,p);
+		vi=cross(tessellationAxis.v,p);
 		
 		problem=true;
 		
@@ -1409,21 +1536,21 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 			s2 = -1;
 		
 	}
-	else if(isWithinNumericalLimits(dotChi_mui,-1.0)){
+	else if(isWithinNumericalLimits(dotChi_mui,-1.0) || (tessellationAxis.index==index_i && tessellationAxis.hemisphere==BACKHEMISPHERE)){
 		p(0) = 0;
 		p(1) = -1;
 		p(2) = 0;
 		
-		ni=normalise(cross(tessellationAxis,p),di);
-		vi=cross(tessellationAxis,p);
+		ni=normalise(cross(tessellationAxis.v,p),di);
+		vi=cross(tessellationAxis.v,p);
 		di=1;
 		if(dot(ni,mu_j)<0)
 			s2 = -1;
 	}
 	else{
 		p = mu_i;
-		ni = normalise(cross(tessellationAxis,p),di);
-		vi=cross(tessellationAxis,p);
+		ni = normalise(cross(tessellationAxis.v,p),di);
+		vi=cross(tessellationAxis.v,p);
 		
 		
 	}
@@ -1435,8 +1562,8 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 		p2(0) = 0;
 		p2(1) = -1;
 		p2(2) = 0;
-		nij = normalise(cross(tessellationAxis,p2),dij);
-		vij=cross(tessellationAxis,p2);
+		nij = normalise(cross(tessellationAxis.v,p2),dij);
+		vij=cross(tessellationAxis.v,p2);
 		dij=1;
 		//exit(-2);
 	}
@@ -1444,8 +1571,8 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 		p2(0) = 0;
 		p2(1) = 1;
 		p2(2) = 0;
-		nij = normalise(cross(tessellationAxis,p2),dij);
-		vij=cross(tessellationAxis,p2);
+		nij = normalise(cross(tessellationAxis.v,p2),dij);
+		vij=cross(tessellationAxis.v,p2);
 		dij=1;
 		//exit(-3);
 	}
@@ -1467,7 +1594,7 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 	
 	varpi = acos(dot_ni_nij);
 	
-	s0 = -sgn(dot(nij,tessellationAxis));
+	s0 = -sgn(dot(nij,tessellationAxis.v));
 	
 	if(problem){
 		s0=-1;
@@ -1479,7 +1606,10 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 	
 	
 	if(isnan(omega.rotation)){
-		fprintf(stdout,"omega evaluated to nan\n");
+		fprintf(stdout,"omega evaluated to nan (%f %f %f %f %f %f) %d %d\n",ni(0),ni(1),ni(2),nij(0),nij(1),nij(2),tessellationAxis.index,index_i);
+		printf("extra: %f\n",dotChi_mui);
+		printf("tax: %f %f %f\n",tessellationAxis.v(0),tessellationAxis.v(1),tessellationAxis.v(2));
+		printf("mui: %f %f %f\n",mu_i(0),mu_i(1),mu_i(2));
 		exit(-2);
 	}
 	
@@ -1501,15 +1631,17 @@ OmegaRotation Tessellation::calculateOmega(Vector &tessellationAxis, Vector &mu_
 }
 
 	
-Rotation Tessellation::calculateOmegaDerivatives(OmegaRotation &r, CircularInterfacesPerAtom &circles, Vector &tessellationAxis){
+Rotation Tessellation::calculateOmegaDerivatives(OmegaRotation &r, CircularInterfacesPerAtom &circles, TessellationAxis &tessellationAxis){
 	Matrix dmui_dxl, dmuj_dxl;
 	float domega_dvarpi;
 	Vector dvarpi_dnij, dvarpi_dni;
 	Matrix dvi_dmui, dvij_dmui, dvij_dmuj;
 	Matrix dni_dvi, dnij_dvij;
-	Vector domega_dxi, domega_dxj, domega_dxl;
-	Vector domeganew_dxi, domeganew_dxj, domeganew_dxl;
-	Vector dextra_dxi, dextra_dxj, dextra_dxl;
+	Vector domega_dxi, domega_dxj, domega_dxl, domega_dxt;
+	Vector domeganew_dxi, domeganew_dxj, domeganew_dxl, domeganew_dxt;
+	Vector dextra_dxi, dextra_dxj, dextra_dxl, dextra_dxt;
+	Matrix dvi_dchi, dchi_dxl, dchi_dxt;
+	
 	float di,dij;
 	Vector ni(3);
 	Vector nij(3);
@@ -1525,11 +1657,20 @@ Rotation Tessellation::calculateOmegaDerivatives(OmegaRotation &r, CircularInter
 	Matrix dmuj_dxj;
 	int id_i;
 	int id_j;
-	float s0,s2;
+	float s0,s2,s3;
 	float denominator;
 	Vector chi,chi1,chi2;
 	Vector vi,vij;
 	omega.rotation=r.rotation;
+	
+	
+	
+	omega.drotation_dxi = Vector(3).zeros();
+	omega.drotation_dxj = Vector(3).zeros();
+	omega.drotation_dxl = Vector(3).zeros();
+	omega.drotation_dxt = Vector(3).zeros();
+	
+	
 	
 	di = r.di;
 	dij = r.dij;
@@ -1553,16 +1694,16 @@ Rotation Tessellation::calculateOmegaDerivatives(OmegaRotation &r, CircularInter
 	
 	
 	
-	Vector dextra_dniold, dextra_dni, extra_term_dxi, extra_term_dxl, n2;
+	Vector dextra_dniold, dextra_dni, extra_term_dxi, extra_term_dxl, extra_term_dxt, n2;
 	Matrix dniold_dvi, dviold_dmui;
 	bool extra=false;
-	Vector a0,a1,b0,b1;
+	Vector a0,a1,b0,b1,b2;
 	float dot_ni_niold,dot_n2_nij,dot_n2_ni;
 	int q0,q1;
 	float a_ni_nij, a_ni_niold;
 	float q2,q3,q4,q5;
 	if(abs(dot_ni_nij) >= 0.80 && circles[id_i].form!=SPLITTER && circles[id_j].form!=SPLITTER){
-		
+		printf("TESSELLATION AXIS TRANSFORMATION %d %f %f\n", tessellationAxis.hemisphere, s0, s2);
 		extra=true;
 		dniold_dvi = (1.0/(di))*(Identity - kron(ni,ni.t())).t();
 		
@@ -1576,13 +1717,15 @@ Rotation Tessellation::calculateOmegaDerivatives(OmegaRotation &r, CircularInter
 		chi2(1)=0;
 		chi2(2)=-1;
 		
-		chi = cross(chi1,tessellationAxis);
+		chi = cross(chi1,tessellationAxis.v);
 		ni = normalise(cross(chi,mu_i),di);
 		dot_ni_nij=norm_dot(ni,nij);
 		
-
+		s3=1;
 		if(abs(dot(chi,mu_i))>0.90 || abs(dot_ni_nij)>0.80){
-			chi=cross(chi2,tessellationAxis);
+			chi=cross(chi2,tessellationAxis.v);
+			printf("DOUBLE CROSS\n");
+			s3=-1;
 		}
 		
 		
@@ -1601,7 +1744,7 @@ Rotation Tessellation::calculateOmegaDerivatives(OmegaRotation &r, CircularInter
 		
 		dextra_dniold = -ni/(sqrt(1-dot(ni,r.ni)*dot(ni,r.ni)));
 		dextra_dni = -r.ni/(sqrt(1-dot(ni,r.ni)*dot(ni,r.ni)));
-		dviold_dmui=-matrixCross(Identity,tessellationAxis);
+		dviold_dmui=-matrixCross(Identity,tessellationAxis.v);
 		
 		a_ni_nij=acos(dot_ni_nij);
 		a_ni_niold=acos(dot_ni_niold);
@@ -1642,7 +1785,7 @@ Rotation Tessellation::calculateOmegaDerivatives(OmegaRotation &r, CircularInter
 		
 		
 	}
-	else chi=tessellationAxis;
+	else chi=tessellationAxis.v;
 	
 	
 	
@@ -1652,13 +1795,28 @@ Rotation Tessellation::calculateOmegaDerivatives(OmegaRotation &r, CircularInter
 	dmui_dxl = -dmui_dxi;
 	dmuj_dxl = -dmuj_dxj;
 	
+	dvi_dchi = Matrix(3,3).zeros();
+	dchi_dxl = Matrix(3,3).zeros();
+	dchi_dxt = Matrix(3,3).zeros();
+	
+	
 	if(s2>0){
 		dvi_dmui=-matrixCross(Identity,chi);
+		
+		
 		
 	}
 	else{
 		dvi_dmui = Matrix(3,3).zeros();
 		
+	}
+	//dvi_dmui=-matrixCross(Identity,chi);
+	
+	
+	if(tessellationAxis.mode==ALIGNED){
+		dvi_dchi = -matrixCross(Identity,mu_i);
+		dchi_dxl = tessellationAxis.dchi_dx;
+		dchi_dxt = -tessellationAxis.dchi_dx*s0; //I actually didn't look into why I need to multiply by s0, but it doesn't work without..
 	}
 	
 	
@@ -1679,51 +1837,66 @@ Rotation Tessellation::calculateOmegaDerivatives(OmegaRotation &r, CircularInter
 		b0 = (dextra_dniold.t() * dniold_dvi * dviold_dmui * dmui_dxi).t();
 		
 		a1 = (dextra_dni.t() * dni_dvi * dvi_dmui * dmui_dxl).t();
-		b1 = (dextra_dniold.t() * dniold_dvi * dviold_dmui * dmui_dxl).t();
+		b1 = (dextra_dniold.t() * dniold_dvi * (dviold_dmui * dmui_dxl + dvi_dchi * dchi_dxl)).t();
+
+		//a2 = (dextra_dni.t() * dni_dvi * dvi_dmui * dmui_dxl).t();
+		b2 = (dextra_dniold.t() * dniold_dvi * (dvi_dchi * dchi_dxt)).t();
+
+		
 		extra_term_dxi =  (a0+b0);
 		extra_term_dxl =  (a1+b1);
+		extra_term_dxt = b2;
 	}
 		
-		if(dot_ni_nij >= 1.0) dot_ni_nij = 1.0-MINISCULE;
-		if(dot_ni_nij <= -1.0) dot_ni_nij = -1.0+MINISCULE;
-		
-		
-
-		denominator = (sqrt(1-dot_ni_nij*dot_ni_nij));
-		
-		dvarpi_dni = -(nij) / denominator;
-		dvarpi_dnij = -(ni) / denominator;
-		
+	if(dot_ni_nij >= 1.0) dot_ni_nij = 1.0-MINISCULE;
+	if(dot_ni_nij <= -1.0) dot_ni_nij = -1.0+MINISCULE;
 	
-		domega_dxi = s2* domega_dvarpi * ((dvarpi_dni.t() * dni_dvi * dvi_dmui * dmui_dxi).t() + (dvarpi_dnij.t() * dnij_dvij * dvij_dmui * dmui_dxi).t() );
-		domega_dxj = s2* domega_dvarpi * (dvarpi_dnij.t() * dnij_dvij * dvij_dmuj * dmuj_dxj).t();
-		domega_dxl = s2* domega_dvarpi * ( (dvarpi_dni.t() * dni_dvi * dvi_dmui * dmui_dxl).t() +  (dvarpi_dnij.t() * (dnij_dvij * dvij_dmui * dmui_dxl + dnij_dvij * dvij_dmuj * dmuj_dxl) ).t() );
+	
+
+	denominator = (sqrt(1-dot_ni_nij*dot_ni_nij));
+	
+	dvarpi_dni = -(nij) / denominator;
+	dvarpi_dnij = -(ni) / denominator;
+	
+	
+
+	domega_dxi = s2* domega_dvarpi * ((dvarpi_dni.t() * dni_dvi * dvi_dmui * dmui_dxi).t() + (dvarpi_dnij.t() * dnij_dvij * dvij_dmui * dmui_dxi).t() );
+	domega_dxj = s2* domega_dvarpi * (dvarpi_dnij.t() * dnij_dvij * dvij_dmuj * dmuj_dxj).t();
+	domega_dxl = s2* domega_dvarpi * ( (dvarpi_dni.t() * dni_dvi * (dvi_dmui * dmui_dxl + dvi_dchi * dchi_dxl)).t() +  (dvarpi_dnij.t() * (dnij_dvij * dvij_dmui * dmui_dxl + dnij_dvij * dvij_dmuj * dmuj_dxl) ).t() );
+	domega_dxt = s2* domega_dvarpi * ( (dvarpi_dni.t() * dni_dvi * (dvi_dchi * dchi_dxt)).t());
+
+	
+	
+	
+	if(extra){
+		domega_dxi =  ((dvarpi_dni.t() * dni_dvi * dvi_dmui * dmui_dxi).t() + (dvarpi_dnij.t() * dnij_dvij * dvij_dmui * dmui_dxi).t() );
+		domega_dxj =  (dvarpi_dnij.t() * dnij_dvij * dvij_dmuj * dmuj_dxj).t();
+		//domega_dxl =  ( (dvarpi_dni.t() * dni_dvi * (dvi_dmui * dmui_dxl + dvi_dchi * dchi_dxl)).t() +  (dvarpi_dnij.t() * (dnij_dvij * dvij_dmui * dmui_dxl + dnij_dvij * dvij_dmuj * dmuj_dxl) ).t() );
+		domega_dxl =  ( (dvarpi_dni.t() * dni_dvi * (dvi_dmui * dmui_dxl)).t() +  (dvarpi_dnij.t() * (dnij_dvij * dvij_dmui * dmui_dxl + dnij_dvij * dvij_dmuj * dmuj_dxl) ).t() );
+		//domega_dxt =  ( (dvarpi_dni.t() * dni_dvi * (dvi_dchi * dchi_dxt)).t());
+		domega_dxt = Vector(3).zeros();
+		
+		domeganew_dxi = q2*q4*domega_dxi;
+		domeganew_dxj = q2*q4*domega_dxj;
+		domeganew_dxl = q2*q4*domega_dxl;
+		domeganew_dxt = q2*q4*domega_dxt;
 		
 		
 		
-		if(extra){
-			domega_dxi =  ((dvarpi_dni.t() * dni_dvi * dvi_dmui * dmui_dxi).t() + (dvarpi_dnij.t() * dnij_dvij * dvij_dmui * dmui_dxi).t() );
-			domega_dxj =  (dvarpi_dnij.t() * dnij_dvij * dvij_dmuj * dmuj_dxj).t();
-			domega_dxl =  ( (dvarpi_dni.t() * dni_dvi * dvi_dmui * dmui_dxl).t() +  (dvarpi_dnij.t() * (dnij_dvij * dvij_dmui * dmui_dxl + dnij_dvij * dvij_dmuj * dmuj_dxl) ).t() );
-			
-			domeganew_dxi = q2*q4*domega_dxi;
-			domeganew_dxj = q2*q4*domega_dxj;
-			domeganew_dxl = q2*q4*domega_dxl;
-			
-			
-			
-			domega_dxi= s2*domega_dvarpi*(q2*q4*domega_dxi + q3*q5*extra_term_dxi);
-			domega_dxl= s2*domega_dvarpi*(q2*q4*domega_dxl + q3*q5*extra_term_dxl);
-			domega_dxj= s2*domega_dvarpi*(q2*q4*domega_dxj);
-			
-			dextra_dxi = q3*q5*extra_term_dxi;
-			dextra_dxj = Vector(3).zeros();
-			dextra_dxl = q3*q5*extra_term_dxl;
-		}
+		domega_dxi= s2*domega_dvarpi*(q2*q4*domega_dxi + q3*q5*extra_term_dxi);
+		domega_dxl= s2*domega_dvarpi*(q2*q4*domega_dxl + q3*q5*extra_term_dxl);
+		domega_dxj= s2*domega_dvarpi*(q2*q4*domega_dxj);
+		domega_dxt= s2*domega_dvarpi*(q2*q4*domega_dxt) + q3*q5*extra_term_dxt;
+		
+		dextra_dxi = q3*q5*extra_term_dxi;
+		dextra_dxj = Vector(3).zeros();
+		dextra_dxl = q3*q5*extra_term_dxl;
+	}
 	
 	omega.drotation_dxi = domega_dxi;
 	omega.drotation_dxj = domega_dxj;
 	omega.drotation_dxl = domega_dxl;
+	omega.drotation_dxt = domega_dxt;
 	
 	
 	
@@ -1757,20 +1930,20 @@ float Tessellation::calculateRho(Vector &mu_i, Vector &mu_j, bool derivatives){
 }
 
 
-EtaRotation Tessellation::calculateEta(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J, RhoContainer &rhoContainer){
+EtaRotation Tessellation::calculateEta(TessellationAxis &tessellationAxis, CircularInterface &I, CircularInterface &J, RhoContainer &rhoContainer){
 	return calculateEta(tessellationAxis, I.normal, J.normal, I.lambda, J.lambda, I.id-1, J.id-1, I.form, J.form, rhoContainer);
 }
 
 
 EtaRotation Tessellation::calculateEta(Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, RhoContainer &rhoContainer){
-	Vector tessellationAxis(3);
-	
-	tessellationAxis.zeros();
+	TessellationAxis tessellationAxis;
+	tessellationAxis.v=Vector(3);
+	tessellationAxis.v.zeros();
 	return calculateEta(tessellationAxis, mu_i, mu_j, lambda_i, lambda_j, 0, 0, CONVEX, CONVEX, rhoContainer);
 }
 
 
-EtaRotation Tessellation::calculateEta(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, RhoContainer &rhoContainer){
+EtaRotation Tessellation::calculateEta(TessellationAxis &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, RhoContainer &rhoContainer){
 	float rho;
 	float dot_IJ;
 	float sig0,sig1,sig2;
@@ -1848,7 +2021,7 @@ Rotation Tessellation::calculateEtaDerivatives(EtaRotation &r, CircularInterface
 	Vector drho_dxl(3);
 	float sig0,sig1,sig2;
 	float deta_dlambdai, deta_dlambdaj, deta_drhoij;
-	Vector deta_dxi(3), deta_dxj(3), deta_dxl(3);
+	Vector deta_dxi(3), deta_dxj(3), deta_dxl(3), deta_dxt(3);
 	Rotation eta;
 	Matrix dmui_dxl, dmuj_dxl;
 	Vector mu_i;
@@ -1878,11 +2051,19 @@ Rotation Tessellation::calculateEtaDerivatives(EtaRotation &r, CircularInterface
 	dmuj_dxj = circles[id_j].dmu_dx;
 
 	eta.rotation = r.rotation;
+	
+	
+	eta.drotation_dxi = Vector(3).zeros();
+	eta.drotation_dxj = Vector(3).zeros();
+	eta.drotation_dxl = Vector(3).zeros();
+	eta.drotation_dxt = Vector(3).zeros();
+	
 
 	if(isWithinNumericalLimits(rho,0)){
 		deta_dxi = Vector(3).zeros();
 		deta_dxj = Vector(3).zeros();
 		deta_dxl = Vector(3).zeros();
+		deta_dxt = Vector(3).zeros();
 	}
 	else{
 		
@@ -1920,6 +2101,7 @@ Rotation Tessellation::calculateEtaDerivatives(EtaRotation &r, CircularInterface
 		eta.drotation_dxi = deta_dxi;
 		eta.drotation_dxj = deta_dxj;
 		eta.drotation_dxl = deta_dxl;
+		eta.drotation_dxt = Vector(3).zeros();
 	}
 	
 	
@@ -1927,18 +2109,18 @@ Rotation Tessellation::calculateEtaDerivatives(EtaRotation &r, CircularInterface
 	return eta;
 }
 
-PHIContainer Tessellation::calculatePHI(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J, float radius, RhoContainer &rhoContainer){
-	return calculatePHI(tessellationAxis, I.normal, J.normal, I.lambda, J.lambda, I.id-1, J.id-1, I.form, J.form, rhoContainer);
+PHIContainer Tessellation::calculatePHI(TessellationAxis &tessellationAxis, CircularInterface &I, CircularInterface &J, float radius, RhoContainer &rhoContainer){
+	return calculatePHI(tessellationAxis, I.normal, J.normal, I.lambda, J.lambda, I.id-1, J.id-1, I.form, J.form, rhoContainer, I.index);
 	
 }
 
 
-PHIContainer Tessellation::calculatePHI(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, RhoContainer &rhoContainer){
-	return calculatePHI(tessellationAxis, mu_i, mu_j, lambda_i, lambda_j, 0, 0, CONVEX, CONVEX, rhoContainer);
+PHIContainer Tessellation::calculatePHI(TessellationAxis &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, RhoContainer &rhoContainer, int index_i){
+	return calculatePHI(tessellationAxis, mu_i, mu_j, lambda_i, lambda_j, 0, 0, CONVEX, CONVEX, rhoContainer, index_i);
 }
 
 
-PHIContainer Tessellation::calculatePHI(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, RhoContainer &rhoContainer){
+PHIContainer Tessellation::calculatePHI(TessellationAxis &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, RhoContainer &rhoContainer, int index_i){
 	PHIContainer p,p2,p3;
 	
 	EtaRotation eta;
@@ -1947,7 +2129,7 @@ PHIContainer Tessellation::calculatePHI(Vector &tessellationAxis, Vector &mu_i, 
 	
 
 	eta = calculateEta(tessellationAxis, mu_i, mu_j, lambda_i, lambda_j, id_i, id_j, form_i, form_j, rhoContainer);
-	omega = calculateOmega(tessellationAxis, mu_i, mu_j, id_i, id_j, form_i, form_j, rhoContainer);
+	omega = calculateOmega(tessellationAxis, mu_i, mu_j, id_i, id_j, form_i, form_j, rhoContainer, index_i);
 	
 	
 	
@@ -1996,7 +2178,7 @@ PHIContainer Tessellation::calculatePHI(Vector &tessellationAxis, Vector &mu_i, 
 }
 
 
-Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterfacesPerAtom &circles, Vector &tessellationAxis){
+Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterfacesPerAtom &circles, TessellationAxis &tessellationAxis){
 	Rotation omega,eta;
 	Rotation PHI;
 	int s;
@@ -2012,23 +2194,24 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 	PHI.drotation_dxi = s*eta.drotation_dxi + omega.drotation_dxi;
 	PHI.drotation_dxj = s*eta.drotation_dxj + omega.drotation_dxj;
 	PHI.drotation_dxl = s*eta.drotation_dxl + omega.drotation_dxl;
+	PHI.drotation_dxt = s*eta.drotation_dxt + omega.drotation_dxt;
 	
 	
 	
 	
 	
 	
-	/*
+	
 	printf("=====================================================================\n");
-	
-	printf("TAX: %f %f %f\n",tessellationAxis(0),tessellationAxis(1),tessellationAxis(2));
-	
-	
+	printf("TAX index: %d\n",tessellationAxis.index);
+	//printf("TAX: %f %f %f\n",tessellationAxis(0),tessellationAxis(1),tessellationAxis(2));
 	
 	
 	
 	
-		Vector ai(3), aj(3), al(3), x(3), xp(3), xn(3);
+	
+		float d, g_chi, r_l, r_chi;
+		Vector ai(3), aj(3), al(3), x(3), xp(3), xn(3), achi(3), chi(3);
 		Vector nip,nin,nj;
 		Vector njp,njn,ni;
 		int indexi, indexl, indexj,idi,idj;
@@ -2055,6 +2238,12 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 		Vector fd_detaij_dxl_out(3);
 		Vector fd_domegaij_dxl_in(3);
 		Vector fd_domegaij_dxl_out(3);
+		Vector fd_dPHIij_dxt_in(3);
+		Vector fd_dPHIij_dxt_out(3);
+		Vector fd_detaij_dxt_in(3);
+		Vector fd_detaij_dxt_out(3);
+		Vector fd_domegaij_dxt_in(3);
+		Vector fd_domegaij_dxt_out(3);
 		PHIContainer PHIp, PHIn;
 		Rotation lambdajp;
 		Rotation lambdajn;
@@ -2062,7 +2251,12 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 		float djp,djn,di;
 		RhoContainer rhop,rhon;
 		float etap,etan,omegap,omegan;
+		TessellationAxis taxp;	
+		TessellationAxis taxn,tax;
+		Vector chip,chin;
 
+		r_l = tradius;
+		r_chi = radii[tessellationAxis.index];
 
 		
 		//dphi_dxi
@@ -2077,45 +2271,83 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 		
 		idi=r.eta.id_i;
 		idj=r.eta.id_j;
-		if(indexi >= 0){
-			ai = atoms[indexi];
+		
 			al = torigin;
-			ri = radii[indexi];
-			rj = radii[indexj];
 			rl = tradius;
 			
-			if(indexj<0){
-				nip = calculateInterfaceNormal(al, ai, dip);
-				nj = tessellationAxis;
+			if(tessellationAxis.mode==ALIGNED){
+				achi = atoms[tessellationAxis.index];
+				if(tessellationAxis.hemisphere==FRONTHEMISPHERE){
+					chi=calculateInterfaceNormal(al, achi, d);
+				}
+				else{
+					chi=-calculateInterfaceNormal(al, achi, d);
+				}
 				
-				lambdaip.rotation = calculateLambda(dip, rl, ri, nip).rotation;
+				g_chi = (d * d + r_l * r_l - r_chi * r_chi ) / (2 * d * r_l);
+
+				if(g_chi<0){
+					chi=-chi;
+				}
+			}
+			else{
+				chi=tessellationAxis.v;
+			}
+			
+			
+			if(indexi<0){
+				ni = chi;
+				lambdai.rotation = M_PI/2.0;
+
+			}
+			else{
+				ai = atoms[indexi];
+				ri = radii[indexi];
+				
+				ni = calculateInterfaceNormal(al, ai, di);
+				lambdai.rotation = calculateLambda(di, rl, ri, ni).rotation;
+
+			}			
+			
+			if(indexj<0){
+				nj = chi;
 				lambdaj.rotation = M_PI/2.0;
 				
 			}
 			else{
 				aj = atoms[indexj];
 				rj = radii[indexj];
-				nip = calculateInterfaceNormal(al, ai, dip);
 				nj = calculateInterfaceNormal(al, aj, dj);
 				
-				lambdaip.rotation = calculateLambda(dip, rl, ri, nip).rotation;
 				lambdaj.rotation = calculateLambda(dj, rl, rj, nj).rotation;
 			}
 			
 			
 						
-			rhop.rho = calculateRho(nip,nj);
-			
-			
-			PHIp = calculatePHI(tessellationAxis, nip, nj, lambdaip, lambdaj, idi, idj, circles[idi].form, circles[idj].form, rhop);
-			etap = calculateEta(tessellationAxis, nip, nj, lambdaip, lambdaj, idi, idj, circles[idi].form, circles[idj].form, rhop).rotation;
-			omegap = calculateOmega(tessellationAxis, nip, nj, idi, idj, circles[idi].form, circles[idj].form, rhop).rotation;
+			rhop.rho = calculateRho(ni,nj);
+			tax=tessellationAxis;
+			tax.mode=ALIGNED;
+			taxp.v=chi;
+			taxp=tessellationAxis;
+			taxp.mode=ALIGNED;
+			taxn.mode=ALIGNED;
+			PHIp = calculatePHI(taxp, ni, nj, lambdai, lambdaj, idi, idj, circles[idi].form, circles[idj].form, rhop, indexi);
+			etap = calculateEta(taxp, ni, nj, lambdai, lambdaj, idi, idj, circles[idi].form, circles[idj].form, rhop).rotation;
+			omegap = calculateOmega(taxp, ni, nj, idi, idj, circles[idi].form, circles[idj].form, rhop, indexi).rotation;
 
 			
 			printf("PRECOMPARE: %f / %f %f\n",PHI.rotation, PHIp.in.rotation, PHIp.out.rotation);
 			printf("PRECOMPARE e: %f / %f\n",eta.rotation, etap);
 			printf("PRECOMPARE o: %f / %f\n",omega.rotation, omegap);
 			
+			
+		if(indexi>=0){
+			if(indexi<0){
+				ai=atoms[tessellationAxis.index];
+			}
+			else{
+				ai=atoms[indexi];
+			}
 			
 			x=ai;
 			for(int j=0; j<3; ++j){
@@ -2125,24 +2357,66 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 				xn(j) = x(j) - FD;
 				
 				
-				if(indexj<0){
-					nip = calculateInterfaceNormal(al, xp, dip);
-					nin = calculateInterfaceNormal(al, xn, din);
-					nj = tessellationAxis;
+				if(indexi >=0 ){
+					ri = radii[indexi];
 					
-					lambdaip.rotation = calculateLambda(dip, rl, ri, nip).rotation;
-					lambdain.rotation = calculateLambda(din, rl, ri, nin).rotation;
-					lambdaj.rotation = M_PI/2.0;
+					if(indexj<0){
+						nip = calculateInterfaceNormal(al, xp, dip);
+						nin = calculateInterfaceNormal(al, xn, din);
+						nj = chi;
+						
+						lambdaip.rotation = calculateLambda(dip, rl, ri, nip).rotation;
+						lambdain.rotation = calculateLambda(din, rl, ri, nin).rotation;
+						lambdaj.rotation = M_PI/2.0;
+						
+					}
+					else{
+						aj = atoms[indexj];
+						rj = radii[indexj];
+						
+						nip = calculateInterfaceNormal(al, xp, dip);
+						nin = calculateInterfaceNormal(al, xn, din);
+						nj = calculateInterfaceNormal(al, aj, dj);
+						
+						lambdaip.rotation = calculateLambda(dip, rl, ri, nip).rotation;
+						lambdain.rotation = calculateLambda(din, rl, ri, nin).rotation;
+						lambdaj.rotation = calculateLambda(dj, rl, rj, nj).rotation;
+					}
 					
+					chip=chi;
+					chin=chi;
 				}
 				else{
-					nip = calculateInterfaceNormal(al, xp, dip);
-					nin = calculateInterfaceNormal(al, xn, din);
+				
+					if(tessellationAxis.hemisphere==FRONTHEMISPHERE)
+						chip=calculateInterfaceNormal(al, xp, d);
+					else
+						chip=-calculateInterfaceNormal(al, xp, d);
+					
+					if(tessellationAxis.hemisphere==FRONTHEMISPHERE)
+						chin=calculateInterfaceNormal(al, xn, d);
+					else
+						chin=-calculateInterfaceNormal(al, xn, d);
+					
+					
+					if(g_chi<0){
+						chip=-chip;
+						chin=-chin;
+					}						
+					
+					aj = atoms[indexj];
+					rj = radii[indexj];
+					
+					
+					nip = chip;
+					nin = chin;
 					nj = calculateInterfaceNormal(al, aj, dj);
 					
-					lambdaip.rotation = calculateLambda(dip, rl, ri, nip).rotation;
-					lambdain.rotation = calculateLambda(din, rl, ri, nin).rotation;
+					lambdaip.rotation = M_PI/2.0;
+					lambdain.rotation = M_PI/2.0;
 					lambdaj.rotation = calculateLambda(dj, rl, rj, nj).rotation;
+
+						
 				}
 				
 				
@@ -2150,15 +2424,17 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 				rhop.rho = calculateRho(nip,nj);
 				rhon.rho = calculateRho(nin,nj);
 				
+				taxp.v=chip;
+				taxn.v=chin;
 				
 				
 				
-				PHIp = calculatePHI(tessellationAxis, nip, nj, lambdaip, lambdaj, idi, idj, circles[idi].form, circles[idj].form, rhop);
-				PHIn = calculatePHI(tessellationAxis, nin, nj, lambdain, lambdaj, idi, idj, circles[idi].form, circles[idj].form, rhon);
-				etap = calculateEta(tessellationAxis, nip, nj, lambdaip, lambdaj, idi, idj, circles[idi].form, circles[idj].form, rhop).rotation;
-				etan = calculateEta(tessellationAxis, nin, nj, lambdain, lambdaj, idi, idj, circles[idi].form, circles[idj].form, rhon).rotation;
-				omegap = calculateOmega(tessellationAxis, nip, nj, idi, idj, circles[idi].form, circles[idj].form, rhop).rotation;
-				omegan = calculateOmega(tessellationAxis, nin, nj, idi, idj, circles[idi].form, circles[idj].form, rhon).rotation;
+				PHIp = calculatePHI(taxp, nip, nj, lambdaip, lambdaj, idi, idj, circles[idi].form, circles[idj].form, rhop, indexi);
+				PHIn = calculatePHI(taxn, nin, nj, lambdain, lambdaj, idi, idj, circles[idi].form, circles[idj].form, rhon, indexi);
+				etap = calculateEta(taxp, nip, nj, lambdaip, lambdaj, idi, idj, circles[idi].form, circles[idj].form, rhop).rotation;
+				etan = calculateEta(taxn, nin, nj, lambdain, lambdaj, idi, idj, circles[idi].form, circles[idj].form, rhon).rotation;
+				omegap = calculateOmega(taxp, nip, nj, idi, idj, circles[idi].form, circles[idj].form, rhop, indexi).rotation;
+				omegan = calculateOmega(taxn, nin, nj, idi, idj, circles[idi].form, circles[idj].form, rhon, indexi).rotation;
 				
 				fd_dPHIij_dxi_out(j) = (PHIp.out.rotation - PHIn.out.rotation) / (2*FD);
 				fd_dPHIij_dxi_in(j) = (PHIp.in.rotation - PHIn.in.rotation) / (2*FD);
@@ -2167,6 +2443,7 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 				fd_domegaij_dxi_out(j) = (omegap - omegan) / (2*FD);
 				fd_domegaij_dxi_in(j) = (omegap - omegan) / (2*FD);
 			}
+			printf("RAW: PHI: %f %f / %f %f OMEGA: %f %f\n",PHIp.out.rotation, PHIn.out.rotation,PHIp.in.rotation, PHIn.in.rotation, omegap, omegan);
 			printf("dPHIij_dxi: (%f %f %f) FD: (%f, %f, %f) FD: (%f %f %f)\n",PHI.drotation_dxi(0),PHI.drotation_dxi(1),PHI.drotation_dxi(2), fd_dPHIij_dxi_in(0), fd_dPHIij_dxi_in(1), fd_dPHIij_dxi_in(2), fd_dPHIij_dxi_out(0), fd_dPHIij_dxi_out(1), fd_dPHIij_dxi_out(2));
 			printf("detaij_dxi: (%f %f %f) FD: (%f, %f, %f) FD: (%f %f %f)\n",eta.drotation_dxi(0),eta.drotation_dxi(1),eta.drotation_dxi(2), fd_detaij_dxi_in(0), fd_detaij_dxi_in(1), fd_detaij_dxi_in(2), fd_detaij_dxi_out(0), fd_detaij_dxi_out(1), fd_detaij_dxi_out(2));
 			printf("domegaij_dxi: (%f %f %f) FD: (%f, %f, %f) FD: (%f %f %f)\n",omega.drotation_dxi(0),omega.drotation_dxi(1),omega.drotation_dxi(2), fd_domegaij_dxi_in(0), fd_domegaij_dxi_in(1), fd_domegaij_dxi_in(2), fd_domegaij_dxi_out(0), fd_domegaij_dxi_out(1), fd_domegaij_dxi_out(2));
@@ -2175,36 +2452,40 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 				if(abs(omega.drotation_dxi(i) - fd_domegaij_dxi_in(i)) > FDT && abs(omega.drotation_dxi(i) - fd_domegaij_dxi_out(i)) > FDT) printf("ERROR\n");//printf("DIVERGENCE\n");
 			}
 			
+		
 		}
-	
 		
 		
-		
+		if(indexj>=0){
 		
 		//dphi_dxj
-		if(indexj >= 0){
-			ai = atoms[indexi];
-			aj = atoms[indexj];
-			al = torigin;
+		if(indexj<0){
+			aj=atoms[tessellationAxis.index];
+		}
+		else{
+			aj=atoms[indexj];
+		}
+		al = torigin;
+		rl = tradius;
+		
+		
+		
+		
+		x=aj;
+		for(int j=0; j<3; ++j){
+			xp=x;
+			xp(j) = x(j) + FD;
+			xn=x;
+			xn(j) = x(j) - FD;
+			
+				
+		if(indexj>=0){
 			rj = radii[indexj];
-			rl = tradius;
 			
-			
-			
-			
-			x=aj;
-			for(int j=0; j<3; ++j){
-				xp=x;
-				xp(j) = x(j) + FD;
-				xn=x;
-				xn(j) = x(j) - FD;
-				
-				
-				
 			if(indexi<0){
 				njp = calculateInterfaceNormal(al, xp, djp);
 				njn = calculateInterfaceNormal(al, xn, djn);
-				ni = tessellationAxis;
+				ni = chi;
 				
 				
 
@@ -2230,19 +2511,57 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 				lambdai.rotation = calculateLambda(di, rl, ri, ni).rotation;
 
 			}
+			chip=chi;
+			chin=chi;
+		}
+		else{
+			
+				if(tessellationAxis.hemisphere==FRONTHEMISPHERE)
+					chip=calculateInterfaceNormal(al, xp, d);
+				else
+					chip=-calculateInterfaceNormal(al, xp, d);
+				
+				if(tessellationAxis.hemisphere==FRONTHEMISPHERE)
+					chin=calculateInterfaceNormal(al, xn, d);
+				else
+					chin=-calculateInterfaceNormal(al, xn, d);
+				
+				
+				if(g_chi<0){
+					chip=-chip;
+					chin=-chin;
+				}						
+								
+				ai = atoms[indexi];
+				ri = radii[indexi];
+				
+				njp = chip;
+				njn = chin;
+				ni = calculateInterfaceNormal(al, ai, di);
+				
+				
+
+				
+				lambdajp.rotation = M_PI/2.0;
+				lambdajn.rotation = M_PI/2.0;
+				lambdai.rotation = calculateLambda(di, rl, ri, ni).rotation;
+			
+		}
 						
+			taxp.v=chip;
+			taxn.v=chin;
 				
 				
 				rhop.rho = calculateRho(ni,njp);
 				rhon.rho = calculateRho(ni,njn);
 				
 				
-				PHIp = calculatePHI(tessellationAxis, ni, njp, lambdai, lambdajp, idi, idj, circles[idi].form, circles[idj].form, rhop);
-				PHIn = calculatePHI(tessellationAxis, ni, njn, lambdai, lambdajn, idi, idj, circles[idi].form, circles[idj].form, rhon);
-				etap = calculateEta(tessellationAxis, ni, njp, lambdai, lambdajp, idi, idj, circles[idi].form, circles[idj].form, rhop).rotation;
-				etan = calculateEta(tessellationAxis, ni, njn, lambdai, lambdajn, idi, idj, circles[idi].form, circles[idj].form, rhon).rotation;
-				omegap = calculateOmega(tessellationAxis, ni, njp, idi, idj, circles[idi].form, circles[idj].form, rhop).rotation;
-				omegan = calculateOmega(tessellationAxis, ni, njn, idi, idj, circles[idi].form, circles[idj].form, rhon).rotation;
+				PHIp = calculatePHI(taxp, ni, njp, lambdai, lambdajp, idi, idj, circles[idi].form, circles[idj].form, rhop, indexi);
+				PHIn = calculatePHI(taxn, ni, njn, lambdai, lambdajn, idi, idj, circles[idi].form, circles[idj].form, rhon, indexi);
+				etap = calculateEta(taxp, ni, njp, lambdai, lambdajp, idi, idj, circles[idi].form, circles[idj].form, rhop).rotation;
+				etan = calculateEta(taxn, ni, njn, lambdai, lambdajn, idi, idj, circles[idi].form, circles[idj].form, rhon).rotation;
+				omegap = calculateOmega(taxp, ni, njp, idi, idj, circles[idi].form, circles[idj].form, rhop, indexi).rotation;
+				omegan = calculateOmega(taxn, ni, njn, idi, idj, circles[idi].form, circles[idj].form, rhon, indexi).rotation;
 				
 				fd_dPHIij_dxj_out(j) = (PHIp.out.rotation - PHIn.out.rotation) / (2*FD);
 				fd_dPHIij_dxj_in(j) = (PHIp.in.rotation - PHIn.in.rotation) / (2*FD);
@@ -2258,9 +2577,9 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
  				if(abs(PHI.drotation_dxj(i) - fd_dPHIij_dxj_in(i)) > FDT && abs(PHI.drotation_dxj(i) - fd_dPHIij_dxj_out(i)) > FDT) printf("ERROR\n");//printf("DIVERGENCE\n");
 				if(abs(omega.drotation_dxj(i) - fd_domegaij_dxj_in(i)) > FDT && abs(omega.drotation_dxj(i) - fd_domegaij_dxj_out(i)) > FDT) printf("ERROR\n");//printf("DIVERGENCE\n");
 			}
-		}
-			
 		
+			
+		}
 		
 		//dphi_dxl
 		if(true){
@@ -2276,10 +2595,33 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 				xn(j) = x(j) - FD;
 				
 				
+				if(tessellationAxis.mode==ALIGNED){
+
+					if(tessellationAxis.hemisphere==FRONTHEMISPHERE)
+						chip=calculateInterfaceNormal(xp, achi, d);
+					else
+						chip=-calculateInterfaceNormal(xp, achi, d);
+					
+					if(tessellationAxis.hemisphere==FRONTHEMISPHERE)
+						chin=calculateInterfaceNormal(xn, achi, d);
+					else
+						chin=-calculateInterfaceNormal(xn, achi, d);
+					
+					if(g_chi<0){
+						chip=-chip;
+						chin=-chin;
+					}				
+				}
+				else{
+					chip=tessellationAxis.v;
+					chin=tessellationAxis.v;
+				}
+				
+				
 				
 			if(indexi<0){
-				nip=tessellationAxis;
-				nin=tessellationAxis;
+				nip=chip;
+				nin=chin;
 				lambdaip.rotation = M_PI/2.0;
 				lambdain.rotation = M_PI/2.0;
 				
@@ -2295,8 +2637,8 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 				
 				
 			if(indexj<0){
-				njp=tessellationAxis;
-				njn=tessellationAxis;
+				njp=chip;
+				njn=chin;
 				lambdajp.rotation = M_PI/2.0;
 				lambdajn.rotation = M_PI/2.0;
 			}
@@ -2310,6 +2652,8 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 			}
 				
 				
+			taxp.v=chip;
+			taxn.v=chin;
 				
 // 				printf("XP: %f %f %f , %f %f %f\n",xp(0),xp(1),xp(2),xn(0),xn(1),xn(2));
 				
@@ -2327,12 +2671,12 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 // 				printf("LAMBDA: %f %f %f %f\n",lambdaip.rotation,lambdain.rotation,lambdajp.rotation,lambdajp.rotation);
 				
 				
-				PHIp = calculatePHI(tessellationAxis, nip, njp, lambdaip, lambdajp, idi, idj, circles[idi].form, circles[idj].form, rhop);
-				PHIn = calculatePHI(tessellationAxis, nin, njn, lambdain, lambdajn, idi, idj, circles[idi].form, circles[idj].form, rhon);
-				etap = calculateEta(tessellationAxis, nip, njp, lambdaip, lambdajp, idi, idj, circles[idi].form, circles[idj].form, rhop).rotation;
-				etan = calculateEta(tessellationAxis, nin, njn, lambdain, lambdajn, idi, idj, circles[idi].form, circles[idj].form, rhon).rotation;
-				omegap = calculateOmega(tessellationAxis, nip, njp, idi, idj, circles[idi].form, circles[idj].form, rhop).rotation;
-				omegan = calculateOmega(tessellationAxis, nin, njn, idi, idj, circles[idi].form, circles[idj].form, rhon).rotation;
+				PHIp = calculatePHI(taxp, nip, njp, lambdaip, lambdajp, idi, idj, circles[idi].form, circles[idj].form, rhop, indexi);
+				PHIn = calculatePHI(taxn, nin, njn, lambdain, lambdajn, idi, idj, circles[idi].form, circles[idj].form, rhon, indexi);
+				etap = calculateEta(taxp, nip, njp, lambdaip, lambdajp, idi, idj, circles[idi].form, circles[idj].form, rhop).rotation;
+				etan = calculateEta(taxn, nin, njn, lambdain, lambdajn, idi, idj, circles[idi].form, circles[idj].form, rhon).rotation;
+				omegap = calculateOmega(taxp, nip, njp, idi, idj, circles[idi].form, circles[idj].form, rhop, indexi).rotation;
+				omegan = calculateOmega(taxn, nin, njn, idi, idj, circles[idi].form, circles[idj].form, rhon, indexi).rotation;
 				
 // 				printf("eta: %f %f\n",etap,etan);
 // 				printf("omega: %f %f\n",omegap,omegan);
@@ -2353,8 +2697,125 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 				if(abs(omega.drotation_dxl(i) - fd_domegaij_dxl_in(i)) > FDT && abs(omega.drotation_dxl(i) - fd_domegaij_dxl_out(i)) > FDT) printf("ERROR\n");//printf("DIVERGENCE\n");
 			}
 		}
+		
+		
+		
+		
+		
+		if(tessellationAxis.mode==ALIGNED){
+		//dphi_dxt
+		if(true){
+			al = torigin;
+			rl = tradius;
+			
+			
+			x=achi;
+			for(int j=0; j<3; ++j){
+				xp=x;
+				xp(j) = x(j) + FD;
+				xn=x;
+				xn(j) = x(j) - FD;
+				
+				
+				if(tessellationAxis.hemisphere==FRONTHEMISPHERE)
+					chip=calculateInterfaceNormal(al, xp, d);
+				else
+					chip=-calculateInterfaceNormal(al, xp, d);
+				
+				if(tessellationAxis.hemisphere==FRONTHEMISPHERE)
+					chin=calculateInterfaceNormal(al, xn, d);
+				else
+					chin=-calculateInterfaceNormal(al, xn, d);
+				
+				
+				if(g_chi<0){
+					chip=-chip;
+					chin=-chin;
+				}	
+				
+				
+				
+			if(indexi<0){
+				nip=chip;
+				nin=chin;
+				lambdaip.rotation = M_PI/2.0;
+				lambdain.rotation = M_PI/2.0;
+				
+			}
+			else{
+				ai = atoms[indexi];
+				ri = radii[indexi];
+				nip = calculateInterfaceNormal(al, ai, dip);
+				nin = calculateInterfaceNormal(al, ai, din);
+				lambdaip.rotation = calculateLambda(dip, rl, ri, nip).rotation;
+				lambdain.rotation = calculateLambda(din, rl, ri, nin).rotation;
+			}
+				
+				
+			if(indexj<0){
+				njp=chip;
+				njn=chin;
+				lambdajp.rotation = M_PI/2.0;
+				lambdajn.rotation = M_PI/2.0;
+			}
+			else{
+				aj = atoms[indexj];
+				rj = radii[indexj];
+				njp = calculateInterfaceNormal(al, aj, djp);
+				njn = calculateInterfaceNormal(al, aj, djn);
+				lambdajp.rotation = calculateLambda(djp, rl, rj, njp).rotation;
+				lambdajn.rotation = calculateLambda(djn, rl, rj, njn).rotation;
+			}
+				
+			
+			taxp.v=chip;
+			taxn.v=chin;
+			
+				
+// 				printf("XP: %f %f %f , %f %f %f\n",xp(0),xp(1),xp(2),xn(0),xn(1),xn(2));
+				
+				
+				
+				
+// 				printf("RHO: %f %f\n",rhop.rho, rhon.rho);
+				
+				
+				
+				rhop.rho = calculateRho(nip,njp);
+				rhon.rho = calculateRho(nin,njn);
+				
+				
+// 				printf("LAMBDA: %f %f %f %f\n",lambdaip.rotation,lambdain.rotation,lambdajp.rotation,lambdajp.rotation);
+				
+				
+				PHIp = calculatePHI(taxp, nip, njp, lambdaip, lambdajp, idi, idj, circles[idi].form, circles[idj].form, rhop, indexi);
+				PHIn = calculatePHI(taxn, nin, njn, lambdain, lambdajn, idi, idj, circles[idi].form, circles[idj].form, rhon, indexi);
+				etap = calculateEta(taxp, nip, njp, lambdaip, lambdajp, idi, idj, circles[idi].form, circles[idj].form, rhop).rotation;
+				etan = calculateEta(taxn, nin, njn, lambdain, lambdajn, idi, idj, circles[idi].form, circles[idj].form, rhon).rotation;
+				omegap = calculateOmega(taxp, nip, njp, idi, idj, circles[idi].form, circles[idj].form, rhop, indexi).rotation;
+				omegan = calculateOmega(taxn, nin, njn, idi, idj, circles[idi].form, circles[idj].form, rhon, indexi).rotation;
+				
+// 				printf("eta: %f %f\n",etap,etan);
+// 				printf("omega: %f %f\n",omegap,omegan);
+				
+				
+				fd_dPHIij_dxt_out(j) = (PHIp.out.rotation - PHIn.out.rotation) / (2*FD);
+				fd_dPHIij_dxt_in(j) = (PHIp.in.rotation - PHIn.in.rotation) / (2*FD);
+				fd_detaij_dxt_out(j) = (etap - etan) / (2*FD);
+				fd_detaij_dxt_in(j) = (etap - etan) / (2*FD);
+				fd_domegaij_dxt_out(j) = (omegap - omegan) / (2*FD);
+				fd_domegaij_dxt_in(j) = (omegap - omegan) / (2*FD);
+			}
+			printf("dPHIij_dxt: (%f %f %f) FD: (%f, %f, %f) FD: (%f %f %f)\n",PHI.drotation_dxt(0),PHI.drotation_dxt(1),PHI.drotation_dxt(2), fd_dPHIij_dxt_in(0), fd_dPHIij_dxt_in(1), fd_dPHIij_dxt_in(2), fd_dPHIij_dxt_out(0), fd_dPHIij_dxt_out(1), fd_dPHIij_dxt_out(2));
+			printf("detaij_dxt: (%f %f %f) FD: (%f, %f, %f) FD: (%f %f %f)\n",eta.drotation_dxt(0),eta.drotation_dxt(1),eta.drotation_dxt(2), fd_detaij_dxt_in(0), fd_detaij_dxt_in(1), fd_detaij_dxt_in(2), fd_detaij_dxt_out(0), fd_detaij_dxt_out(1), fd_detaij_dxt_out(2));
+			printf("domegaij_dxt: (%f %f %f) FD: (%f, %f, %f) FD: (%f %f %f)\n",omega.drotation_dxt(0),omega.drotation_dxt(1),omega.drotation_dxt(2), fd_domegaij_dxt_in(0), fd_domegaij_dxt_in(1), fd_domegaij_dxt_in(2), fd_domegaij_dxt_out(0), fd_domegaij_dxt_out(1), fd_domegaij_dxt_out(2));
+			for(int i=0; i<3; ++i){
+ 				if(abs(PHI.drotation_dxt(i) - fd_dPHIij_dxt_in(i)) > FDT && abs(PHI.drotation_dxt(i) - fd_dPHIij_dxt_out(i)) > FDT) printf("ERROR\n");//printf("DIVERGENCE\n");
+				if(abs(omega.drotation_dxt(i) - fd_domegaij_dxt_in(i)) > FDT && abs(omega.drotation_dxt(i) - fd_domegaij_dxt_out(i)) > FDT) printf("ERROR\n");//printf("DIVERGENCE\n");
+			}
+		}		
+		}
 	
-	*/
 	
 	
 	
@@ -2372,26 +2833,203 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 
 
 
-Rotation Tessellation::calculatePsi(Vector &tessellationAxis, CircularInterface &circle){
-	return calculatePsi(tessellationAxis, circle.normal, circle.dmu_dx, circle.form, circle.id-1);
+Rotation Tessellation::calculatePsi(TessellationAxis &tessellationAxis, CircularInterface &circle){
+	Rotation psi;
+	psi = calculatePsi(tessellationAxis, circle.normal, circle.dmu_dx, circle.form, circle.index);
+	
+	
+	//printf("TAX: (%f %f %f) %d [%d : %d] %d\n",tessellationAxis.v(0),tessellationAxis.v(1),tessellationAxis.v(2),tessellationAxis.hemisphere,tessellationAxis.index, circle.index, circle.form);
+	
+	/*
+	Vector ai,al,achi,x,mu,chi,v(3),chip,chin,xp,xn,mup,mun;
+	float d,pos,neg;
+	float r_i,r_l,r_chi,g_chi, g;
+	if(circle.form != SPLITTER){
+		if(tessellationAxis.mode==ALIGNED){
+			r_i = radii[circle.index];
+			r_l = tradius;
+			r_chi = radii[tessellationAxis.index];
+			
+			
+			
+			ai = atoms[circle.index];
+			al = torigin;
+			achi = atoms[tessellationAxis.index];
+			if(tessellationAxis.hemisphere==FRONTHEMISPHERE){
+				chi=calculateInterfaceNormal(al, achi, d);
+			}
+			else{
+				chi=-calculateInterfaceNormal(al, achi, d);
+			}
+			
+			g_chi = (d * d + r_l * r_l - r_chi * r_chi ) / (2 * d * r_l);
+
+			if(g_chi<0){
+				chi=-chi;
+			}
+			
+			
+			
+
+
+			//dxi
+			x=ai;
+			for(int j=0; j<3; ++j){
+				xp=x;
+				xp(j) = x(j) + FD;
+				xn=x;
+				xn(j) = x(j) - FD;
+				
+				mup=calculateInterfaceNormal(al, xp, d);
+				mun=calculateInterfaceNormal(al, xn, d);
+				
+				if(circle.form==CONCAVE){
+					mup=-mup;
+					mun=-mun;
+				}
+				
+				pos=acos(norm_dot(mup,chi));
+				neg=acos(norm_dot(mun,chi));
+				
+				v(j) = (pos - neg) / (2*FD);
+			}
+			
+			
+			printf("DXI: (%f %f %f) NUM: (%f %f %f)\n", psi.drotation_dxi(0), psi.drotation_dxi(1), psi.drotation_dxi(2), v(0), v(1), v(2));
+			for(int i=0; i<3; ++i){
+ 				if(abs(psi.drotation_dxi(i) - v(i)) > FDT){
+					printf("ERROR\n");
+					exit(-1);
+				}
+			}
+		
+			
+			
+			//dxl
+			x=al;
+			for(int j=0; j<3; ++j){
+				xp=x;
+				xp(j) = x(j) + FD;
+				xn=x;
+				xn(j) = x(j) - FD;
+				
+				mup=calculateInterfaceNormal(xp, ai, d);
+				mun=calculateInterfaceNormal(xn, ai, d);
+				
+				if(circle.form==CONCAVE){
+					mup=-mup;
+					mun=-mun;
+				}
+				
+				
+				if(tessellationAxis.hemisphere==FRONTHEMISPHERE)
+					chip=calculateInterfaceNormal(xp, achi, d);
+				else
+					chip=-calculateInterfaceNormal(xp, achi, d);
+				
+				if(tessellationAxis.hemisphere==FRONTHEMISPHERE)
+					chin=calculateInterfaceNormal(xn, achi, d);
+				else
+					chin=-calculateInterfaceNormal(xn, achi, d);
+				
+				if(g_chi<0){
+					chip=-chip;
+					chin=-chin;
+				}
+				
+				
+				
+				pos=acos(norm_dot(mup,chip));
+				neg=acos(norm_dot(mun,chin));
+				
+				v(j) = (pos - neg) / (2*FD);
+			}
+			
+			
+			printf("DXL: (%f %f %f) NUM: (%f %f %f)\n", psi.drotation_dxl(0), psi.drotation_dxl(1), psi.drotation_dxl(2), v(0), v(1), v(2));
+			for(int i=0; i<3; ++i){
+ 				if(abs(psi.drotation_dxl(i) - v(i)) > FDT){
+					printf("ERROR\n");
+					exit(-1);
+				}
+			}
+			
+			
+			
+			//dxchi
+			x=achi;
+			for(int j=0; j<3; ++j){
+				xp=x;
+				xp(j) = x(j) + FD;
+				xn=x;
+				xn(j) = x(j) - FD;
+				
+				
+				if(tessellationAxis.hemisphere==FRONTHEMISPHERE)
+					chip=calculateInterfaceNormal(al, xp, d);
+				else
+					chip=-calculateInterfaceNormal(al, xp, d);
+				
+				if(tessellationAxis.hemisphere==FRONTHEMISPHERE)
+					chin=calculateInterfaceNormal(al, xn, d);
+				else
+					chin=-calculateInterfaceNormal(al, xn, d);
+				
+				
+				if(g_chi<0){
+					chip=-chip;
+					chin=-chin;
+				}
+				
+				mup=calculateInterfaceNormal(al, ai, d);
+				mun=calculateInterfaceNormal(al, ai, d);
+				
+				if(circle.form==CONCAVE){
+					mup=-mup;
+					mun=-mun;
+				}
+				
+				
+				pos=acos(norm_dot(mup,chip));
+				neg=acos(norm_dot(mun,chin));
+				
+				v(j) = (pos - neg) / (2*FD);
+			}
+			
+			
+			printf("DXCHI: (%f %f %f) NUM: (%f %f %f)\n", psi.drotation_dxt(0), psi.drotation_dxt(1), psi.drotation_dxt(2), v(0), v(1), v(2));
+			for(int i=0; i<3; ++i){
+ 				if(abs(psi.drotation_dxt(i) - v(i)) > FDT){
+					printf("ERROR\n");
+					exit(-1);
+				}
+			}
+			
+		}
+	}
+	*/
+	
+	return psi;
 }
 
-Rotation Tessellation::calculatePsi(Vector &tessellationAxis, Vector &mu_i){
+Rotation Tessellation::calculatePsi(TessellationAxis &tessellationAxis, Vector &mu_i){
 	Matrix dmu_dx(3,3);
+	Matrix dchi_dx(3,3);
 	CircularInterfaceForm form;
 	int id;
 	
 	dmu_dx.zeros();
+	dchi_dx.zeros();
 	form = CONVEX;
 	id=0;
 	
-	return calculatePsi(tessellationAxis, mu_i, dmu_dx, form, id);
+	return calculatePsi(tessellationAxis, mu_i, dmu_dx,form, id);
 }
 
-Rotation Tessellation::calculatePsi(Vector &tessellationAxis, Vector &mu_i, Matrix &dmu_dx, CircularInterfaceForm form, int index){
+Rotation Tessellation::calculatePsi(TessellationAxis &tessellationAxis, Vector &mu_i, Matrix &dmu_dx, CircularInterfaceForm form, int index){
 	Vector dpsi_dmui;
 	Rotation r;
-	Vector dpsi_dxi, dpsi_dxl;
+	Vector dpsi_dxi, dpsi_dxl, dpsi_dchi, dpsi_dxchi;
 	
 	Vector n_i, nn_i;
 	Vector ey(3);
@@ -2410,43 +3048,105 @@ Rotation Tessellation::calculatePsi(Vector &tessellationAxis, Vector &mu_i, Matr
 	r.drotation_dxi = Vector(3).zeros();
 	r.drotation_dxj = Vector(3).zeros();
 	r.drotation_dxl = Vector(3).zeros();
+	r.drotation_dxt = Vector(3).zeros();
 	
-	r.rotation = getAngle(tessellationAxis,mu_i);
+	r.rotation = getAngle(tessellationAxis.v,mu_i);
 	
 
 	if(form != SPLITTER){
 		
 		
-		dot_mui_chi = dot(mu_i,tessellationAxis);
+		dot_mui_chi = dot(mu_i,tessellationAxis.v);
 
+		
+		if(tessellationAxis.mode==ALIGNED){
+			if(index==tessellationAxis.index){
+				dpsi_dmui = Vector(3).zeros();
+				dpsi_dxi = Vector(3).zeros();
+				dpsi_dxchi = Vector(3).zeros();
+				dpsi_dxl = Vector(3).zeros();
+			}
+			else{
+				
+				dpsi_dmui = -tessellationAxis.v/(sqrt(1-dot_mui_chi*dot_mui_chi));
+				dpsi_dchi = -mu_i/(sqrt(1-dot_mui_chi*dot_mui_chi));
+				
+				
+				
+				dpsi_dxi = (dpsi_dmui.t() * dmu_dx).t();
+				dpsi_dxchi = (dpsi_dchi.t() * tessellationAxis.dchi_dx).t();
+				//smoothing
+				//if(norm(dpsi_dxi,2)>1.0) dpsi_dxi = normalise(dpsi_dxi);
+				
+				dpsi_dxl = -dpsi_dxi-dpsi_dxchi;
+			}
 			
-		if(isWithinNumericalLimits(dot_mui_chi,1.0) || isWithinNumericalLimits(dot_mui_chi,-1.0)){
-			dpsi_dmui = Vector(3).zeros();
-			dpsi_dxi = Vector(3).zeros();
-			dpsi_dxl = Vector(3).zeros();
+			r.drotation_dxi = dpsi_dxi;
+			r.drotation_dxl = dpsi_dxl;
+			r.drotation_dxt = dpsi_dxchi;
+			
+			if(isnan(r.drotation_dxi(0)) || isnan(r.drotation_dxi(1)) || isnan(r.drotation_dxi(2))) printf("DXI IS NAN\n");
+			if(isnan(r.drotation_dxt(0)) || isnan(r.drotation_dxt(1)) || isnan(r.drotation_dxt(2))) printf("DXJ IS NAN\n");
+			if(isnan(r.drotation_dxl(0)) || isnan(r.drotation_dxl(1)) || isnan(r.drotation_dxl(2))) printf("DXL IS NAN\n");
+			
+			if(isnan(r.drotation_dxi(0)) || isnan(r.drotation_dxi(1)) || isnan(r.drotation_dxi(2)) ||
+			isnan(r.drotation_dxt(0)) || isnan(r.drotation_dxt(1)) || isnan(r.drotation_dxt(2)) || 
+			isnan(r.drotation_dxl(0)) || isnan(r.drotation_dxl(1)) || isnan(r.drotation_dxl(2))){
+				printf("TAX: %f %f %f\n",tessellationAxis.v(0),tessellationAxis.v(1),tessellationAxis.v(2));
+				printf("mui: %f %f %f\n",mu_i(0),mu_i(1),mu_i(2));
+				printf("dpsi_dmui: %f %f %f\n",dpsi_dmui(0),dpsi_dmui(1),dpsi_dmui(2));
+				printf("dpsi_dchi: %f %f %f\n",dpsi_dchi(0),dpsi_dchi(1),dpsi_dchi(2));
+				printf("index %d tax %d\n",index,tessellationAxis.index);
+			}
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+		
 		}
 		else{
 			
-			//if(mu_i(0) > 1.0-MINISCULE) mu_i(0) = 1.0-MINISCULE;
-			//if(mu_i(0) < -1.0+MINISCULE) mu_i(0) = -1.0+MINISCULE;
+			if(isWithinNumericalLimits(dot_mui_chi,1.0) || isWithinNumericalLimits(dot_mui_chi,-1.0)){
+				dpsi_dmui = Vector(3).zeros();
+				dpsi_dxi = Vector(3).zeros();
+				dpsi_dxl = Vector(3).zeros();
+			}
+			else{
+				
+				//if(mu_i(0) > 1.0-MINISCULE) mu_i(0) = 1.0-MINISCULE;
+				//if(mu_i(0) < -1.0+MINISCULE) mu_i(0) = -1.0+MINISCULE;
+				
+				if(dot_mui_chi > 1.0-MINISCULE) dot_mui_chi = 1.0-MINISCULE;
+				if(dot_mui_chi < -1.0+MINISCULE) dot_mui_chi = -1.0+MINISCULE;
+				
+				dpsi_dmui = -tessellationAxis.v/(sqrt(1-dot_mui_chi*dot_mui_chi));
+				
+				
+				dpsi_dxi = (dpsi_dmui.t() * dmu_dx).t();
+				//smoothing
+				//if(norm(dpsi_dxi,2)>1.0) dpsi_dxi = normalise(dpsi_dxi);
+				
+				dpsi_dxl = -dpsi_dxi;
+			}
 			
-			if(dot_mui_chi > 1.0-MINISCULE) dot_mui_chi = 1.0-MINISCULE;
-			if(dot_mui_chi < -1.0+MINISCULE) dot_mui_chi = -1.0+MINISCULE;
 			
-			dpsi_dmui = -tessellationAxis/(sqrt(1-dot_mui_chi*dot_mui_chi));
-			
-			
-			dpsi_dxi = (dpsi_dmui.t() * dmu_dx).t();
-			//smoothing
-			//if(norm(dpsi_dxi,2)>1.0) dpsi_dxi = normalise(dpsi_dxi);
-			
-			dpsi_dxl = -dpsi_dxi;
+			r.drotation_dxi = dpsi_dxi;
+			r.drotation_dxj = Vector(3).zeros();
+			r.drotation_dxl = dpsi_dxl;
 		}
-		
-		
-		r.drotation_dxi = dpsi_dxi;
-		r.drotation_dxj = Vector(3).zeros();
-		r.drotation_dxl = dpsi_dxl;
 	}
 	else{
 		//the splitter is immovable
@@ -2560,7 +3260,7 @@ void Tessellation::printIntersectionGraph(IntersectionGraph &g,CircularInterface
 }
 
 
-float Tessellation::V2PHI(Vector tessellationAxis, Hemisphere hemisphere, Vector v, Vector &normal, float g){
+float Tessellation::V2PHI(TessellationAxis &tessellationAxis, Hemisphere hemisphere, Vector v, Vector &normal, float g){
 	Vector ctsl;
 	Vector ncaux(3);
 	Vector nc(3);
@@ -2573,17 +3273,17 @@ float Tessellation::V2PHI(Vector tessellationAxis, Hemisphere hemisphere, Vector
 
 
 	
-	if(isWithinNumericalLimits(dot(tessellationAxis,normal),1.0)){
+	if(isWithinNumericalLimits(dot(tessellationAxis.v,normal),1.0)){
 		//printf("special treatment\n");
 		nc(0) = 0;
 		nc(1) = -1;
 		nc(2) = 0;
 		
-		ncaux=cross(nc,tessellationAxis);
+		ncaux=cross(nc,tessellationAxis.v);
 		
 	}
 	else{
-		ctsl=tessellationAxis-normal;
+		ctsl=tessellationAxis.v-normal;
 		ncaux = cross(ctsl,normal);
 		nc = cross(normal,ncaux);
 	}
@@ -2603,7 +3303,7 @@ float Tessellation::V2PHI(Vector tessellationAxis, Hemisphere hemisphere, Vector
 	
 }
 
-void Tessellation::convertExposedVectors2PHIValues(Vector &tessellationAxis, Hemisphere hemisphere, CircularInterface &circle){
+void Tessellation::convertExposedVectors2PHIValues(TessellationAxis &tessellationAxis, Hemisphere hemisphere, CircularInterface &circle){
 	for(unsigned int i=0; i<circle.exposedVectors.size(); ++i){
 		//if(circle.form==SPLITTER || dot(circle.exposedVectors[i], tessellationAxis)>=THRESHOLD_NUMERICAL)
 			circle.exposedPHI[hemisphere].push_back(V2PHI(tessellationAxis, hemisphere, circle.exposedVectors[i], circle.normal, circle.lambdaRotation.g));
@@ -2679,7 +3379,7 @@ float Tessellation::exposition(Hemisphere hemisphere, IntersectionBranches::iter
 
 
 
-void Tessellation::buildIntersectionGraph(float radius, Vector &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1){
+bool Tessellation::buildIntersectionGraph(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer){
 	SASASegment sasaSegment;
 	
 	unsigned int j;
@@ -2814,7 +3514,7 @@ void Tessellation::buildIntersectionGraph(float radius, Vector &tessellationAxis
 	for(unsigned int i=0; i < circles.size(); ++i){
 		I = &circles[i];
 		if(I->intersectionBranches.size()>0){
-			if(hasDepthBuffer) convertExposedVectors2PHIValues(tessellationAxis, hemisphere, *I);
+			if(hasDepthBuffer && useDepthBuffer) convertExposedVectors2PHIValues(tessellationAxis, hemisphere, *I);
 			for(it = I->intersectionBranches.begin(); it != I->intersectionBranches.end(); ++it){
 				if(it->second.direction==IN){
 					it2=increaseBranchInterator(it,*I);
@@ -2837,7 +3537,7 @@ void Tessellation::buildIntersectionGraph(float radius, Vector &tessellationAxis
 					seginfo.PHI0 = it->second.PHI;
 					seginfo.PHI1 = it2->second.PHI;
 					seginfo.visited=false;
-					if(hasDepthBuffer) seginfo.dist=exposition(hemisphere, it, it2, *I);
+					if(hasDepthBuffer && useDepthBuffer) seginfo.dist=exposition(hemisphere, it, it2, *I);
 					it_sl = segmentList.insert(segmentList.end(), seginfo);
 					
 					p.first=ps0;
@@ -2877,7 +3577,7 @@ void Tessellation::buildIntersectionGraph(float radius, Vector &tessellationAxis
 	
 	//create a vector of SASAs
 	segmentPointerLists.clear();
-	if(hasDepthBuffer){
+	if(hasDepthBuffer && useDepthBuffer){
 		for(it_sl=segmentList.begin(); it_sl!=segmentList.end(); ++it_sl){
 			segmentPointers.clear();
 			segmentSearchForward=true;
@@ -2939,6 +3639,80 @@ void Tessellation::buildIntersectionGraph(float radius, Vector &tessellationAxis
 		segmentPointerLists.push_back(segmentPointers);
 	}
 	
+
+	//We compare here to the previous tessellation
+	//if there are differences, we break calculation and redo without depthbuffer
+	set<FullSegmentID,SegmentSetComparator> segmentSet;
+	FullSegmentID segmentID;
+	if(hasDepthBuffer && useDepthBuffer){
+		//printf("NEW SEGMENTS: ");
+	
+		for(unsigned int i=0; i<segmentPointerLists.size(); ++i){
+			for(unsigned int j=0; j<segmentPointerLists[i].size(); ++j){
+				id0 = segmentPointerLists[i][j]->id0.i0;
+				id1 = segmentPointerLists[i][j]->id0.i1;
+				id2 = segmentPointerLists[i][j]->id1.i1;
+				
+				segmentID.i0 = circles[id0-1].index;
+				segmentID.i1 = circles[id1-1].index;
+				segmentID.i2 = circles[id2-1].index;
+				
+				//printf(" (%d %d %d) ",segmentID.i0,segmentID.i1,segmentID.i2);
+				
+				segmentSet.insert(segmentID);
+			}
+		}
+		
+		//printf("\n");
+		
+		//printf("OLD SEGMENTS: ");
+		
+		int ac=0;
+		int bc=0;
+		bool mismatch=false;
+		//now we check if the previous and current tessellation are equivalent
+		for(unsigned int i=0; i<prevSasasForMolecule[l].size(); ++i){
+			segmentID.i0=prevSasasForMolecule[l][i].index0;
+			segmentID.i1=prevSasasForMolecule[l][i].index1;
+			segmentID.i2=prevSasasForMolecule[l][i].index2;
+			
+			if(prevSasasForMolecule[l][i].hemisphere==hemisphere){
+			//printf(" (%d %d %d) ",segmentID.i0,segmentID.i1,segmentID.i2);
+			
+			if(segmentSet.find(segmentID)==segmentSet.end()){
+				//return false;		
+				//printf("%d ",l);
+				return false;
+				mismatch=true;
+				ac++;
+			}else bc++;
+			}
+		}
+		//printf("\n");
+		//printf("AC: %d %d\n", ac,bc);
+//if(mismatch) return false;
+	}
+	if(hasDepthBuffer && !useDepthBuffer){
+		//printf("REVISED SEGMENTS: ");
+		
+		for(unsigned int i=0; i<segmentPointerLists.size(); ++i){
+			for(unsigned int j=0; j<segmentPointerLists[i].size(); ++j){
+				id0 = segmentPointerLists[i][j]->id0.i0;
+				id1 = segmentPointerLists[i][j]->id0.i1;
+				id2 = segmentPointerLists[i][j]->id1.i1;
+				
+				segmentID.i0 = circles[id0-1].index;
+				segmentID.i1 = circles[id1-1].index;
+				segmentID.i2 = circles[id2-1].index;
+				
+				//printf(" (%d %d %d) ",segmentID.i0,segmentID.i1,segmentID.i2);
+				
+			}
+		}
+		//printf("\n");
+		
+	}
+	
 	
 				
 	for(unsigned int i=0; i<segmentPointerLists.size(); ++i){
@@ -2998,7 +3772,8 @@ void Tessellation::buildIntersectionGraph(float radius, Vector &tessellationAxis
 	
 
 
-
+	//indicating tessellation is complete
+	return true;
 
 
 	

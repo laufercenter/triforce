@@ -40,6 +40,7 @@ typedef struct
 Coordinate;
 
 typedef boost::multi_array<set<int>,3> Grid;
+typedef boost::multi_array<bool,3> DirtyGrid;
 
 
 class NeighbourList{
@@ -49,8 +50,9 @@ public:
 	
 	void addSphere(Vector &x, int id);
 	vector<int> getNeighbors(Vector &x);
-	void deleteSphere(Vector &x, int id);
-	
+	void deleteSphere(int id);
+	void update(vector<Vector> &atoms);
+	bool isDirty(unsigned int i);
 
 private:
 	Vector dim;
@@ -58,6 +60,8 @@ private:
 	VectorInt numCubes;
 	Vector origin;
 	float searchRadius;
+	vector<Coordinate> spheres;
+	vector<bool> dirty;
 	
 	Grid *cubicalGrid;
 

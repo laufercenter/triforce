@@ -42,7 +42,7 @@ typedef fmat Matrix;
 
 
 
-typedef boost::multi_array<float,1> Table1dDouble;
+typedef boost::multi_array<float,1> Table1dFloat;
 
 
 class Data1D{
@@ -70,9 +70,9 @@ public:
 	unsigned int parameter0Dim;
 	float minParameter0;
 	float cellLengthParameter0;
-	Table1dDouble *headerParameter0;
-	Table1dDouble *data;
-	Table1dDouble *auxiliary;
+	Table1dFloat *headerParameter0;
+	Table1dFloat *data;
+	Table1dFloat *auxiliary;
 	
 	bool containsAuxiliaryData;
 	

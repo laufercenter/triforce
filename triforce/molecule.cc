@@ -33,7 +33,7 @@ void Molecule::generateNeighbourList(){
 	maxRadius=0;
 	
 	//calculate grid dimensions and center
-	update();
+	updateAtomicPositions();
 	minPoint=maxPoint=atoms[0];
 	for(unsigned int i=0; i<atoms.size(); ++i){
 		v = atoms[i];
@@ -103,15 +103,28 @@ unsigned int Molecule::identifySpecies(float eps, float sig){
 
 
 Vector Molecule::getInternallyStoredAtomCoordinates(int i){
-	return atoms[i];
+	Vector v(3);
+	v(0) = static_cast<float>(realAtoms[i](0));
+	v(1) = static_cast<float>(realAtoms[i](1));
+	v(2) = static_cast<float>(realAtoms[i](2));
+	return v;
 }
 
 void Molecule::setInternallyStoredAtomCoordinates(int i, Vector &v){
-	atoms[i] = v;
+	VectorCoordinates w(3);
+	w(0) = static_cast<CoordinatesDT>(v(0));
+	w(1) = static_cast<CoordinatesDT>(v(1));
+	w(2) = static_cast<CoordinatesDT>(v(2));
+	realAtoms[i] = w;
 }
 
 void Molecule::perturbInternallyStoredAtomCoordinates(int i, Vector p){
-	atoms[i] = atoms[i] + p;
+	VectorCoordinates w(3);
+	w(0) = static_cast<CoordinatesDT>(p(0));
+	w(1) = static_cast<CoordinatesDT>(p(1));
+	w(2) = static_cast<CoordinatesDT>(p(2));
+	
+	realAtoms[i] = realAtoms[i] + w;
 }
 
 void Molecule::addInternallyStoredAtom(float x, float y, float z, string name, string type, int i){
@@ -248,13 +261,40 @@ void Molecule::addAtom(CoordinatesDT* x, CoordinatesDT* y, CoordinatesDT* z, Are
 
 
 
-void Molecule::update(){
+void Molecule::updateAtomicPositions(){
 	AtomicPointers c;
 	for(unsigned i=0; i<atomicPointers.size(); ++i){
 		c=atomicPointers[i];
 		atoms[i](0)=static_cast<float>(*c.x);
 		atoms[i](1)=static_cast<float>(*c.y);
 		atoms[i](2)=static_cast<float>(*c.z);
+	}
+}
+	
+void Molecule::update(){
+	updateAtomicPositions();
+	//neighbourList->update(atoms);
+}
+
+void Molecule::calculateClosestNeighbours(){
+	closestNeighbours=vector<int>(atoms.size(),-1);
+	vector<int> neighbourList;
+	float d_min,d;
+	int j_min;
+	Vector v;
+	for(unsigned int i=0; i<atoms.size(); ++i){
+		neighbourList=getNeighborListFor(i);
+		d_min=std::numeric_limits<float>::max();
+		j_min=-1;
+		for(unsigned int j=0; j<neighbourList.size(); ++j){
+			v = atoms[i]-neighbourList[j];
+			d = norm(v,2);
+			if(d<d_min){
+				d=d_min;
+				j_min=j;
+			}
+		}
+		closestNeighbours[i]=j_min;
 	}
 }
 
@@ -289,6 +329,9 @@ vector<float*> &Molecule::fetchNonpolarPointers(){
 	return nonpolarFreeEnergies;
 }
 
+vector<int> &Molecule::fetchClosestNeighbours(){
+	return closestNeighbours;
+}
 string Molecule::string2UpperCase(string s){
 	string str=s;
 	transform(str.begin(), str.end(),str.begin(), ::toupper);

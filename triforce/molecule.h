@@ -97,6 +97,7 @@ public:
 	void addAtom(CoordinatesDT* x, CoordinatesDT* y, CoordinatesDT* z, AreasDT* area, ForcesDT* forceX, ForcesDT* forceY, ForcesDT* forceZ, float eps, float sig, string name, int i=-1);
 	void addAtom(CoordinatesDT* x, CoordinatesDT* y, CoordinatesDT* z, AreasDT* area, ForcesDT* forceX, ForcesDT* forceY, ForcesDT* forceZ, float radius, float eps, float sig, string name, int i=-1);
 	void update();
+	void updateAtomicPositions();
 	void addInternallyStoredAtom(float x, float y, float z, string name, string type, int i=-1);
 	void addInternallyStoredAtom(float x, float y, float z, float radius, string name, int i=-1);
 	void addInternallyStoredAtom(float x, float y, float z, float eps, float sig, string name, int i=-1);
@@ -120,6 +121,8 @@ public:
 	vector<unsigned int> &fetchSpecies();
 	void generateNeighbourList();
 	vector<int> getNeighborListFor(int i);
+	vector<int> &fetchClosestNeighbours();
+	void calculateClosestNeighbours();
 	
 	
 private:
@@ -142,7 +145,7 @@ private:
 	vector<Source> source;
 	vector<string> names;
 	bool hasNeighbourList;
-	
+	vector<int> closestNeighbours;
 	
 	ForceField forcefield;
 	

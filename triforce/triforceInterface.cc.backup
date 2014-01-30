@@ -123,7 +123,6 @@ float TriforceInterface::calculateSurfaceArea(Molecule &mol){
 // 	t->outputTessellation(string("patches.csv"));
 	area = integrator->integrate(&mol, t);
 	tessellationBenchmark=t->getBenchmark();
-	delete(t);
 	
 	return area;
 }
@@ -148,7 +147,7 @@ void TriforceInterface::printBenchmark(FILE* outputfile){
 
 void TriforceInterface::minimise(Molecule &mol0, Molecule &mol1){
 	float area,area0,area1;
-	float step=0.001;
+	float step=0.1;
 	Tessellation *tref;
 	vector<vector<ForcesDT*> >forces;
 	Vector f(3);
@@ -163,17 +162,19 @@ void TriforceInterface::minimise(Molecule &mol0, Molecule &mol1){
 
 	
 	for(unsigned int s=0; s<10; ++s){
-		mol0.update();
 		t->update();
-		printf("BUILDING 0\n");
-	
 		t->build(true);
 		area0 = integrator->integrate(&mol0, t);
 		forces=mol0.fetchForcePointers();
 		
-		mol1.update();
+		for(unsigned int i=0; i<mol0.fetchCoordinates().size(); ++i){
+			f(0)=*(forces[i][0]);
+			f(1)=*(forces[i][1]);
+			f(2)=*(forces[i][2]);
+			f*=step;
+			mol0.perturbInternallyStoredAtomCoordinates(i,f);
+		}
 		tref = new Tessellation(mol1);
-		printf("BUILDING 1\n");
 		tref->build(true);
 		area1 = integrator->integrate(&mol1, tref);
 		
@@ -185,20 +186,8 @@ void TriforceInterface::minimise(Molecule &mol0, Molecule &mol1){
 			diff=*(areas0[i])- *(areas1[i]);
 			total=total+diff*diff;
 		}
-		total=sqrt(total);
+		total=sqrt(diff);
 		delete(tref);
-		
-		for(unsigned int i=0; i<mol0.fetchCoordinates().size(); ++i){
-			f(0)=*(forces[i][0]);
-			f(1)=*(forces[i][1]);
-			f(2)=*(forces[i][2]);
-			f*=-step;
-			mol0.perturbInternallyStoredAtomCoordinates(i,f);
-			Vector vec(3);
-			vec=mol0.getInternallyStoredAtomCoordinates(i);
-			mol1.setInternallyStoredAtomCoordinates(i,vec);
-		}
-		
 		
 		
 		printf("TOTAL DIFFERENCE: %f AREAS: %f %f\n",total,area0, area1);

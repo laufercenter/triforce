@@ -38,7 +38,7 @@ public:
 	TriforceInterface(string path, unsigned int buffer, unsigned int slack);
 	
 	float calculateSurfaceArea(Molecule &mol);
-	
+	void minimise(Molecule &mol0, Molecule &mol1);
 	Benchmark getBenchmark();
 	void printBenchmark(FILE* outputfile);
 	
@@ -80,9 +80,8 @@ private:
 	unsigned int buffer;
 	Benchmark benchmark;
 	Benchmark tessellationBenchmark;
-	
+	Tessellation *t;
 };
-
 
 
 

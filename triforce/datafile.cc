@@ -102,6 +102,7 @@ Data1D* DataFile::digest1DBinaryTable(){
 		for(unsigned int x=0; x<parameter0Dim; x++){
 			float v = charArray2Double(buffer+x*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 			tbl->setAuxiliaryCell(x,v);
+
 		}
 		
 		delete buffer;

@@ -52,8 +52,8 @@ using namespace arma;
 #define THRESHOLD_GENERAL_POSITION 0.025
 
 
-#define FD 0.01
-#define FDT 0.4
+#define FD 0.001
+#define FDT 0.01
 
 #define MINISCULE 0.0000001
 
@@ -61,6 +61,12 @@ using namespace arma;
 
 typedef fvec Vector;
 typedef Col<unsigned int> VectorInt;
+
+enum DerivativeMode{
+	GENERAL_POSITION,
+	ALIGNED
+};
+
 
 enum OcclusionState{
 	OCCLUDED,
@@ -109,6 +115,21 @@ typedef struct{
 }
 PartialSegmentID;
 
+typedef struct{
+	int i0;
+	int i1;
+	int i2;
+}
+FullSegmentID;
+
+typedef struct{
+	int index;
+	Vector v;
+	Matrix dchi_dx;
+	Hemisphere hemisphere;
+	DerivativeMode mode;
+}
+TessellationAxis;
 
 
 struct SegmentComparator: public std::binary_function<PartialSegmentID, PartialSegmentID, bool>
@@ -122,13 +143,28 @@ struct SegmentComparator: public std::binary_function<PartialSegmentID, PartialS
 	}
 };
 
-
+struct SegmentSetComparator: public std::binary_function<FullSegmentID, FullSegmentID, bool>
+{
+	bool operator()(const FullSegmentID& lhs, const FullSegmentID& rhs) const
+	{
+		if(lhs.i0 == rhs.i0){
+			if(lhs.i1==rhs.i1){
+				return lhs.i2 < rhs.i2;
+			}
+			else{
+				return lhs.i1 < rhs.i1;
+			}
+		}
+		else return lhs.i0 < rhs.i0;
+	}
+};
 typedef struct
 {
 	float rotation;
 	Vector drotation_dxi;
 	Vector drotation_dxj;
 	Vector drotation_dxl;
+	Vector drotation_dxt;
 }
 Rotation;
 
@@ -394,7 +430,7 @@ typedef struct
 	Vector normalForCircularInterface;
 	Rotation lambda;
 	Rotation psi;
-	Vector tessellationAxis;
+	TessellationAxis tessellationAxis;
 	Hemisphere hemisphere;
 	float depthBufferEstimatedArea;
 	float radius;
@@ -447,8 +483,9 @@ public:
 	Tessellation(Molecule &m);
 	Tessellation(Molecule &m, unsigned int numbBuffer, Depth3D &depthData, Data1D &occludedDistribution, Data1D &exposedDistribution);
 	
-	void build(bool split);
+	void build(bool useDepthBuffer);
 	SASAs &sasas();
+	void update();
 	
 	
 	Vector calculateInterfaceNormal(const Vector &v_l, const Vector &v_i);
@@ -456,28 +493,28 @@ public:
 	LambdaRotation calculateLambda(int index_i, float d_i, float r_l, float r_i, Vector &mu_i, CircularInterfaceForm &form);
 	Rotation calculateLambdaDerivatives(LambdaRotation &r, CircularInterface &circle);
 	LambdaRotation calculateLambda(float d_i, float r_l, float r_i, Vector &mu_i);
-	Rotation calculatePsi(Vector &tessellationAxis, Vector &mu_i, Matrix &dmu_dx, CircularInterfaceForm form, int index);
-	Rotation calculatePsi(Vector &tessellationAxis, Vector &mu_i);
+	Rotation calculatePsi(TessellationAxis &tessellationAxis, Vector &mu_i, Matrix &dmu_dx, CircularInterfaceForm form, int index);
+	Rotation calculatePsi(TessellationAxis &tessellationAxis, Vector &mu_i);
 	EtaRotation calculateEta(Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, RhoContainer &rhoContainer);
-	EtaRotation calculateEta(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, RhoContainer &rhoContainer);
+	EtaRotation calculateEta(TessellationAxis &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, RhoContainer &rhoContainer);
 	Rotation calculateEtaDerivatives(EtaRotation &r, CircularInterfacesPerAtom &circles);
-	OmegaRotation calculateOmega(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, RhoContainer &rhoContainer);
-	OmegaRotation calculateOmega(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, RhoContainer &rhoContainer);
-	Rotation calculateOmegaDerivatives(OmegaRotation &r, CircularInterfacesPerAtom &circles, Vector &tessellationAxis);
-	PHIContainer calculatePHI(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, RhoContainer &rhoContainer);
-	PHIContainer calculatePHI(Vector &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, RhoContainer &rhoContainer);
-	Rotation calculatePHIDerivatives(PHIRotation &r, CircularInterfacesPerAtom &circles, Vector &tessellationAxis);
+	OmegaRotation calculateOmega(TessellationAxis &tessellationAxis, Vector &mu_i, Vector &mu_j, RhoContainer &rhoContainer, int index_i);
+	OmegaRotation calculateOmega(TessellationAxis &tessellationAxis, Vector &mu_i, Vector &mu_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, RhoContainer &rhoContainer, int index_i);
+	Rotation calculateOmegaDerivatives(OmegaRotation &r, CircularInterfacesPerAtom &circles, TessellationAxis &tessellationAxis);
+	PHIContainer calculatePHI(TessellationAxis &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, RhoContainer &rhoContainer, int index_i);
+	PHIContainer calculatePHI(TessellationAxis &tessellationAxis, Vector &mu_i, Vector &mu_j, Rotation &lambda_i, Rotation &lambda_j, int id_i, int id_j, CircularInterfaceForm form_i, CircularInterfaceForm form_j, RhoContainer &rhoContainer, int index_i);
+	Rotation calculatePHIDerivatives(PHIRotation &r, CircularInterfacesPerAtom &circles, TessellationAxis &tessellationAxis);
 	float calculateRho(Vector &mu_i, Vector &mu_j);
 	float calculateRho(Vector &mu_i, Vector &mu_j, bool derivatives);
 	float sacos(Vector &a, Vector &b);
 	float sdot(Vector &a, Vector &b);
 	float l(Vector &a);
-	void calculateProjectionAndDerivatives(Vector &tessellationAxis, CircularInterface &circle);
+	void calculateProjectionAndDerivatives(TessellationAxis &tessellationAxis, CircularInterface &circle);
 	Benchmark getBenchmark();
 	void outputTessellation(string filename);
 // 	Vector generalPosition(CircularInterfacesPerAtom &circles);
 	
-	float V2PHI(Vector tessellationAxis, Hemisphere hemisphere, Vector v, Vector &normal, float g);
+	float V2PHI(TessellationAxis &tessellationAxis, Hemisphere hemisphere, Vector v, Vector &normal, float g);
 	float cot(float a);
 	float csc(float a);
 	float getAngleBetweenNormals(Vector &a, Vector &b);
@@ -510,7 +547,7 @@ private:
 	//#atoms #circularregions
 	//#atoms #sasas #circularregions
 	SASAs sasasForMolecule;
-	SegmentGraph segmentGraph[2];
+	SASAs prevSasasForMolecule;
 	bool hasDepthBuffer;
 	unsigned int numbBuffer;
 	Benchmark benchmark;
@@ -519,34 +556,35 @@ private:
 	int survivedInterfaces;
 
 
-	CircularInterfacesPerAtom coverHemisphere(Vector tessellationAxis, float radius, CircularInterfacesPerAtom circles, CircularInterfaceForm form);
-	void buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<float> &radii, SASAs &sasas, bool split, vector<int> &neighbourlist);
+	void setupTessellationAxis(TessellationAxis &tessellationAxis, Hemisphere hemisphere, int closestNeighbour, vector<Vector> &atoms, vector<float> &radii, Vector &origin, float radius, DerivativeMode dmode, CircularInterfacesPerAtom &circles);
+	CircularInterfacesPerAtom coverHemisphere(TessellationAxis &tessellationAxis, float radius, CircularInterfacesPerAtom circles, CircularInterfaceForm form);
+	void buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<float> &radii, SASAs &sasas, bool split, vector<int> &neighbourlist, int closestNeighbour, bool useDepthBuffer);
 	void determineProjection(Vector &origin, float radius, CircularInterface &circle);
 	IntersectionPair determineIntersectionPoints(float radius, CircularInterface &K, CircularInterface &J);
 	bool makeCircularInterfaces(int i,Vector &origin, float radius, vector<fvec> &atoms, vector<float> &radii, vector<CircularInterface> &circles, vector<int> &neighbourlist);
-	int filterCircularInterfaces(Vector tessellationAxis, float radius, vector<CircularInterface> &circles);
+	int filterCircularInterfaces(TessellationAxis &tessellationAxis, float radius, vector<CircularInterface> &circles);
 	void outputGaussBonnetPath(SASAs &points);
 	void reindexCircularInterfaces(CircularInterfacesPerAtom &circles);
-	void insertArtificialIntersectionPoints(CircularInterface &I, Vector &tessellationAxis, Hemisphere hemisphere, SASASegmentList &sasa);
+	void insertArtificialIntersectionPoints(CircularInterface &I, TessellationAxis &tessellationAxis, Hemisphere hemisphere, SASASegmentList &sasa);
 	void determineCircularIntersections(CircularInterfacesPerAtom &circles);
 	IntersectionBranches::iterator increaseBranchInterator(IntersectionBranches::iterator it, CircularInterface &circle);
 	IntersectionBranches::iterator decreaseBranchInterator(IntersectionBranches::iterator it, CircularInterface &circle);
 	void createIntersectionBranch(PHIContainer &PHII, CircularInterface &I, CircularInterface &J);
 	void printBranch(const char* s, multimap<float, IntersectionBranch>::iterator &it);
 	void printIntersectionGraph(IntersectionGraph &g, CircularInterfacesPerAtom &circles);
-	void buildIntersectionGraph(float radius, Vector &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1);
+	bool buildIntersectionGraph(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer);
 	void outputGaussBonnetData(string filename, float radius, CircularInterfacesPerAtom &circles, SASAs &sasas, IntersectionGraph &intersectionGraph);
-	void depleteCircularInterfaces(Vector tessellationAxis, float radius, vector<CircularInterface> &circles);
-	OmegaRotation calculateOmega(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J, RhoContainer &rhoContainer);
-	EtaRotation calculateEta(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J, RhoContainer &rhoContainer);
-	PHIContainer calculatePHI(Vector &tessellationAxis, CircularInterface &I, CircularInterface &J, float radius, RhoContainer &rhoContainer);
-	void determinePsiRotations(Vector &tessellationAxis, CircularInterfacesPerAtom &circles);
-	Rotation calculatePsi(Vector &tessellationAxis, CircularInterface &circle);
+	void depleteCircularInterfaces(TessellationAxis &tessellationAxis, float radius, vector<CircularInterface> &circles);
+	OmegaRotation calculateOmega(TessellationAxis &tessellationAxis, CircularInterface &I, CircularInterface &J, RhoContainer &rhoContainer);
+	EtaRotation calculateEta(TessellationAxis &tessellationAxis, CircularInterface &I, CircularInterface &J, RhoContainer &rhoContainer);
+	PHIContainer calculatePHI(TessellationAxis &tessellationAxis, CircularInterface &I, CircularInterface &J, float radius, RhoContainer &rhoContainer);
+	void determinePsiRotations(TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles);
+	Rotation calculatePsi(TessellationAxis &tessellationAxis, CircularInterface &circle);
 	Matrix matrixCross(Matrix &m, Vector &v);
 	Vector normalise(Vector x);
 	Vector normalise(Vector x, float &l);
 	void addLimitingInterface(LimitingInterface &limit, CircularInterfacesPerAtom &circles);
-	void convertExposedVectors2PHIValues(Vector &tessellationAxis,Hemisphere hemisphere, CircularInterface &circle);
+	void convertExposedVectors2PHIValues(TessellationAxis &tessellationAxis,Hemisphere hemisphere, CircularInterface &circle);
 	float exposition(Hemisphere hemisphere, IntersectionBranches::iterator it0, IntersectionBranches::iterator it1, CircularInterface &circle);
 
 

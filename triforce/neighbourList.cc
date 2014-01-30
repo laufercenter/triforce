@@ -31,6 +31,7 @@ NeighbourList::NeighbourList(Vector center, Vector dim, float searchRadius){
 void NeighbourList::addSphere(Vector &v, int id){
 	Vector c;
 	int x,y,z;
+	Coordinate C;
 	c = (v-origin) / searchRadius;
 	x=c(0);
 	y=c(1);
@@ -41,7 +42,19 @@ void NeighbourList::addSphere(Vector &v, int id){
 	
 	(*cubicalGrid)[x][y][z].insert(id);
 	
+	C.x=0;
+	C.y=0;
+	C.z=0;
+	if(spheres.size()<=id){
+		spheres.resize(id+1,C);
+		dirty.resize(id+1,false);
+	}
+		
+	C.x=x;
+	C.y=y;
+	C.z=z;
 	
+	spheres[id]=C;
 	
 }
 
@@ -83,18 +96,73 @@ vector<int> NeighbourList::getNeighbors(Vector &v){
 }
 
 
-void NeighbourList::deleteSphere(Vector &v, int id){
-	Vector c;
+void NeighbourList::deleteSphere(int id){
 	int x,y,z;
-	c = (v-origin) / searchRadius;
-	x=c(0);
-	y=c(1);
-	z=c(2);
+	Coordinate C;
+	C=spheres[id];
+	x=C.x;
+	y=C.y;
+	z=C.z;
 	(*cubicalGrid)[x][y][z].erase(id);
 	
 	
 	
 }
+
+
+
+void NeighbourList::update(vector<Vector> &atoms){
+	Coordinate C;
+	Vector c,v;
+	int x,y,z;
+	dirty.clear();
+	dirty.resize(atoms.size(),false);
+	for(unsigned int i=0; i<atoms.size(); ++i){
+		v=atoms[i];
+		c = (v-origin) / searchRadius;
+		x=c(0);
+		y=c(1);
+		z=c(2);
+		
+		C=spheres[i];
+		if(C.x!=x || C.y!=y || C.z!=z){
+			deleteSphere(i);
+			addSphere(v,i);
+			dirty[i]=true;
+		}
+		
+	}
+	
+}
+
+
+
+bool NeighbourList::isDirty(unsigned int i){
+	return dirty[i];
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
