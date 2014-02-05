@@ -24,10 +24,10 @@ TriforceInterface::TriforceInterface(string path, unsigned int buffer, unsigned 
 	surf2 = new Surface3D(dat2);
 	surf3 = new Surface3D(dat3);
 	
-	interpolator0 = new Interpolation(surf0,TAYLOR_QUADRATIC);
-	interpolator1 = new Interpolation(surf1,TAYLOR_QUADRATIC);
-	interpolator2 = new Interpolation(surf2,TAYLOR_QUADRATIC);
-	interpolator3 = new Interpolation(surf3,TAYLOR_QUADRATIC);
+	interpolator0 = new Interpolation(dat0,TAYLOR_LINEAR);
+	interpolator1 = new Interpolation(dat1,TAYLOR_LINEAR);
+	interpolator2 = new Interpolation(dat2,TAYLOR_LINEAR);
+	interpolator3 = new Interpolation(dat3,TAYLOR_LINEAR);
 	
 	interpolators.clear();
 	interpolators.push_back(interpolator0);
@@ -82,10 +82,10 @@ TriforceInterface::TriforceInterface(string path){
 	surf2 = new Surface3D(dat2);
 	surf3 = new Surface3D(dat3);
 	
-	interpolator0 = new Interpolation(surf0,TAYLOR_QUADRATIC);
-	interpolator1 = new Interpolation(surf1,TAYLOR_QUADRATIC);
-	interpolator2 = new Interpolation(surf2,TAYLOR_QUADRATIC);
-	interpolator3 = new Interpolation(surf3,TAYLOR_QUADRATIC);
+	interpolator0 = new Interpolation(dat0,TAYLOR_QUADRATIC);
+	interpolator1 = new Interpolation(dat1,TAYLOR_QUADRATIC);
+	interpolator2 = new Interpolation(dat2,TAYLOR_QUADRATIC);
+	interpolator3 = new Interpolation(dat3,TAYLOR_QUADRATIC);
 	
 	interpolators.clear();
 	interpolators.push_back(interpolator0);
@@ -147,7 +147,7 @@ void TriforceInterface::printBenchmark(FILE* outputfile){
 
 
 void TriforceInterface::minimise(Molecule &mol0, Molecule &mol1){
-	float area,area0,area1;
+	float area0,area1;
 	float step=0.001;
 	Tessellation *tref;
 	vector<vector<ForcesDT*> >forces;

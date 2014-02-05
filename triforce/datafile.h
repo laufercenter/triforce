@@ -42,6 +42,12 @@ enum DataFileType{
 };
 
 
+enum DataFileMode{
+	FloatDataFile,
+	VectorialDataFile
+};
+
+
 
 
 class DataFile{
@@ -50,8 +56,10 @@ public:
 	DataFile(string name);
 	
 	Data1D* digest1DBinaryTable();
-	Data3D* digest3DBinaryTable();
-	Data3D* digest6DBinaryTable();
+	Data3D<float>* digest3DBinaryTable();
+	Data3D<Vector>* digest3DBinaryVectorialTable();
+	
+	Data3D<float>* digest6DBinaryTable();
 	Topology *digestMapCSV();
 	Topology* digestTOP(TopologyMode topm);
 	Molecule *digestGRO(Topology &top, bool useHydrogens);
@@ -63,6 +71,18 @@ private:
 	
 	string name;
 	DataFileType type;
+	
+	unsigned int parameter0Dim;
+	unsigned int parameter1Dim;
+	unsigned int parameter2Dim;
+	unsigned int derivativeLevel, containsAuxiliaryData;
+	unsigned int dataDim;
+	Data3D<float> *tbl3Dfloat;
+	Data3D<Vector> *tbl3Dvectorial;
+	vector<unsigned int> dimensions;
+	fstream *f;
+	DataFileMode dfm;
+	unsigned int numberDimensions;
 	
 
 	float charArray2Double(char* data);
@@ -77,6 +97,16 @@ private:
 	vector<string>* split(string &s, char delimiter);
 	string string2UpperCase(string s);
 	string int2string(int d);
+	
+	
+	void readHeader3D();
+	void readHeaderData3D();
+	void readFloatData3D();
+	void readVectorialData3D();
+	void readGradients3D();
+	void readAuxiliaryFloatData3D();
+	void readAuxiliaryVectorialData3D();
+	
 
 };
 	

@@ -28,7 +28,7 @@ NeighbourList::NeighbourList(Vector center, Vector dim, float searchRadius){
 
 
 
-void NeighbourList::addSphere(Vector &v, int id){
+void NeighbourList::addSphere(Vector &v, unsigned int id){
 	Vector c;
 	int x,y,z;
 	Coordinate C;
@@ -96,7 +96,7 @@ vector<int> NeighbourList::getNeighbors(Vector &v){
 }
 
 
-void NeighbourList::deleteSphere(int id){
+void NeighbourList::deleteSphere(unsigned int id){
 	int x,y,z;
 	Coordinate C;
 	C=spheres[id];

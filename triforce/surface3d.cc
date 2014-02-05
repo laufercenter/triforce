@@ -13,7 +13,7 @@ using namespace boost;
 #define THRESHOLD_NUMERICAL 0.00001
 
 
-Surface3D::Surface3D(Data3D* d)
+Surface3D::Surface3D(Data3D<float>* d)
 {
 	parameter0Dim=d->parameter0Dim;
 	parameter1Dim=d->parameter1Dim;
@@ -42,9 +42,10 @@ void Surface3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r,
 	VectorInt v(3);
 	unsigned int discontinuity;
 	float vpsi,vlambda;
-	closestGridPoint(x, v, lengths);
+	Vector d;
+	closestGridPoint(x, v, d, lengths);
 	
-	//printf("CLOSEST GRIDPOINT: %d %d %d\n",v(0),v(1),v(2));
+	printf("CLOSEST GRIDPOINT: %d %d %d (%d %d %d)\n",v(0),v(1),v(2), parameter0Dim, parameter1Dim, parameter2Dim);
 	
 	if(v(0)>=parameter0Dim || v(1)>=parameter1Dim || v(2)>=parameter2Dim) return;
 	
@@ -61,7 +62,7 @@ void Surface3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r,
 	}
 	
 	
-	
+	int neg=0;
 	
 	//printf("DISCONTINUITY: %d\n",discontinuity);
 	
@@ -75,23 +76,27 @@ void Surface3D::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r,
 				v2(2)=v(2)+k;
 				//printf("v2: %d %d %d, par: %d %d %d, bool: %d\n",v2(0),v2(1),v2(2),parameter0Dim,parameter1Dim,parameter2Dim, v2(0)<parameter0Dim && v2(1)<parameter1Dim && v2(2)<parameter2Dim);
 				if(v2(0)<parameter0Dim && v2(1)<parameter1Dim && v2(2)<parameter2Dim){
+					r.push_back(v2);
+					continue;
 					if(!isnan((*data)[v2(0)][v2(1)][v2(2)])){
 						vpsi = (*headerParameter1)[v2(1)];
 						vlambda = (*headerParameter2)[v2(2)];
 						
 						if(discontinuity==0){
 							if(vpsi < vlambda) r.push_back(v2);
+								//printf("ACCEPTED");
 						}
 						else if(discontinuity==1){
 							if(vpsi >= vlambda && vpsi + vlambda < M_PI && !isWithinNumericalLimits(vpsi + vlambda,M_PI)) r.push_back(v2);
+								//printf("ACCEPTED");
 						}
 						else{
-							if(vpsi >= vlambda && vpsi + vlambda >= M_PI) r.push_back(v2);
+							if(vpsi >= vlambda && vpsi + vlambda >= M_PI){
+								r.push_back(v2);
+							//	printf("ACCEPTED");
+							}
+							//else	printf("REJECTED 0 %d %d %d (%f %f [%d/%d])\n",v2(0),v2(1),v2(2),(*headerParameter1)[v2(1)],(*headerParameter2)[v2(2)],neg,isWithinNumericalLimits((*headerParameter1)[v2(1)]+(*headerParameter2)[v2(2)],M_PI));
 						}
-							//printf("ACCEPTED %d %d %d (%f %f [%d/%d])\n",v2(0),v2(1),v2(2),(*headerParameter1)[v2(1)],(*headerParameter2)[v2(2)],neg,isWithinNumericalLimits((*headerParameter1)[v2(1)]+(*headerParameter2)[v2(2)],M_PI));
-						
-						//else	printf("REJECTED 0 %d %d %d (%f %f [%d/%d])\n",v2(0),v2(1),v2(2),(*headerParameter1)[v2(1)],(*headerParameter2)[v2(2)],neg,isWithinNumericalLimits((*headerParameter1)[v2(1)]+(*headerParameter2)[v2(2)],M_PI));
-
 					}
 					//else	printf("REJECTED 1 %d %d %d\n",v2(0),v2(1),v2(2));
 

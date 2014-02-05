@@ -18,7 +18,7 @@ using namespace boost;
 Depth3D::Depth3D(){
 }
 
-Depth3D::Depth3D(Data3D* d, int slack){
+Depth3D::Depth3D(Data3D<float>* d, int slack){
 	
 	parameter0Dim=d->parameter0Dim;
 	parameter1Dim=d->parameter1Dim;
@@ -92,6 +92,9 @@ void Depth3D::closestGridPoint(Vector &x, VectorInt &p, Vector &l){
 	p(2) = i_parameter2;
 }
 
+void Depth3D::closestGridPoint(Vector &x, VectorInt &p, Vector &d, Vector &l){
+	closestGridPoint(x,p,l);
+}
 
 
 

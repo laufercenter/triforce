@@ -52,11 +52,11 @@ protected:
 	DataFile *df5;
 	DataFile *df6;
 	
-	Data3D *dat0;
-	Data3D *dat1;
-	Data3D *dat2;
-	Data3D *dat3;
-	Data3D *dat4;
+	Data3D<float> *dat0;
+	Data3D<float> *dat1;
+	Data3D<float> *dat2;
+	Data3D<float> *dat3;
+	Data3D<float> *dat4;
 	Data1D *dat5;
 	Data1D *dat6;
 

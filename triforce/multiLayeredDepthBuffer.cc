@@ -57,7 +57,7 @@ MultiLayeredDepthBuffer::MultiLayeredDepthBuffer(Depth3D &data, Data1D &occluded
 	
 	gTable.resize(len,0);
 	for(unsigned int i=0; i<len; ++i){
-		g = data.getHeaderParameter0Cell(i);
+		g = data.getHeaderCell(0,i);
 		gTable[i] = sqrt(1-g*g);
 	}
 	
@@ -593,7 +593,7 @@ Vector MultiLayeredDepthBuffer::convertToCartesian(DepthBufferCoordinate &pr){
 	float kappa;
 	
 	i=pr.i;
-	g = data.getHeaderParameter0Cell(i);
+	g = data.getHeaderCell(0,i);
 	kappa=pr.kappa;
 	
 	h=gTable[i];

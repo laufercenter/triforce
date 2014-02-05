@@ -299,23 +299,6 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 	
 
 	
-	/*
-	v = randu<fvec>(3);
-	v(0) = v(0)-0.5;
-	v(1) = v(1)-0.5;
-	v(2) = v(2)-0.5;
-	frontTessellationAxis=v;
-	*/
-	
-	
-// 	frontTessellationAxis = frontTessellationAxis/norm(frontTessellationAxis,2);
-	
-	
-	
-
-
-// 	backTessellationAxis = -frontTessellationAxis;
-	SASASegmentList *newSasas;
 	
 	srand(2);
 	
@@ -406,8 +389,8 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 		
 		
 		//frontTessellationAxis = generalPosition(circles);
-		//DerivativeMode dmode=ALIGNED;
-		DerivativeMode dmode=GENERAL_POSITION;
+		DerivativeMode dmode=ALIGNED;
+		//DerivativeMode dmode=GENERAL_POSITION;
 		setupTessellationAxis(frontTessellationAxis, FRONTHEMISPHERE, closestNeighbour, atoms, radii, atoms[i], radii[i], dmode, circles);
 		setupTessellationAxis(backTessellationAxis, BACKHEMISPHERE, closestNeighbour, atoms, radii, atoms[i], radii[i], dmode, circles);
 			
@@ -453,14 +436,15 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 		}
 		else{
 			printf("not supported\n");
-			printf("DIVERGENCE\n");
-			
+			exit(-1);
+			/*
 			filterCircularInterfaces(frontTessellationAxis, radius, circles);
 			reindexCircularInterfaces(circles);
 			
 			determineCircularIntersections(circles);
 			
 			tessellationComplete=buildIntersectionGraph(i, radius, frontTessellationAxis, circles, *newSasas, FRONTHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer);
+			*/
 		}
 	}
 	
@@ -483,7 +467,7 @@ Vector Tessellation::generalPosition(CircularInterfacesPerAtom &circles){
 	y(1)=1;
 	y(2)=0;
 	
-	float d0,d1;
+	float d0;
 	Vector ni;
 	
 	Vector n(3);
@@ -1657,14 +1641,30 @@ Rotation Tessellation::calculateOmegaDerivatives(OmegaRotation &r, CircularInter
 	Matrix dmuj_dxj;
 	int id_i;
 	int id_j;
-	float s0,s2,s3;
+	float s0,s2;
 	float denominator;
 	Vector chi,chi1,chi2;
 	Vector vi,vij;
+	
+	Vector dextra_dniold, dextra_dni, extra_term_dxi, extra_term_dxl, extra_term_dxt, n2;
+	Matrix dniold_dvi, dviold_dmui;
+	bool extra;
+	Vector a0,a1,b0,b1,b2;
+	float dot_ni_niold,dot_n2_nij,dot_n2_ni;
+	int q0,q1;
+	float a_ni_nij, a_ni_niold;
+	float q2,q3,q4,q5;
+	
+	
+	
+	
+	
+	
+	
+	extra=false;
+	q2=q3=q4=q5=0;
+	
 	omega.rotation=r.rotation;
-	
-	
-	
 	omega.drotation_dxi = Vector(3).zeros();
 	omega.drotation_dxj = Vector(3).zeros();
 	omega.drotation_dxl = Vector(3).zeros();
@@ -1694,16 +1694,8 @@ Rotation Tessellation::calculateOmegaDerivatives(OmegaRotation &r, CircularInter
 	
 	
 	
-	Vector dextra_dniold, dextra_dni, extra_term_dxi, extra_term_dxl, extra_term_dxt, n2;
-	Matrix dniold_dvi, dviold_dmui;
-	bool extra=false;
-	Vector a0,a1,b0,b1,b2;
-	float dot_ni_niold,dot_n2_nij,dot_n2_ni;
-	int q0,q1;
-	float a_ni_nij, a_ni_niold;
-	float q2,q3,q4,q5;
 	if(abs(dot_ni_nij) >= 0.80 && circles[id_i].form!=SPLITTER && circles[id_j].form!=SPLITTER){
-		printf("TESSELLATION AXIS TRANSFORMATION %d %f %f\n", tessellationAxis.hemisphere, s0, s2);
+		//printf("TESSELLATION AXIS TRANSFORMATION %d %f %f\n", tessellationAxis.hemisphere, s0, s2);
 		extra=true;
 		dniold_dvi = (1.0/(di))*(Identity - kron(ni,ni.t())).t();
 		
@@ -1721,11 +1713,9 @@ Rotation Tessellation::calculateOmegaDerivatives(OmegaRotation &r, CircularInter
 		ni = normalise(cross(chi,mu_i),di);
 		dot_ni_nij=norm_dot(ni,nij);
 		
-		s3=1;
 		if(abs(dot(chi,mu_i))>0.90 || abs(dot_ni_nij)>0.80){
 			chi=cross(chi2,tessellationAxis.v);
-			printf("DOUBLE CROSS\n");
-			s3=-1;
+			//printf("DOUBLE CROSS\n");
 		}
 		
 		
@@ -2200,7 +2190,7 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 	
 	
 	
-	
+	/*
 	
 	printf("=====================================================================\n");
 	printf("TAX index: %d\n",tessellationAxis.index);
@@ -2817,7 +2807,7 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 		}
 	
 	
-	
+	*/
 	
 	
 	return PHI;
@@ -3669,7 +3659,6 @@ bool Tessellation::buildIntersectionGraph(int l, float radius, TessellationAxis 
 		
 		int ac=0;
 		int bc=0;
-		bool mismatch=false;
 		//now we check if the previous and current tessellation are equivalent
 		for(unsigned int i=0; i<prevSasasForMolecule[l].size(); ++i){
 			segmentID.i0=prevSasasForMolecule[l][i].index0;
@@ -3683,7 +3672,6 @@ bool Tessellation::buildIntersectionGraph(int l, float radius, TessellationAxis 
 				//return false;		
 				//printf("%d ",l);
 				return false;
-				mismatch=true;
 				ac++;
 			}else bc++;
 			}

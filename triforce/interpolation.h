@@ -45,16 +45,15 @@ class Interpolator{
 class Interpolation: public Interpolator{
 	
 public:
-	Interpolation(Data3D *data, TaylorTermination degree);
+	Interpolation(Data3D<float> *data, TaylorTermination degree);
 	float interpolate(Vector &x);
 
 	
 private:
-	Data3D *data;
+	Data3D<float> *data;
 	TaylorTermination degree;
 
 	float taylorExtension(VectorInt &r, Vector &x);
-	float taylorExtension(int i_PHI, int i_psi, int i_lambda, Vector &x);
 	vector<float> weights(vector<VectorInt> &sp, Vector &x, Vector &length);
 	float multiPointTaylor(Vector &x);
 	

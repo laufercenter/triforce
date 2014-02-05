@@ -48,9 +48,9 @@ class NeighbourList{
 public:
 	NeighbourList(Vector center, Vector dim, float searchRadius);
 	
-	void addSphere(Vector &x, int id);
+	void addSphere(Vector &x, unsigned int id);
 	vector<int> getNeighbors(Vector &x);
-	void deleteSphere(int id);
+	void deleteSphere(unsigned int id);
 	void update(vector<Vector> &atoms);
 	bool isDirty(unsigned int i);
 

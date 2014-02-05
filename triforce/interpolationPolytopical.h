@@ -15,21 +15,43 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#ifndef SURFACE3D_H_
-#define SURFACE3D_H_
+#ifndef INTERPOLATION_POLYTOPICAL_H_
+#define INTERPOLATION_POLYTOPICAL_H_
 
-#include "data3d.h"
+#include <string>
+#include <vector>
+#include <map>
+#include "surface3d.h"
+
+#include <armadillo>
 
 
-class Surface3D: public Data3D<float>{
+using namespace std;
+using namespace arma;
+
+
+
+class Interpolator{
+	virtual float interpolate(Vector &x)=0;
+};
+
+
+
+class InterpolationPolytopical: public Interpolator{
 	
 public:
-	Surface3D(Data3D<float>* d);
-	void surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Vector &lengths);
-	
+	InterpolationPolytopical(Data<float> *data, Data<Vector> *weights, unsigned int dim);
+	float interpolate(Vector &x);
+
 	
 private:
+	Data<float> *data;
+	Data<Vector> *weights;
+	unsigned int dim;
+
+	vector<VectorInt> getSupportNodes(Vector &d);
+	
 	
 };
 
-#endif //SURFACE3D_H_
+#endif //INTERPOLATION_POLYTOPICAL_H_

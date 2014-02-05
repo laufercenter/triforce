@@ -41,11 +41,11 @@ DepthInformation;
 
 
 
-class Depth3D: public Data3D{
+class Depth3D: public Data3D<float>{
 	
 public:
 	Depth3D();
-	Depth3D(Data3D* d, int slack);
+	Depth3D(Data3D<float>* d, int slack);
 	
 	
 	DepthInformation &getFloorScanlines(float kappa, float psi, float lambda, bool invert);
@@ -54,6 +54,7 @@ public:
 	int closestGridPoint(float x);
 	void closestGridPoint(Vector &x, VectorInt &p);
 	void closestGridPoint(Vector &x, VectorInt &p, Vector &l);
+	void closestGridPoint(Vector &x, VectorInt &p, Vector &d, Vector &l);
 	
 	
 private:

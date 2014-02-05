@@ -9,16 +9,13 @@ using namespace arma;
 
 
 
-Interpolation::Interpolation(Data3D *data, TaylorTermination degree){
+Interpolation::Interpolation(Data3D<float> *data, TaylorTermination degree){
 	this->data=data;
 	this->degree=degree;
 }
 
-float Interpolation::taylorExtension(VectorInt &r, Vector &x){
-	return taylorExtension(r(0),r(1),r(2),x);
-}
 
-float Interpolation::taylorExtension(int i_PHI, int i_psi, int i_lambda, Vector &x){
+float Interpolation::taylorExtension(VectorInt &r, Vector &x){
 	Vector p;
 	float f;
 	Vector g;
@@ -33,13 +30,13 @@ float Interpolation::taylorExtension(int i_PHI, int i_psi, int i_lambda, Vector 
 	if(degree==TAYLOR_QUADRATIC || degree==TAYLOR_CUBIC) quadratic=true;
 	if(degree==TAYLOR_CUBIC) cubic=true;
 	
-	p = data->getHeaderVector(i_PHI,i_psi, i_lambda);
-	f = data->getDataCell(i_PHI,i_psi, i_lambda);
+	p = data->getHeaderVector(r);
+	f = data->getDataCell(r);
 	
 	if(quadratic)
-		g = data->getGradient(i_PHI,i_psi, i_lambda);
+		g = data->getGradient(r);
 	if(cubic)
-		h = data->getHessian(i_PHI,i_psi, i_lambda);
+		h = data->getHessian(r);
 	
 	if(quadratic){
 		d =(x-p);
@@ -72,7 +69,7 @@ vector<float> Interpolation::weights(vector<VectorInt> &sp, Vector &x, Vector &l
 	
 	//printf("stddist: %f, %f, %f\n",stddist(0),stddist(1),stddist(2));
 	for(unsigned int i=0;i<sp.size();++i){
-		p = data->getHeaderVector(sp[i](0),sp[i](1),sp[i](2));
+		p = data->getHeaderVector(sp[i]);
 		for(unsigned int j=0;j<3;++j)
 			d(j)=(fabs(p(j)-x(j)) / lengths(j));
 		w = 1.0-max(d(0),max(d(1),d(2)));
@@ -105,8 +102,6 @@ float Interpolation::multiPointTaylor(Vector &x){
 	vector<float> w;
 	float v=0;
 	Vector lengths(3);
-	float closestSPWeight;
-	int closestSP;
 	
 	
 	data->surroundingPointsAndCellLengths(x,sp,lengths);
@@ -119,8 +114,6 @@ float Interpolation::multiPointTaylor(Vector &x){
 	}
 		
 	w = weights(sp,x,lengths);
-	closestSP = -1;
-	closestSPWeight = 0;
 	for(unsigned int i=0;i<sp.size();i++){
 		//data->printDataCell(sp[i](0),sp[i](1),sp[i](2));
 		//data->printGradientCell(sp[i](0),sp[i](1),sp[i](2));
@@ -131,11 +124,8 @@ float Interpolation::multiPointTaylor(Vector &x){
 		//printf("taylor %d: %f [%f]\n",i,t,w[i]);
 		v+=w[i]*t;
 		
-		if(w[i] >= closestSPWeight)
-			closestSP = i;
 	}
 	
-	//phi = data->getAuxiliaryCell(sp[closestSP](0),sp[closestSP](1),sp[closestSP](2));
 	
 	
 	/*

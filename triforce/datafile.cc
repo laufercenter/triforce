@@ -116,48 +116,35 @@ Data1D* DataFile::digest1DBinaryTable(){
 }	
 
 
-
-
-
-Data3D* DataFile::digest3DBinaryTable(){
+void DataFile::readHeader3D(){
 	unsigned char buffer0[4];
 	unsigned char buffer1[1];
-	unsigned char buffer2[8];
-	char *buffer;
-	unsigned int numberDimensions;
-	vector<float> tmp;
-	Data3D *tbl;
-	vector<unsigned int> dimensions;
-	unsigned int totalCells;
-	unsigned int parameter0Dim;
-	unsigned int parameter1Dim;
-	unsigned int parameter2Dim;
-	unsigned int derivativeLevel, containsphiValues;
+	unsigned char buffer2[9];
 	
 	//printf("digesting...\n");
 	
-	fstream f(name.c_str(),ios::binary|ios::in);
+	f = new fstream(name.c_str(),ios::binary|ios::in);
 	
 	//first 4 bytes should be "NILS" : 78, 73, 76, 83
-	f.read((char*)buffer0,4);
+	f->read((char*)buffer0,4);
 	if(buffer0[0] != 78 || buffer0[1] != 73 || buffer0[2] != 76 || buffer0[3] != 83) exit(-1);
 
 	//level of derivatives
-	f.read((char*)buffer1,1);
+	f->read((char*)buffer1,1);
 	derivativeLevel = static_cast<unsigned int>(buffer1[0]);
 
 	//contains phi values
-	f.read((char*)buffer1,1);
-	containsphiValues = static_cast<unsigned int>(buffer1[0]);
+	f->read((char*)buffer1,1);
+	containsAuxiliaryData = static_cast<unsigned int>(buffer1[0]);
 	
 	//this byte gives number of dimensions (should be 3)
-	f.read((char*)buffer1,1);
+	f->read((char*)buffer1,1);
 	numberDimensions = static_cast<unsigned int>(buffer1[0]);
 	if(numberDimensions!=3) exit(-1);
 	
 	//read headers
 	//header for PHI
-	f.read((char*)buffer2,6);
+	f->read((char*)buffer2,7);
 	//zeroth byte is how many dimensions the PHI header has. should be 1
 	//first byte is number of PHI entries
 	parameter0Dim = static_cast<unsigned int>(buffer2[1]);
@@ -167,64 +154,131 @@ Data3D* DataFile::digest3DBinaryTable(){
 	//5th byte is number of lambda entries
 	parameter1Dim = static_cast<unsigned int>(buffer2[3]);
 	parameter2Dim = static_cast<unsigned int>(buffer2[5]);
+	//6th byte is number of data dimensions
+	dataDim = static_cast<unsigned int>(buffer2[6]);	
 	
+}
 
-	
-	//printf("dimensions: %d, rows in header: %d, maxdim: %d\n",numberDimensions,nrowsHeader,maxdim); 
-	
-	tbl = new Data3D(parameter0Dim, parameter1Dim, parameter2Dim, derivativeLevel, containsphiValues);
+
+void DataFile::readHeaderData3D(){
+	char *buffer;
 	
 	//read PHI header
 	buffer=new char[parameter0Dim*BINARY_DATA_BLOCK_SIZE_DOUBLE];
-	f.read(buffer,parameter0Dim*BINARY_DATA_BLOCK_SIZE_DOUBLE);
+	f->read(buffer,parameter0Dim*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 	for(unsigned int i=0; i<parameter0Dim; i++){
 		float v = charArray2Double(buffer+i*BINARY_DATA_BLOCK_SIZE_DOUBLE);
-		tbl->setHeaderParameter0Cell(i,v);
+		switch(dfm){
+			case FloatDataFile: tbl3Dfloat->setHeaderCell(0,i,v);break;
+			case VectorialDataFile: tbl3Dvectorial->setHeaderCell(0,i,v);break;
+		}
 	}
 	delete buffer;
 	//read psi header
 	buffer=new char[parameter1Dim*BINARY_DATA_BLOCK_SIZE_DOUBLE];
-	f.read(buffer,parameter1Dim*BINARY_DATA_BLOCK_SIZE_DOUBLE);
+	f->read(buffer,parameter1Dim*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 	for(unsigned int i=0; i<parameter1Dim; i++){
 		float v = charArray2Double(buffer+i*BINARY_DATA_BLOCK_SIZE_DOUBLE);
-		tbl->setHeaderParameter1Cell(i,v);
+		switch(dfm){
+			case FloatDataFile: tbl3Dfloat->setHeaderCell(1,i,v);break;
+			case VectorialDataFile: tbl3Dvectorial->setHeaderCell(1,i,v);break;
+		}
 	}
 	delete buffer;
 	//read lambda header
 	buffer=new char[parameter2Dim*BINARY_DATA_BLOCK_SIZE_DOUBLE];
-	f.read(buffer,parameter2Dim*BINARY_DATA_BLOCK_SIZE_DOUBLE);
+	f->read(buffer,parameter2Dim*BINARY_DATA_BLOCK_SIZE_DOUBLE);
 	for(unsigned int i=0; i<parameter2Dim; i++){
 		float v = charArray2Double(buffer+i*BINARY_DATA_BLOCK_SIZE_DOUBLE);
-		tbl->setHeaderParameter2Cell(i,v);
+		switch(dfm){
+			case FloatDataFile: tbl3Dfloat->setHeaderCell(2,i,v);break;
+			case VectorialDataFile: tbl3Dvectorial->setHeaderCell(2,i,v);break;
+		}
 	}
 	delete buffer;
+}
+
+
+void DataFile::readFloatData3D(){
+	char *buffer;
+	unsigned int totalCells;
+	VectorInt p(3);
 	
 	//read data
 	totalCells = parameter0Dim*parameter1Dim*parameter2Dim;
 	buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE];
-	f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE);
-	for(unsigned int z=0; z<parameter2Dim; z++)
-		for(unsigned int y=0; y<parameter1Dim; y++)
+	f->read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE);
+	for(unsigned int z=0; z<parameter2Dim; z++){
+		p(2)=z;
+		for(unsigned int y=0; y<parameter1Dim; y++){
+			p(1)=y;
 			for(unsigned int x=0; x<parameter0Dim; x++){
+				p(0)=x;
 				float v = charArray2Double(buffer+((z*parameter1Dim+y)*parameter0Dim+x)*BINARY_DATA_BLOCK_SIZE_DOUBLE);
-				tbl->setDataCell(x,y,z,v);
+				tbl3Dfloat->setDataCell(p,v);
 			}
+		}
+	}
 	
 	delete buffer;
+}
+
+
+void DataFile::readVectorialData3D(){
+	char *buffer;
+	unsigned int totalCells;
+	Vector v;
+	VectorInt p(3);
+	v=Vector(dataDim);
 	
+	//read data
+	totalCells = parameter0Dim*parameter1Dim*parameter2Dim*dataDim;
+	buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE];
+	f->read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE);
+	for(unsigned int z=0; z<parameter2Dim; z++){
+		p(2)=z;
+		for(unsigned int y=0; y<parameter1Dim; y++){
+			p(1)=y;
+			for(unsigned int x=0; x<parameter0Dim; x++){
+				p(0)=x;
+				for(unsigned int i=0; i<dataDim; i++){
+					v(i) = charArray2Double(buffer+(((z*parameter1Dim+y)*parameter0Dim+x)*dataDim+i)*BINARY_DATA_BLOCK_SIZE_DOUBLE);
+				}
+				tbl3Dvectorial->setDataCell(p,v);
+			}
+		}
+	}
+	
+	delete buffer;
+}
+
+
+void DataFile::readGradients3D(){
+	char *buffer;
+	unsigned int totalCells;
+	VectorInt p(3);
 	
 	if(derivativeLevel>=2){
 		//read gradients
 		totalCells = parameter0Dim*parameter1Dim*parameter2Dim*3;
 		buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE];
-		f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE);
-		for(unsigned int z=0; z<parameter2Dim; z++)
-			for(unsigned int y=0; y<parameter1Dim; y++)
-				for(unsigned int x=0; x<parameter0Dim; x++)
+		f->read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE);
+		for(unsigned int z=0; z<parameter2Dim; z++){
+			p(2)=z;
+			for(unsigned int y=0; y<parameter1Dim; y++){
+				p(1)=y;
+				for(unsigned int x=0; x<parameter0Dim; x++){
+					p(0)=x;
 					for(unsigned int i=0; i<3; i++){
 						float v = charArray2Double(buffer+(((z*parameter1Dim+y)*parameter0Dim+x)*3+i)*BINARY_DATA_BLOCK_SIZE_DOUBLE);
-						tbl->setGradientCell(x,y,z,i,v);
+						switch(dfm){
+							case FloatDataFile: tbl3Dfloat->setGradientCell(p,i,v);break;
+							case VectorialDataFile: tbl3Dvectorial->setGradientCell(p,i,v);break;
+						}
 					}
+				}
+			}
+		}
 		
 		delete buffer;
 	}
@@ -233,42 +287,131 @@ Data3D* DataFile::digest3DBinaryTable(){
 		//read hessians
 		totalCells = parameter0Dim*parameter1Dim*parameter2Dim*3*3;
 		buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE];
-		f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE);
-		for(unsigned int z=0; z<parameter2Dim; z++)
-			for(unsigned int y=0; y<parameter1Dim; y++)
-				for(unsigned int x=0; x<parameter0Dim; x++)
-					for(unsigned int j=0; j<3; j++)
+		f->read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE);
+		for(unsigned int z=0; z<parameter2Dim; z++){
+			p(2)=z;
+			for(unsigned int y=0; y<parameter1Dim; y++){
+				p(1)=y;
+				for(unsigned int x=0; x<parameter0Dim; x++){
+					p(0)=x;
+					for(unsigned int j=0; j<3; j++){
 						for(unsigned int i=0; i<3; i++){
 							float v = charArray2Double(buffer+((((z*parameter1Dim+y)*parameter0Dim+x)*3+j)*3+i)*BINARY_DATA_BLOCK_SIZE_DOUBLE);
-							tbl->setHessianCell(x,y,z,j,i,v);
+							switch(dfm){
+								case FloatDataFile: tbl3Dfloat->setHessianCell(p,j,i,v);break;
+								case VectorialDataFile: tbl3Dvectorial->setHessianCell(p,j,i,v);break;
+							}
 						}
+					}
+				}
+			}
+		}
 		
 		delete buffer;
 	}
+}
+
+
+
+void DataFile::readAuxiliaryFloatData3D(){
+	char *buffer;
+	unsigned int totalCells;
+	VectorInt p(3);
 	
-	if(containsphiValues == 1){
+	if(containsAuxiliaryData == 1){
 		//read phi
 		totalCells = parameter0Dim*parameter1Dim*parameter2Dim;
 		buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE];
-		f.read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE);
-		for(unsigned int z=0; z<parameter2Dim; z++)
-			for(unsigned int y=0; y<parameter1Dim; y++)
+		f->read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE);
+		for(unsigned int z=0; z<parameter2Dim; z++){
+			p(2)=z;
+			for(unsigned int y=0; y<parameter1Dim; y++){
+				p(1)=y;
 				for(unsigned int x=0; x<parameter0Dim; x++){
+					p(0)=x;
 					float v = charArray2Double(buffer+((z*parameter1Dim+y)*parameter0Dim+x)*BINARY_DATA_BLOCK_SIZE_DOUBLE);
-					tbl->setAuxiliaryCell(x,y,z,v);
+					tbl3Dfloat->setAuxiliaryCell(p,v);break;
 				}
+			}
+		}
 		
 		delete buffer;
+	}	
+	
+}
+
+
+
+void DataFile::readAuxiliaryVectorialData3D(){
+	char *buffer;
+	unsigned int totalCells;
+	Vector v;
+	VectorInt p(3);
+	v=Vector(dataDim);
+	
+	//read data
+	totalCells = parameter0Dim*parameter1Dim*parameter2Dim*dataDim;
+	buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE];
+	f->read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE);
+	for(unsigned int z=0; z<parameter2Dim; z++){
+		p(2)=z;
+		for(unsigned int y=0; y<parameter1Dim; y++){
+			p(1)=y;
+			for(unsigned int x=0; x<parameter0Dim; x++){
+				p(0)=x;
+				for(unsigned int i=0; i<dataDim; i++){
+					v(i) = charArray2Double(buffer+(((z*parameter1Dim+y)*parameter0Dim+x)*dataDim+i)*BINARY_DATA_BLOCK_SIZE_DOUBLE);
+				}
+				tbl3Dvectorial->setAuxiliaryCell(p,v);
+			}
+		}
 	}
 	
+	delete buffer;
+}
+
+Data3D<float>* DataFile::digest3DBinaryTable(){
+	vector<float> tmp;
+	vector<unsigned int> dimensions;
+	VectorInt p(3);
 	
+	dfm=FloatDataFile;
+	readHeader3D();
+	p(0) = parameter0Dim;
+	p(1) = parameter1Dim;
+	p(2) = parameter2Dim;
+	tbl3Dfloat = new Data3D<float>(p, derivativeLevel, containsAuxiliaryData);
+	readHeaderData3D();
+	readFloatData3D();
+	readGradients3D();
+	readAuxiliaryFloatData3D();
 	
-	tbl->init();
+	tbl3Dfloat->init();
 	
 
-	return tbl;
+	return tbl3Dfloat;
 }	
 
+
+Data3D<Vector>* DataFile::digest3DBinaryVectorialTable(){
+	vector<float> tmp;
+	VectorInt p(3);
+	dfm=VectorialDataFile;
+	readHeader3D();
+	p(0) = parameter0Dim;
+	p(1) = parameter1Dim;
+	p(2) = parameter2Dim;
+	tbl3Dvectorial = new Data3D<Vector>(p, derivativeLevel, containsAuxiliaryData);
+	readHeaderData3D();
+	readVectorialData3D();
+	readGradients3D();
+	readAuxiliaryVectorialData3D();
+	
+	tbl3Dvectorial->init();
+	
+
+	return tbl3Dvectorial;
+}	
 
 
 
@@ -290,7 +433,7 @@ Data6D* DataFile::digest6DBinaryTable(){
 	unsigned int parameter3Dim;
 	unsigned int parameter4Dim;
 	unsigned int parameter5Dim;
-	unsigned int derivativeLevel, containsphiValues;
+	unsigned int derivativeLevel, containsAuxiliaryData;
 	
 	//printf("digesting...\n");
 	
@@ -306,7 +449,7 @@ Data6D* DataFile::digest6DBinaryTable(){
 
 	//contains phi values (should be 0)
 	f.read((char*)buffer1,1);
-	containsphiValues = static_cast<unsigned int>(buffer1[0]);
+	containsAuxiliaryData = static_cast<unsigned int>(buffer1[0]);
 	
 	//this byte gives number of dimensions (should be 6)
 	f.read((char*)buffer1,1);
