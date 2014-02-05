@@ -35,16 +35,16 @@ lib armadillo : : <search>$(LIBRARIES_SEARCH_DIRECTORIES) ;
 
 
 
-project triforce-config : requirements <include>$(INCLUDES) <variant>double ;
+#project triforce-config : requirements <include>$(INCLUDES) <variant>double ;
+project triforce-config : requirements <include>$(INCLUDES) ;
 
 SOURCES = 
 tessellation.cc
-data3d.cc
 data1d.cc
-surface3d.cc
 datafile.cc
 molecule.cc
 interpolation.cc
+interpolationPolytopical.cc
 topology.cc
 integrator.cc
 integratorNumerical.cc
@@ -57,12 +57,13 @@ depth3d.cc ;
 
 HEADERS = 
 tessellation.h
+data.h
 data3d.h
 data1d.h
-surface3d.h
 datafile.h
 molecule.h
 interpolation.h
+interpolationPolytopical.h
 topology.h
 integrator.h
 integratorNumerical.h
