@@ -154,6 +154,7 @@ void Molecule::addInternallyStoredAtom(float x, float y, float z, float radius, 
 	realAtoms[i](1)=y;
 	realAtoms[i](2)=z;
 	
+	radius=0.5*radius+1.4;
 	
 	addAtom(&realAtoms[i](0),&realAtoms[i](1),&realAtoms[i](2),&realArea[realArea.size()-1],&realForceX[realForceX.size()-1],&realForceY[realForceY.size()-1],&realForceZ[realForceZ.size()-1], radius, eps, sig, name,i);
 	
@@ -244,7 +245,7 @@ void Molecule::addAtom(CoordinatesDT* x, CoordinatesDT* y, CoordinatesDT* z, Are
 	}
 		
 	atomicPointers[i]=c;
-	radii[i]=0.5*radius+1.4;
+	radii[i]=radius;
 	
 	//sea water modifications
 	epsilons[i]=sqrt(eps);
@@ -273,7 +274,7 @@ void Molecule::updateAtomicPositions(){
 	
 void Molecule::update(){
 	updateAtomicPositions();
-	//neighbourList->update(atoms);
+	neighbourList->update(atoms);
 }
 
 void Molecule::calculateClosestNeighbours(){
@@ -287,11 +288,13 @@ void Molecule::calculateClosestNeighbours(){
 		d_min=std::numeric_limits<float>::max();
 		j_min=-1;
 		for(unsigned int j=0; j<neighbourList.size(); ++j){
-			v = atoms[i]-neighbourList[j];
-			d = norm(v,2);
-			if(d<d_min){
-				d=d_min;
-				j_min=j;
+			if(i!=j){
+				v = atoms[i]-atoms[neighbourList[j]];
+				d = norm(v,2);
+				if(d<d_min){
+					d=d_min;
+					j_min=j;
+				}
 			}
 		}
 		closestNeighbours[i]=j_min;
