@@ -21,11 +21,12 @@
 #include <string>
 #include <vector>
 #include <map>
-#include "surface3d.h"
-
+#include "data.h"
 #include <armadillo>
 
+#define PURE =0
 
+class tm;
 using namespace std;
 using namespace arma;
 
@@ -37,25 +38,45 @@ enum TaylorTermination{
 };
 
 class Interpolator{
-	virtual float interpolate(Vector &x)=0;
+public:
+	virtual float interpolate(Vector &x) PURE;
+	vector<VectorInt> &fetchSupportNodes(){return sp;}
+	Vector &fetchWeights(){return w;};
+	virtual Vector &fetchAuxiliaryFloat(unsigned int i){return tmp0;}
+	virtual VectorInt &fetchAuxiliaryInt(unsigned int i){return tmp1;}
+	
+protected:
+	Interpolator *daisyChain;
+	bool daisyChained;
+	vector<VectorInt> sp;
+	Vector w;
+	Vector tmp0;
+	VectorInt tmp1;
 };
+
 
 
 
 class Interpolation: public Interpolator{
 	
 public:
-	Interpolation(Data3D<float> *data, TaylorTermination degree);
+	Interpolation(Data<float> *data, TaylorTermination degree);
+	Interpolation(Data<float> *data, TaylorTermination degree, Interpolator *daisyChain);
 	float interpolate(Vector &x);
 
 	
 private:
-	Data3D<float> *data;
+	Data<float> *data;
 	TaylorTermination degree;
+	VectorInt dimensions;
+	Vector lengths;
+	vector<VectorInt> templates;
+	unsigned int dim;
 
 	float taylorExtension(VectorInt &r, Vector &x);
-	vector<float> weights(vector<VectorInt> &sp, Vector &x, Vector &length);
+	Vector weights(vector<VectorInt> &sp, Vector &x);
 	float multiPointTaylor(Vector &x);
+	void createTemplates();
 	
 	
 };

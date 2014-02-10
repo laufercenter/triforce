@@ -406,6 +406,7 @@ typedef struct CircularInterface
 	Vector center;
 	bool hasBase[2];
 	bool hasCenter;
+	bool erased;
 }
 CircularInterface;
 

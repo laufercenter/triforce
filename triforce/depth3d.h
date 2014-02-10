@@ -53,12 +53,12 @@ public:
 	float getInterpolatedDepth(float g, float kappa, float psi, float lambda, bool flip, int &p0);
 	int closestGridPoint(float x);
 	void closestGridPoint(Vector &x, VectorInt &p);
-	void closestGridPoint(Vector &x, VectorInt &p, Vector &l);
-	void closestGridPoint(Vector &x, VectorInt &p, Vector &d, Vector &l);
+	void closestGridPoint(Vector &x, VectorInt &p, Vector &d);
 	
 	
 private:
 	int slack;
+	Vector lengths;
 	DepthInformation depthInfoBuffer;
 	DepthInformation &getScanlines(float kappa, float psi, float lambda, bool invert, VectorInt &p);
 	

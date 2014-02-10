@@ -13,21 +13,27 @@ TriforceInterface::TriforceInterface(string path, unsigned int buffer, unsigned 
 	df1 = new DataFile(path+"/dataConcave0.dat");
 	df2 = new DataFile(path+"/dataConcave1.dat");
 	df3 = new DataFile(path+"/dataConcave2.dat");
+	df7 = new DataFile(path+"/barycentricWeights.dat");
 	
 	dat0 = df0->digest3DBinaryTable();
 	dat1 = df1->digest3DBinaryTable();
 	dat2 = df2->digest3DBinaryTable();
 	dat3 = df3->digest3DBinaryTable();
+	dat7 = df7->digest3DBinaryVectorialTable();
 	
-	surf0 = new Surface3D(dat0);
-	surf1 = new Surface3D(dat1);
-	surf2 = new Surface3D(dat2);
-	surf3 = new Surface3D(dat3);
 	
-	interpolator0 = new Interpolation(dat0,TAYLOR_LINEAR);
-	interpolator1 = new Interpolation(dat1,TAYLOR_LINEAR);
-	interpolator2 = new Interpolation(dat2,TAYLOR_LINEAR);
-	interpolator3 = new Interpolation(dat3,TAYLOR_LINEAR);
+/*	interpolator0 = new Interpolation(dat0,TAYLOR_QUADRATIC);
+	interpolator1 = new Interpolation(dat1,TAYLOR_QUADRATIC);
+	interpolator2 = new Interpolation(dat2,TAYLOR_QUADRATIC);
+	interpolator3 = new Interpolation(dat3,TAYLOR_QUADRATIC);
+*/	
+	interpolator0 = new InterpolationPolytopical(dat0,dat7);
+	interpolator1 = new InterpolationPolytopical(dat1,dat7,interpolator0);
+	interpolator2 = new InterpolationPolytopical(dat2,dat7,interpolator0);
+	interpolator3 = new InterpolationPolytopical(dat3,dat7,interpolator0);
+	
+	
+	printf("POINTERS: %d %d %d %d\n",interpolator0,interpolator1,interpolator2,interpolator3);
 	
 	interpolators.clear();
 	interpolators.push_back(interpolator0);
@@ -71,21 +77,25 @@ TriforceInterface::TriforceInterface(string path){
 	df1 = new DataFile(path+"/dataConcave0.dat");
 	df2 = new DataFile(path+"/dataConcave1.dat");
 	df3 = new DataFile(path+"/dataConcave2.dat");
+	df7 = new DataFile(path+"/barycentricWeights.dat");
 	
 	dat0 = df0->digest3DBinaryTable();
 	dat1 = df1->digest3DBinaryTable();
 	dat2 = df2->digest3DBinaryTable();
 	dat3 = df3->digest3DBinaryTable();
+	dat7 = df7->digest3DBinaryVectorialTable();
 	
-	surf0 = new Surface3D(dat0);
-	surf1 = new Surface3D(dat1);
-	surf2 = new Surface3D(dat2);
-	surf3 = new Surface3D(dat3);
 	
-	interpolator0 = new Interpolation(dat0,TAYLOR_QUADRATIC);
+/*	interpolator0 = new Interpolation(dat0,TAYLOR_QUADRATIC);
 	interpolator1 = new Interpolation(dat1,TAYLOR_QUADRATIC);
 	interpolator2 = new Interpolation(dat2,TAYLOR_QUADRATIC);
 	interpolator3 = new Interpolation(dat3,TAYLOR_QUADRATIC);
+*/	
+	interpolator0 = new InterpolationPolytopical(dat0,dat7);
+	interpolator1 = new InterpolationPolytopical(dat1,dat7);
+	interpolator2 = new InterpolationPolytopical(dat2,dat7);
+	interpolator3 = new InterpolationPolytopical(dat3,dat7);
+	
 	
 	interpolators.clear();
 	interpolators.push_back(interpolator0);

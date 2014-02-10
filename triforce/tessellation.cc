@@ -307,11 +307,10 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 	
 	sasas.push_back(sasa);
 	
-
-	precircles.reserve(neighbourlist.size());
-	circles.reserve(neighbourlist.size());
 	precircles.clear();
 	circles.clear();
+	precircles.reserve(neighbourlist.size()+1);
+	circles.reserve(neighbourlist.size()+1);
 	isInsideAnotherSphere = makeCircularInterfaces(i,origin, radius, atoms, radii, precircles, neighbourlist);
 	
 	if(isInsideAnotherSphere) return;
@@ -808,6 +807,7 @@ bool Tessellation::makeCircularInterfaces(int l,Vector &origin, float r_l, vecto
 				circle.index=j;
 				circle.hasDerivatives=false;
 				circle.extended=false;
+				circle.erased=false;
 				circles.push_back(circle);
 			}
 			//in this case, the atom is completely inside another atom and has no SASA
@@ -836,6 +836,10 @@ int Tessellation::filterCircularInterfaces(TessellationAxis &tessellationAxis, f
 	float angle;
 	bool erased;
 	Vector n0,n1;
+	unsigned int c;
+	vector<CircularInterface> circles2;
+	
+	c=0;
 	it = circles.begin();
 	while(it != circles.end()){
 		erased=false;
@@ -844,7 +848,7 @@ int Tessellation::filterCircularInterfaces(TessellationAxis &tessellationAxis, f
 		n0 = it->normal;
 		
 		for(unsigned i=0;i<circles.size();i++){
-			if(it->id != circles[i].id){
+			if(it->id != circles[i].id && !circles[i].erased){
 				
 				n1 = circles[i].normal;
 				
@@ -855,7 +859,8 @@ int Tessellation::filterCircularInterfaces(TessellationAxis &tessellationAxis, f
 					if(circles[i].form == CONVEX){
 						
 						if(it->lambda.rotation + angle-THRESHOLD_INTERFACE < circles[i].lambda.rotation){
-							it = circles.erase(it);
+							//it = circles.erase(it);
+							it->erased=true;
 							erased=true;
 							break;
 						}
@@ -863,7 +868,8 @@ int Tessellation::filterCircularInterfaces(TessellationAxis &tessellationAxis, f
 					//convex circle is outside of concave circle i
 					else{
 						if(angle+THRESHOLD_INTERFACE-it->lambda.rotation >  circles[i].lambda.rotation){
-							it = circles.erase(it);
+							//it = circles.erase(it);
+							it->erased=true;
 							erased=true;
 							break;
 						}
@@ -882,7 +888,8 @@ int Tessellation::filterCircularInterfaces(TessellationAxis &tessellationAxis, f
 					else{
 						//concave circle IT is completely inside the occlusion of concave circle i
 						if(it->lambda.rotation > circles[i].lambda.rotation + angle-THRESHOLD_INTERFACE){
-							it = circles.erase(it);
+							//it = circles.erase(it);
+							it->erased=true;
 							erased=true;
 							break;
 						}
@@ -901,13 +908,24 @@ int Tessellation::filterCircularInterfaces(TessellationAxis &tessellationAxis, f
 					
 			}
 		}
-		if(!erased) ++it;
+		if(!erased) ++c;
+		++it;
+		//if(!erased) ++it;
 	}
 	
 	
 	//if just the splitter is left, the hemisphere is completely free. In that case, the splitter is unnecessary
 	//if(circles.size()==1 && circles[0].form==SPLITTER)
 	//	circles.clear();
+	
+	circles2.reserve(c);
+	for(unsigned int i=0; i<circles.size(); ++i){
+		if(!circles[i].erased) circles2.push_back(circles[i]);
+	}
+	
+	circles=circles2;
+	
+	
 	
 	return 0;
 
@@ -1494,7 +1512,7 @@ OmegaRotation Tessellation::calculateOmega(TessellationAxis &tessellationAxis, V
 	Vector vi,vij;
 	
 	dotChi_mui = dot(tessellationAxis.v,mu_i);
-	
+	//printf("TAX: %f %f %f\n",tessellationAxis.v(0),tessellationAxis.v(1),tessellationAxis.v(2));
 	
 	s2 = 1;
 	if(isWithinNumericalLimits(dotChi_mui,1.0) || form_i==SPLITTER || (tessellationAxis.index==index_i && tessellationAxis.hemisphere==FRONTHEMISPHERE)){
@@ -1516,6 +1534,7 @@ OmegaRotation Tessellation::calculateOmega(TessellationAxis &tessellationAxis, V
 		problem=true;
 		
 		
+		
 		if(dot(ni,mu_j)<0)
 			s2 = -1;
 		
@@ -1530,6 +1549,8 @@ OmegaRotation Tessellation::calculateOmega(TessellationAxis &tessellationAxis, V
 		di=1;
 		if(dot(ni,mu_j)<0)
 			s2 = -1;
+		
+		
 	}
 	else{
 		p = mu_i;

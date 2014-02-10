@@ -319,7 +319,7 @@ void DataFile::readAuxiliaryFloatData3D(){
 	VectorInt p(3);
 	
 	if(containsAuxiliaryData == 1){
-		//read phi
+		printf("READING AUXILIARY DATA\n");
 		totalCells = parameter0Dim*parameter1Dim*parameter2Dim;
 		buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE];
 		f->read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE);
@@ -330,7 +330,7 @@ void DataFile::readAuxiliaryFloatData3D(){
 				for(unsigned int x=0; x<parameter0Dim; x++){
 					p(0)=x;
 					float v = charArray2Double(buffer+((z*parameter1Dim+y)*parameter0Dim+x)*BINARY_DATA_BLOCK_SIZE_DOUBLE);
-					tbl3Dfloat->setAuxiliaryCell(p,v);break;
+					tbl3Dfloat->setAuxiliaryCell(p,v);
 				}
 			}
 		}
@@ -349,26 +349,29 @@ void DataFile::readAuxiliaryVectorialData3D(){
 	VectorInt p(3);
 	v=Vector(dataDim);
 	
-	//read data
-	totalCells = parameter0Dim*parameter1Dim*parameter2Dim*dataDim;
-	buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE];
-	f->read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE);
-	for(unsigned int z=0; z<parameter2Dim; z++){
-		p(2)=z;
-		for(unsigned int y=0; y<parameter1Dim; y++){
-			p(1)=y;
-			for(unsigned int x=0; x<parameter0Dim; x++){
-				p(0)=x;
-				for(unsigned int i=0; i<dataDim; i++){
-					v(i) = charArray2Double(buffer+(((z*parameter1Dim+y)*parameter0Dim+x)*dataDim+i)*BINARY_DATA_BLOCK_SIZE_DOUBLE);
+	if(containsAuxiliaryData == 1){
+		
+		//read data
+		totalCells = parameter0Dim*parameter1Dim*parameter2Dim*dataDim;
+		buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE];
+		f->read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE);
+		for(unsigned int z=0; z<parameter2Dim; z++){
+			p(2)=z;
+			for(unsigned int y=0; y<parameter1Dim; y++){
+				p(1)=y;
+				for(unsigned int x=0; x<parameter0Dim; x++){
+					p(0)=x;
+					for(unsigned int i=0; i<dataDim; i++){
+						v(i) = charArray2Double(buffer+(((z*parameter1Dim+y)*parameter0Dim+x)*dataDim+i)*BINARY_DATA_BLOCK_SIZE_DOUBLE);
+					}
+					tbl3Dvectorial->setAuxiliaryCell(p,v);
 				}
-				tbl3Dvectorial->setAuxiliaryCell(p,v);
 			}
 		}
-	}
+		delete buffer;
+}	}
 	
-	delete buffer;
-}
+
 
 Data3D<float>* DataFile::digest3DBinaryTable(){
 	vector<float> tmp;
@@ -401,12 +404,14 @@ Data3D<Vector>* DataFile::digest3DBinaryVectorialTable(){
 	p(0) = parameter0Dim;
 	p(1) = parameter1Dim;
 	p(2) = parameter2Dim;
+	printf("CREATING VECTORIAL TABLE\n");
 	tbl3Dvectorial = new Data3D<Vector>(p, derivativeLevel, containsAuxiliaryData);
 	readHeaderData3D();
 	readVectorialData3D();
 	readGradients3D();
 	readAuxiliaryVectorialData3D();
 	
+	printf("INIT\n");
 	tbl3Dvectorial->init();
 	
 

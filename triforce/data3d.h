@@ -65,6 +65,7 @@ public:
 	void setHessianCell(VectorInt &x, unsigned int i, unsigned int j, float value);
 	void print();
 	T getDataCell(VectorInt &x);
+	T getDataCell(VectorInt &x, bool checkLimits);
 	T getAuxiliaryCell(VectorInt &x);
 	Vector &getGradient(VectorInt &x);
 	Matrix &getHessian(VectorInt &x);
@@ -76,10 +77,10 @@ public:
 	void printHessianCell(unsigned int i, unsigned int j, unsigned int k);
 */	
 
-	void closestGridPoint(Vector &x, VectorInt &p, Vector &d, Vector &l);
-	void surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Vector &lengths);
+	void closestGridPoint(Vector &x, VectorInt &p, Vector &d);
 	void init();
-	
+	VectorInt getDimensions();	
+	Vector getReciprocalCellLengths();	
 
 	
 	unsigned int parameter0Dim;
@@ -148,6 +149,25 @@ Data3D<T>::Data3D(VectorInt &parameterDim, unsigned int derivativeLevel, bool co
 		
 		
 	}
+}
+
+
+template <class T>
+VectorInt Data3D<T>::getDimensions(){
+	VectorInt v(3);
+	v(0)=parameter0Dim;
+	v(1)=parameter1Dim;
+	v(2)=parameter2Dim;
+	return v;
+}
+
+template <class T>
+Vector Data3D<T>::getReciprocalCellLengths(){
+	Vector v(3);
+	v(0)=cellLengthParameter0;
+	v(1)=cellLengthParameter1;
+	v(2)=cellLengthParameter2;
+	return v;
 }
 
 template <class T>
@@ -225,6 +245,12 @@ T Data3D<T>::getDataCell(VectorInt &x){
 	return (*data)[x(0)][x(1)][x(2)];
 }
 
+template <class T>
+T Data3D<T>::getDataCell(VectorInt &x, bool checkLimits){
+	
+	return (*data)[min(parameter0Dim-1,max((unsigned int)0,x(0)))][min(parameter1Dim-1,max((unsigned int)0,x(1)))][min(parameter2Dim-1,max((unsigned int)0,x(2)))];
+}
+
 
 template <class T>
 T Data3D<T>::getAuxiliaryCell(VectorInt &x){
@@ -251,10 +277,11 @@ Matrix &Data3D<T>::getHessian(VectorInt &x){
 
 
 template <class T>
-void Data3D<T>::closestGridPoint(Vector &x, VectorInt &p, Vector &d, Vector &l){
+void Data3D<T>::closestGridPoint(Vector &x, VectorInt &p, Vector &d){
 	unsigned int i_parameter0;
 	unsigned int i_parameter1;
 	unsigned int i_parameter2;
+	Vector l(3);
 	
 	l(0) = cellLengthParameter0;
 	l(1) = cellLengthParameter1;
@@ -281,47 +308,14 @@ void Data3D<T>::closestGridPoint(Vector &x, VectorInt &p, Vector &d, Vector &l){
 	
 	//printf("CLOSESTGRRRID: %f %f %f\n",x(2),x(2)-minParameter2,(x(2)-minParameter2)/cellLengthParameter2);
 	
-	p(0) = i_parameter0;
-	p(1) = i_parameter1;
-	p(2) = i_parameter2;
+	p=VectorInt(3);
+	p(0) = min(parameter0Dim-1, max((unsigned int) 0, i_parameter0));
+	p(1) = min(parameter1Dim-1, max((unsigned int) 0, i_parameter1));
+	p(2) = min(parameter2Dim-1, max((unsigned int) 0, i_parameter2));
 }
 
 
 
-
-template <class T>
-void Data3D<T>::surroundingPointsAndCellLengths(Vector &x, vector<VectorInt> &r, Vector &lengths){
-	VectorInt v2(3);
-	unsigned int i,j,k;
-	VectorInt v(3);
-	Vector d(3);
-	
-	closestGridPoint(x, v, d, lengths);
-	
-	
-	//printf("CLOSEST GRIDPOINT: %d %d %d (%f, %f, %f)\n",v(0),v(1),v(2),(*headerParameter0)[v(0)],(*headerParameter1)[v(1)],(*headerParameter2)[v(2)]);
-	//printf("CLOSEST GRIDPOINT: %d %d %d\n",v(0),v(1),v(2));
-	
-	
-	r.clear();
-	for(i=0;i<2;++i)
-		for(j=0;j<2;++j)
-			for(k=0;k<2;++k){
-				v2(0)=v(0)+i;
-				v2(1)=v(1)+j;
-				v2(2)=v(2)+k;
-				if(v2(0)<parameter0Dim && v2(1)<parameter1Dim && v2(2)<parameter2Dim){
-					//if(!isnan((*data)[v2(0)][v2(1)][v2(2)])){
-							r.push_back(v2);
-					//		printf("ACCEPTED\n");
-						
-					//}
-					//else printf("REJECTED NAN\n");
-				}
-				//else printf("REJECTED OUT OF LIMIT\n");
-			}
-			
-}
 
 
 template <class T>

@@ -21,8 +21,8 @@
 #include "datafile.h"
 #include "data3d.h"
 #include "depth3d.h"
-#include "surface3d.h"
 #include "interpolation.h"
+#include "interpolationPolytopical.h"
 #include "integrator.h"
 #include "molecule.h"
 #include "benchmark.h"
@@ -51,29 +51,27 @@ protected:
 	DataFile *df4;
 	DataFile *df5;
 	DataFile *df6;
+	DataFile *df7;
 	
 	Data3D<float> *dat0;
 	Data3D<float> *dat1;
 	Data3D<float> *dat2;
 	Data3D<float> *dat3;
 	Data3D<float> *dat4;
+	Data3D<Vector> *dat7;
 	Data1D *dat5;
 	Data1D *dat6;
 
-	Surface3D* surf0;
-	Surface3D* surf1;
-	Surface3D* surf2;
-	Surface3D* surf3;
 	Depth3D* depth0;
 
-	Interpolation *interpolator0;
-	Interpolation *interpolator1;
-	Interpolation *interpolator2;
-	Interpolation *interpolator3;
+	Interpolator *interpolator0;
+	Interpolator *interpolator1;
+	Interpolator *interpolator2;
+	Interpolator *interpolator3;
 	
 	IntegratorTriforce *integrator;	
 	
-	vector<Interpolation*> interpolators;
+	vector<Interpolator*> interpolators;
 	
 private:
 	bool withDepthBuffer;

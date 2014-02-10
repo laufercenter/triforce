@@ -33,7 +33,7 @@ IntegratorTriforce::IntegratorTriforce(){
 */
 
 
-IntegratorTriforce::IntegratorTriforce(vector<Interpolation*> data){
+IntegratorTriforce::IntegratorTriforce(vector<Interpolator*> data){
 	this->data=data;
 	benchmark=Benchmark("integrator");
 	

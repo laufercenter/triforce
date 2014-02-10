@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 #include <map>
-#include "surface3d.h"
+#include "interpolation.h"
 
 #include <armadillo>
 
@@ -31,26 +31,31 @@ using namespace arma;
 
 
 
-class Interpolator{
-	virtual float interpolate(Vector &x)=0;
-};
-
 
 
 class InterpolationPolytopical: public Interpolator{
 	
 public:
-	InterpolationPolytopical(Data<float> *data, Data<Vector> *weights, unsigned int dim);
+	InterpolationPolytopical(Data<float> *data, Data<Vector> *weights);
+	InterpolationPolytopical(Data<float> *data, Data<Vector> *weights, Interpolator *daisyChain);
 	float interpolate(Vector &x);
+	
 
 	
 private:
 	Data<float> *data;
 	Data<Vector> *weights;
 	unsigned int dim;
+	VectorInt dimensions;
+	
+	
+	Vector &fetchAuxiliaryFloat(unsigned int i);
+	VectorInt &fetchAuxiliaryInt(unsigned int i);
 
 	vector<VectorInt> getSupportNodes(Vector &d);
-	
+	Interpolation *intp;
+	VectorInt pGrid,pWeights;
+	Vector distsGrid;
 	
 };
 

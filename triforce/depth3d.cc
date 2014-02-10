@@ -40,6 +40,8 @@ Depth3D::Depth3D(Data3D<float>* d, int slack){
 	depthInfoBuffer.scanline1.resize(parameter0Dim,-1);
 	depthInfoBuffer.mode.resize(parameter0Dim,SCANLINE_EMPTY);
 
+	lengths=getReciprocalCellLengths();
+	
 }
 
 
@@ -70,14 +72,10 @@ void Depth3D::closestGridPoint(Vector &x, VectorInt &p){
 
 
 
-void Depth3D::closestGridPoint(Vector &x, VectorInt &p, Vector &l){
+void Depth3D::closestGridPoint(Vector &x, VectorInt &p, Vector &d){
 	unsigned int i_parameter0;
 	unsigned int i_parameter1;
 	unsigned int i_parameter2;
-	
-	l(0) = cellLengthParameter0;
-	l(1) = cellLengthParameter1;
-	l(2) = cellLengthParameter2;
 	
 	
 	i_parameter0 = static_cast<unsigned int>(floor((x(0)-minParameter0)/cellLengthParameter0));
@@ -92,16 +90,13 @@ void Depth3D::closestGridPoint(Vector &x, VectorInt &p, Vector &l){
 	p(2) = i_parameter2;
 }
 
-void Depth3D::closestGridPoint(Vector &x, VectorInt &p, Vector &d, Vector &l){
-	closestGridPoint(x,p,l);
-}
 
 
 
 float Depth3D::getInterpolatedDepth(float g, float kappa, float psi, float lambda, bool flip, int &p0){
 	VectorInt p(3);
 	Vector x(3);
-	Vector l(3);
+	Vector d(3);
 	float a,b,c;
 	float base;
 	float offset;
@@ -110,7 +105,7 @@ float Depth3D::getInterpolatedDepth(float g, float kappa, float psi, float lambd
 	x(0)=g;
 	x(1)=psi;
 	x(2)=lambda;
-	closestGridPoint(x,p,l);
+	closestGridPoint(x,p,d);
 	p0=p(0);
 	
 	printf("P: %d %d %d\n",p(0),p(1),p(2));
@@ -124,9 +119,9 @@ float Depth3D::getInterpolatedDepth(float g, float kappa, float psi, float lambd
 	}
 	else{
 		//perform linear interpolation
-		base=l(0)*p(0);
+		base=p(0)/lengths(0);
 		offset=g-base;
-		sigma=offset/l(0);
+		sigma=offset*lengths(0);
 		a = (*data)[p(0)][p(1)][p(2)];
 		a = min(max(a,0.0f), pi);
 

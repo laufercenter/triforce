@@ -9,9 +9,43 @@ using namespace arma;
 
 
 
-Interpolation::Interpolation(Data3D<float> *data, TaylorTermination degree){
+Interpolation::Interpolation(Data<float> *data, TaylorTermination degree){
 	this->data=data;
 	this->degree=degree;
+	dimensions=data->getDimensions();
+	dim=dimensions.size();
+	lengths=data->getReciprocalCellLengths();
+	createTemplates();
+	daisyChained=false;
+}
+
+
+Interpolation::Interpolation(Data<float> *data, TaylorTermination degree, Interpolator *daisyChain){
+	this->data=data;
+	this->degree=degree;
+	dimensions=data->getDimensions();
+	dim=dimensions.size();
+	lengths=data->getReciprocalCellLengths();
+	createTemplates();
+	
+	this->daisyChain=daisyChain;
+	daisyChained=true;
+}
+
+
+void Interpolation::createTemplates(){
+	float k;
+	VectorInt v(dim);
+	
+	templates.clear();
+	k=2<<dim;
+	for(unsigned int i=0; i<k; ++i){
+		v.zeros();
+		for(unsigned int j=0; j<dim; ++j){
+			if((i & (1<<j)) > 0) v(j)=1;
+		}
+		templates.push_back(v);
+	}
 }
 
 
@@ -58,33 +92,32 @@ float Interpolation::taylorExtension(VectorInt &r, Vector &x){
 	return v;
 }
 
-vector<float> Interpolation::weights(vector<VectorInt> &sp, Vector &x, Vector &lengths){
-	Vector d=Vector(3);
-	vector<float> *r;
+Vector Interpolation::weights(vector<VectorInt> &sp, Vector &x){
+	Vector d(3);
+	Vector r(sp.size());
 	Vector stddist;
-	float w;
+	float wght;
 	float maxw=0;
-	r = new vector<float>;
+	float maxw_r;
 	Vector p;
 	
 	//printf("stddist: %f, %f, %f\n",stddist(0),stddist(1),stddist(2));
 	for(unsigned int i=0;i<sp.size();++i){
 		p = data->getHeaderVector(sp[i]);
 		for(unsigned int j=0;j<3;++j)
-			d(j)=(fabs(p(j)-x(j)) / lengths(j));
-		w = 1.0-max(d(0),max(d(1),d(2)));
-		maxw=maxw+w;
-		r->push_back(w);
-		
-		
+			d(j)=(fabs(p(j)-x(j)) * lengths(j));
+		wght = 1.0-max(d(0),max(d(1),d(2)));
+		maxw=maxw+wght;
+		r(i)=wght;
 	}
+	maxw_r=1.0/maxw;
 	for(unsigned int i=0;i<sp.size();++i){
-		r->at(i) = r->at(i)/maxw;
+		r(i) = r(i)*maxw_r;
 		
 		//printf("weight: %f\n", r->at(i));
 		
 	}
-	return *r;
+	return r;
 	
 }
 
@@ -98,13 +131,32 @@ float Interpolation::interpolate(Vector &x){
 
 
 float Interpolation::multiPointTaylor(Vector &x){
-	vector<VectorInt> sp;
-	vector<float> w;
-	float v=0;
-	Vector lengths(3);
+	VectorInt v2;
+	VectorInt v;
+	bool error;
+	Vector d(dim);
+	float e;
 	
+	//printf("INTERPOLATING (%f, %f, %f)\n",x(0),x(1),x(2));
 	
-	data->surroundingPointsAndCellLengths(x,sp,lengths);
+	data->closestGridPoint(x, v, d);
+	
+
+	if(daisyChained){
+		sp=fetchSupportNodes();
+	}
+	else{
+		sp.clear();
+		sp.reserve(templates.size());
+		for(unsigned int i=0; i<templates.size(); ++i){
+			v2=v+templates[i];
+			error=false;
+			for(unsigned int j=0; j<dim && !error; ++j){
+				if(v2(j)>=dimensions(j)) error=true;
+			}
+			if(!error) sp.push_back(v+templates[i]);
+		}
+	}
 	
 	
 	if(sp.size()==0){
@@ -112,8 +164,17 @@ float Interpolation::multiPointTaylor(Vector &x){
 		//exit(-1);
 		return 0;
 	}
+	
+	if(daisyChained){
+		w = daisyChain->fetchWeights();
 		
-	w = weights(sp,x,lengths);
+	}
+	else{
+		w = weights(sp,x);
+	}
+	
+	
+	e=0;
 	for(unsigned int i=0;i<sp.size();i++){
 		//data->printDataCell(sp[i](0),sp[i](1),sp[i](2));
 		//data->printGradientCell(sp[i](0),sp[i](1),sp[i](2));
@@ -122,7 +183,10 @@ float Interpolation::multiPointTaylor(Vector &x){
 		float t = taylorExtension(sp[i],x);
 		
 		//printf("taylor %d: %f [%f]\n",i,t,w[i]);
-		v+=w[i]*t;
+		e+=w[i]*t;
+		
+		//printf("E2[%d] (%d %d %d): %f\n",i, sp[i](0), sp[i](1), sp[i](2), t);
+		
 		
 	}
 	
@@ -141,5 +205,9 @@ float Interpolation::multiPointTaylor(Vector &x){
 	
 	//printf("---- %f\n",v);
 	
-	return v;
+	return e;
 }
+
+
+
+
