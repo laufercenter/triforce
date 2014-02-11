@@ -22,18 +22,17 @@ TriforceInterface::TriforceInterface(string path, unsigned int buffer, unsigned 
 	dat7 = df7->digest3DBinaryVectorialTable();
 	
 	
-/*	interpolator0 = new Interpolation(dat0,TAYLOR_QUADRATIC);
+	interpolator0 = new Interpolation(dat0,TAYLOR_QUADRATIC);
 	interpolator1 = new Interpolation(dat1,TAYLOR_QUADRATIC);
 	interpolator2 = new Interpolation(dat2,TAYLOR_QUADRATIC);
 	interpolator3 = new Interpolation(dat3,TAYLOR_QUADRATIC);
-*/	
-	interpolator0 = new InterpolationPolytopical(dat0,dat7);
+	
+/*	interpolator0 = new InterpolationPolytopical(dat0,dat7);
 	interpolator1 = new InterpolationPolytopical(dat1,dat7,interpolator0);
 	interpolator2 = new InterpolationPolytopical(dat2,dat7,interpolator0);
 	interpolator3 = new InterpolationPolytopical(dat3,dat7,interpolator0);
+*/	
 	
-	
-	printf("POINTERS: %d %d %d %d\n",interpolator0,interpolator1,interpolator2,interpolator3);
 	
 	interpolators.clear();
 	interpolators.push_back(interpolator0);
@@ -86,16 +85,16 @@ TriforceInterface::TriforceInterface(string path){
 	dat7 = df7->digest3DBinaryVectorialTable();
 	
 	
-/*	interpolator0 = new Interpolation(dat0,TAYLOR_QUADRATIC);
+	interpolator0 = new Interpolation(dat0,TAYLOR_QUADRATIC);
 	interpolator1 = new Interpolation(dat1,TAYLOR_QUADRATIC);
 	interpolator2 = new Interpolation(dat2,TAYLOR_QUADRATIC);
 	interpolator3 = new Interpolation(dat3,TAYLOR_QUADRATIC);
-*/	
+/*	
 	interpolator0 = new InterpolationPolytopical(dat0,dat7);
 	interpolator1 = new InterpolationPolytopical(dat1,dat7);
 	interpolator2 = new InterpolationPolytopical(dat2,dat7);
 	interpolator3 = new InterpolationPolytopical(dat3,dat7);
-	
+*/	
 	
 	interpolators.clear();
 	interpolators.push_back(interpolator0);
