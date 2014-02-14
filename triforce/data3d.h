@@ -92,6 +92,9 @@ public:
 	float cellLengthParameter0;
 	float cellLengthParameter1;
 	float cellLengthParameter2;
+	float reciprocalCellLengthParameter0;
+	float reciprocalCellLengthParameter1;
+	float reciprocalCellLengthParameter2;
 	Table1dDouble *headerParameter0;
 	Table1dDouble *headerParameter1;
 	Table1dDouble *headerParameter2;
@@ -164,17 +167,22 @@ VectorInt Data3D<T>::getDimensions(){
 template <class T>
 Vector Data3D<T>::getReciprocalCellLengths(){
 	Vector v(3);
-	v(0)=cellLengthParameter0;
-	v(1)=cellLengthParameter1;
-	v(2)=cellLengthParameter2;
+	v(0)=reciprocalCellLengthParameter0;
+	v(1)=reciprocalCellLengthParameter1;
+	v(2)=reciprocalCellLengthParameter2;
 	return v;
 }
 
 template <class T>
 void Data3D<T>::init(){
-	cellLengthParameter0 = 1.0/abs((*headerParameter0)[1]-(*headerParameter0)[0]);
-	cellLengthParameter1 = 1.0/abs((*headerParameter1)[1]-(*headerParameter1)[0]);
-	cellLengthParameter2 = 1.0/abs((*headerParameter2)[1]-(*headerParameter2)[0]);
+	cellLengthParameter0 = abs((*headerParameter0)[1]-(*headerParameter0)[0]);
+	cellLengthParameter1 = abs((*headerParameter1)[1]-(*headerParameter1)[0]);
+	cellLengthParameter2 = abs((*headerParameter2)[1]-(*headerParameter2)[0]);
+
+	reciprocalCellLengthParameter0 = 1.0/abs((*headerParameter0)[1]-(*headerParameter0)[0]);
+	reciprocalCellLengthParameter1 = 1.0/abs((*headerParameter1)[1]-(*headerParameter1)[0]);
+	reciprocalCellLengthParameter2 = 1.0/abs((*headerParameter2)[1]-(*headerParameter2)[0]);
+
 	
 	printf("INIT CELL LENGTH: %f %f %f\n",cellLengthParameter0,cellLengthParameter1,cellLengthParameter2);
 	
@@ -281,20 +289,15 @@ void Data3D<T>::closestGridPoint(Vector &x, VectorInt &p, Vector &d){
 	unsigned int i_parameter0;
 	unsigned int i_parameter1;
 	unsigned int i_parameter2;
-	Vector l(3);
-	
-	l(0) = cellLengthParameter0;
-	l(1) = cellLengthParameter1;
-	l(2) = cellLengthParameter2;
 	
 	//printf("CELL LENGTHS: %f %f %f\n",l(0),l(1),l(2));
 	
 	//printf("X: %f %f %f, l: %f %f %f, min: %f %f %f, celll: %f %f %f\n",x(0),x(1),x(2),l(0),l(1),l(2),minParameter0, minParameter1, minParameter2, cellLengthParameter0, cellLengthParameter1, cellLengthParameter2);
 	
 	d=Vector(3);
-	d(0) = (x(0)-minParameter0)*cellLengthParameter0;
-	d(1) = (x(1)-minParameter1)*cellLengthParameter1;
-	d(2) = (x(2)-minParameter2)*cellLengthParameter2;
+	d(0) = (x(0)-minParameter0)*reciprocalCellLengthParameter0;
+	d(1) = (x(1)-minParameter1)*reciprocalCellLengthParameter1;
+	d(2) = (x(2)-minParameter2)*reciprocalCellLengthParameter2;
 	
 	i_parameter0 = static_cast<unsigned int>(floor(d(0)));
 	

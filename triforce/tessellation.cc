@@ -388,8 +388,8 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 		
 		
 		//frontTessellationAxis = generalPosition(circles);
-		DerivativeMode dmode=ALIGNED;
-		//DerivativeMode dmode=GENERAL_POSITION;
+		//DerivativeMode dmode=ALIGNED;
+		DerivativeMode dmode=GENERAL_POSITION;
 		setupTessellationAxis(frontTessellationAxis, FRONTHEMISPHERE, closestNeighbour, atoms, radii, atoms[i], radii[i], dmode, circles);
 		setupTessellationAxis(backTessellationAxis, BACKHEMISPHERE, closestNeighbour, atoms, radii, atoms[i], radii[i], dmode, circles);
 			
@@ -848,7 +848,7 @@ int Tessellation::filterCircularInterfaces(TessellationAxis &tessellationAxis, f
 		n0 = it->normal;
 		
 		for(unsigned i=0;i<circles.size();i++){
-			if(it->id != circles[i].id && !circles[i].erased){
+			if(it->id != circles[i].id){// && !circles[i].erased){
 				
 				n1 = circles[i].normal;
 				
@@ -859,7 +859,7 @@ int Tessellation::filterCircularInterfaces(TessellationAxis &tessellationAxis, f
 					if(circles[i].form == CONVEX){
 						
 						if(it->lambda.rotation + angle-THRESHOLD_INTERFACE < circles[i].lambda.rotation){
-							//it = circles.erase(it);
+							it = circles.erase(it);
 							it->erased=true;
 							erased=true;
 							break;
@@ -868,7 +868,7 @@ int Tessellation::filterCircularInterfaces(TessellationAxis &tessellationAxis, f
 					//convex circle is outside of concave circle i
 					else{
 						if(angle+THRESHOLD_INTERFACE-it->lambda.rotation >  circles[i].lambda.rotation){
-							//it = circles.erase(it);
+							it = circles.erase(it);
 							it->erased=true;
 							erased=true;
 							break;
@@ -888,7 +888,7 @@ int Tessellation::filterCircularInterfaces(TessellationAxis &tessellationAxis, f
 					else{
 						//concave circle IT is completely inside the occlusion of concave circle i
 						if(it->lambda.rotation > circles[i].lambda.rotation + angle-THRESHOLD_INTERFACE){
-							//it = circles.erase(it);
+							it = circles.erase(it);
 							it->erased=true;
 							erased=true;
 							break;
@@ -908,9 +908,9 @@ int Tessellation::filterCircularInterfaces(TessellationAxis &tessellationAxis, f
 					
 			}
 		}
-		if(!erased) ++c;
-		++it;
-		//if(!erased) ++it;
+		//if(!erased) ++c;
+		//++it;
+		if(!erased) ++it;
 	}
 	
 	
@@ -918,13 +918,15 @@ int Tessellation::filterCircularInterfaces(TessellationAxis &tessellationAxis, f
 	//if(circles.size()==1 && circles[0].form==SPLITTER)
 	//	circles.clear();
 	
+	
+	/*
 	circles2.reserve(c);
 	for(unsigned int i=0; i<circles.size(); ++i){
 		if(!circles[i].erased) circles2.push_back(circles[i]);
 	}
 	
 	circles=circles2;
-	
+	*/
 	
 	
 	return 0;

@@ -125,11 +125,11 @@ float InterpolationPolytopical::interpolate(Vector &x){
 	
 
 	e=(c_weight*w_sum_r) * c;
-	//printf("E[-] (- - -): %f\n", c);
+	printf("E[-] (- - -): %f\n", c);
 	for(unsigned int i=0; i<dim; ++i){
 		g = pGrid+sp[i];
 		e+= w(i)*w_sum_r * data->getDataCell(g,true);
-		//printf("E[%d] (%d %d %d): %f\n",i, g(0), g(1), g(2), data->getDataCell(g,true));
+		printf("E[%d] (%d %d %d): %f\n",i, g(0), g(1), g(2), data->getDataCell(g,true));
 	}
 	
 	
