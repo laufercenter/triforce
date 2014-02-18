@@ -92,6 +92,8 @@ class Molecule{
 public:
 	Molecule();
 	Molecule(Topology topology);
+	void init();
+	
 	void addAtom(CoordinatesDT* x, CoordinatesDT* y, CoordinatesDT* z, AreasDT* area, ForcesDT* forceX, ForcesDT* forceY, ForcesDT* forceZ, string name, string type, int i=-1);
 	void addAtom(CoordinatesDT* x, CoordinatesDT* y, CoordinatesDT* z, AreasDT* area, ForcesDT* forceX, ForcesDT* forceY, ForcesDT* forceZ, float radius, string name, int i=-1);
 	void addAtom(CoordinatesDT* x, CoordinatesDT* y, CoordinatesDT* z, AreasDT* area, ForcesDT* forceX, ForcesDT* forceY, ForcesDT* forceZ, float eps, float sig, string name, int i=-1);

@@ -999,6 +999,8 @@ Molecule *DataFile::digestGRO(Topology &top, bool useHydrogens){
 	
 	ifs->close();
 	
+	mol->init();
+	
 	
 	return mol;
 }
@@ -1112,6 +1114,8 @@ Molecule *DataFile::digestPDB(Topology &top, bool useHydrogens){
 	
 	ifs->close();
 	
+	mol->init();
+	
 	return mol;
 }
 
@@ -1152,6 +1156,8 @@ Molecule *DataFile::digestXYZR(){
 	}
 	
 	ifs->close();
+	
+	mol->init();
 	
 	return mol;
 }

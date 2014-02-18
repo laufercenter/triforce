@@ -19,6 +19,12 @@ Molecule::Molecule(Topology topology){
 	
 }
 
+void Molecule::init(){
+	updateAtomicPositions();
+	generateNeighbourList();
+	calculateClosestNeighbours();
+}
+
 void Molecule::generateNeighbourList(){
 	Vector maxPoint(3);
 	Vector minPoint(3);

@@ -76,6 +76,6 @@ depth3d.h ;
 
 lib triforce : armadillo triforce/$(SOURCES) ;
 
-install install-bin : triforce : <location>/usr/lib ;
+install install-bin : triforce : <location>/usr/lib64 ;
 install install-headers : triforce/$(HEADERS) triforce.h : <location>/usr/include <install-source-root>. ;
 
