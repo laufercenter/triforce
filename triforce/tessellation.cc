@@ -997,6 +997,9 @@ void Tessellation::insertArtificialIntersectionPoints(CircularInterface &I, Tess
 	
 	calculateProjectionAndDerivatives(tessellationAxis, I);
 	
+	sasaSegment.i = 0;
+	sasaSegment.i2 = 0;
+	
 	
 	sasaSegment.id0 = I.id;
 	sasaSegment.id1 = I.id;
@@ -1024,6 +1027,7 @@ void Tessellation::insertArtificialIntersectionPoints(CircularInterface &I, Tess
 	
 	sasa.push_back(sasaSegment);
 	
+	sasaSegment.i2 = 1;
 	sasaSegment.rotation1 = f;
 	sasaSegment.rotation0 = f_reverse;
 	
