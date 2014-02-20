@@ -1,7 +1,7 @@
 #include "multiLayeredDepthBuffer.h"
 
 
-#define floatpi 6.283185307179586231996
+#define doublepi 6.283185307179586231996
 #define halfpi 1.570796326794896557999
 
 
@@ -71,7 +71,7 @@ MultiLayeredDepthBuffer::MultiLayeredDepthBuffer(Depth3D &data, Data1D &occluded
 	c=0;
 	for(unsigned int i=0; i<len; ++i){
 		h=gTable[i];
-		c+= floatpi*h;
+		c+= doublepi*h;
 	}
 	C=1.0/c;
 	
@@ -151,8 +151,8 @@ ScanlineMode MultiLayeredDepthBuffer::insertIntoLineBuffer(DepthBufferLine &line
 		}
 		else{
 			x0 = it0->first;
-			if(front>=back) back+=floatpi;
-			if(x0<front) x0+=floatpi;
+			if(front>=back) back+=doublepi;
+			if(x0<front) x0+=doublepi;
 			
 			if(back>=x0){
 				wouldClear=true;
@@ -237,8 +237,8 @@ bool MultiLayeredDepthBuffer::wouldChangeLineBuffer(DepthBufferLine &line, float
 		}
 		else{
 			x0 = it0->first;
-			if(front>=back) back+=floatpi;
-			if(x0<front) x0+=floatpi;
+			if(front>=back) back+=doublepi;
+			if(x0<front) x0+=doublepi;
 			
 			if(back>=x0){
 				wouldChange=true;
@@ -295,7 +295,7 @@ void MultiLayeredDepthBuffer::addSphere(Vector &v, float lambda, bool invert, fl
 		s = sgn(dot(n,orientationPlaneNormal));
 		dot_n_aux=dot(n,orientationAxisAuxiliary);
 		kappa = acos(dot_n_aux);
-		if(s<0) kappa=floatpi-kappa;
+		if(s<0) kappa=doublepi-kappa;
 	}
 	
 	
@@ -493,7 +493,7 @@ void MultiLayeredDepthBuffer::print(){
 		line.clear();
 		line.resize(len+1,-1);
 		for(it=dbuffer[i].begin(); it!=dbuffer[i].end(); ++it){
-			pos=it->first*(float)len/(floatpi);
+			pos=it->first*(float)len/(doublepi);
 			line[pos]+=it->second+1;
 		}
 		
@@ -631,21 +631,21 @@ float MultiLayeredDepthBuffer::exposedArea(){
 	for(unsigned int i=0; i<len; ++i){
 		lineRadiants=0;
 		if(dmode[i]==SCANLINE_EMPTY){
-			lineRadiants=floatpi;
+			lineRadiants=doublepi;
 		}
 		else if(dmode[i]==SCANLINE_PARTIAL){
 			started=false;
 			for(it=dbuffer[i].begin(); it!=dbuffer[i].end(); ++it){
-				if(!started && it->second==FRONT) back = decreaseLineInterator(it,dbuffer[i])->first-floatpi;
+				if(!started && it->second==FRONT) back = decreaseLineInterator(it,dbuffer[i])->first-doublepi;
 				
 				if(it->second==FRONT) lineRadiants+=it->first-back;
 				if(it->second==BACK) back=it->first;
 				started=true;
 			}
 		}
-		p=lineRadiants/floatpi;
+		p=lineRadiants/doublepi;
 		h = gTable[i];
-		c=floatpi*h*p;
+		c=doublepi*h*p;
 		area += c*C;
 	}
 	

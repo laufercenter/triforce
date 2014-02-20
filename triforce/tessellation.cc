@@ -220,6 +220,8 @@ void Tessellation::setupTessellationAxis(TessellationAxis &tessellationAxis, Hem
 	Identity.eye();
 	dchi_dx.zeros();
 	tessellationAxis.v=Vector(3);
+	tessellationAxis.auxiliary=Vector(3);
+	tessellationAxis.planeNormal=Vector(3);
 	float g;
 	float r_i,r_l;
 	
@@ -229,6 +231,14 @@ void Tessellation::setupTessellationAxis(TessellationAxis &tessellationAxis, Hem
 		tessellationAxis.v(2) = 0.0;
 		tessellationAxis.dchi_dx=dchi_dx;
 		tessellationAxis.index=-2;
+		
+		tessellationAxis.auxiliary(0)=0;
+		tessellationAxis.auxiliary(1)=1;
+		tessellationAxis.auxiliary(2)=0;
+		
+		tessellationAxis.planeNormal(0)=0;
+		tessellationAxis.planeNormal(1)=0;
+		tessellationAxis.planeNormal(2)=1;		
 	}
 	tessellationAxis.hemisphere=hemisphere;
 	tessellationAxis.mode=dmode;
@@ -253,6 +263,7 @@ void Tessellation::setupTessellationAxis(TessellationAxis &tessellationAxis, Hem
 	
 	if(hemisphere==BACKHEMISPHERE){
 		tessellationAxis.v=-tessellationAxis.v;
+		tessellationAxis.planeNormal=-tessellationAxis.planeNormal;
 		tessellationAxis.dchi_dx=-tessellationAxis.dchi_dx;
 	}
 	
@@ -3732,6 +3743,8 @@ bool Tessellation::buildIntersectionGraph(int l, float radius, TessellationAxis 
 				id1 = segmentPointerLists[i][j]->id0.i1;
 				id2 = segmentPointerLists[i][j]->id1.i1;
 			
+				sasaSegment.i = i;
+				sasaSegment.i2 = j;
 				
 				sasaSegment.id0 = id0;
 				sasaSegment.id1 = id1;
@@ -3878,6 +3891,139 @@ void Tessellation::outputTessellation(string filename){
 	}
 	
 	fclose(file);
+}
+
+
+float Tessellation::calculateKappa(TessellationAxis tessellationAxis, Vector &v){
+	float kappa;
+	Vector n2,n;
+	float s,dot_n_aux;
+	n2=cross(v, tessellationAxis.v);
+	n=normalise(cross(tessellationAxis.v,n2));
+	s = sgn(dot(n,tessellationAxis.planeNormal));
+	dot_n_aux=dot(n,tessellationAxis.auxiliary);
+	kappa = acos(dot_n_aux);
+	if(s<0) kappa=2*M_PI-kappa;
+	
+	return kappa;
+}
+
+
+fmat33 Tessellation::rotz(float theta){
+	fmat33 m;
+	m(0,0) = cos(theta);
+	m(0,1) = -sin(theta);
+	m(0,2) = 0;
+	
+	m(1,0) = sin(theta);
+	m(1,1) = cos(theta);
+	m(1,2) = 0;
+	
+	m(2,0) = 0;
+	m(2,1) = 0;
+	m(2,2) = 1;
+	
+	return m;
+		
+}
+
+
+
+fmat33 Tessellation::roty(float theta){
+	fmat33 m;
+	m(0,0) = cos(theta);
+	m(0,1) = 0;
+	m(0,2) = sin(theta);
+	
+	m(1,0) = 0;
+	m(1,1) = 1;
+	m(1,2) = 0;
+	
+	m(2,0) = -sin(theta);
+	m(2,1) = 0;
+	m(2,2) = cos(theta);
+	
+	return m;
+		
+}
+
+Vector Tessellation::PHI2V(TessellationAxis tessellationAxis, float PHI, float psi, float lambda, float kappa){
+	fmat33 T;
+	fmat33 r0, r1;
+	Vector n(3);
+	Vector n0(3);
+	Vector n1(3);
+	Vector n2(3);
+	Vector v(3),v2(2);
+	Vector ex(3);
+	Vector p(3);
+	float ux,uy,uz;
+	float C,S,t;
+	float g;
+	
+	ex(0) = 1;
+	ex(1) = 0;
+	ex(2) = 0;
+
+	r0 = rotz(psi);
+	r1 = rotz(psi-lambda);
+	
+	g = 1-cos(lambda);
+
+	n = r0 * ex;
+	n0=g*n;
+	n1 = r1 * ex;
+	
+	v = n1-n0;
+	
+	ux=n(0);
+	uy=n(1);
+	uz=n(2);
+	C=cos(PHI);
+	S=sin(PHI);
+	t=1-cos(PHI);
+	
+	
+	T(0,0) = t*ux*ux + C;
+	T(0,1) = t*ux*uy - S*uz;
+	T(0,2) = t*ux*uz + S*uy;
+	
+	T(1,0) = t*ux*uy + S*uz;
+	T(1,1) = t*uy*uy + C;
+	T(1,2) = t*uy*uz - S*ux;
+	
+	T(2,0) = t*ux*uz - S*uy;
+	T(2,1) = t*uy*uz + S*ux;
+	T(2,2) = t*uz*uz + C;
+	
+	v2 = T * v;
+	
+	p= n0 + v2;
+	
+	p = roty(kappa) * p;
+	
+	//if it's on the backside, flip it
+	if(tessellationAxis.hemisphere==BACKHEMISPHERE) p=-p;
+	
+	return p;
+
+
+}
+
+
+void Tessellation::print(FILE* outputfile){
+	SASASegment s;
+	Vector v;
+	float kappa;
+	fprintf(outputfile,"%s\t%s\t%s\t%s\t%s\t%s\n","atom","id","i","i2","index0","index1");
+	for(unsigned int i=0;i<sasasForMolecule.size();++i){
+		for(unsigned int j=0;j<sasasForMolecule[i].size();++j){
+			s=sasasForMolecule[i][j];
+			//kappa=calculateKappa(s.tessellationAxis, s.normalForCircularInterface);
+			//v=PHI2V(tessellationAxis,s.rotation0.rotation, s.psi.rotation, s.lambda.rotation, kappa);
+			fprintf(outputfile,"%d\t%d\t%d\t%d\t%d\t%d\n",i,j,s.i,s.i2,s.index0, s.index1);
+		}
+	}
 }
 
 

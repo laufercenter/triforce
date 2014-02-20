@@ -132,7 +132,7 @@ float TriforceInterface::calculateSurfaceArea(Molecule &mol){
 // 	t->outputTessellation(string("patches.csv"));
 	area = integrator->integrate(&mol, t);
 	tessellationBenchmark=t->getBenchmark();
-	delete(t);
+	//delete(t); //THIS NEEDS TO BE UN-DECOMMENTED
 	
 	return area;
 }
@@ -153,6 +153,9 @@ void TriforceInterface::printBenchmark(FILE* outputfile){
 }
 
 
+void TriforceInterface::printTessellation(FILE* outputfile){
+	t->print(outputfile);
+}
 
 
 void TriforceInterface::minimise(Molecule &mol0, Molecule &mol1){

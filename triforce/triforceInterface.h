@@ -41,6 +41,7 @@ public:
 	void minimise(Molecule &mol0, Molecule &mol1);
 	Benchmark getBenchmark();
 	void printBenchmark(FILE* outputfile);
+	void printTessellation(FILE* outputfile);
 	
 	
 protected:

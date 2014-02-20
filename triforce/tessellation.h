@@ -125,6 +125,8 @@ FullSegmentID;
 typedef struct{
 	int index;
 	Vector v;
+	Vector auxiliary;
+	Vector planeNormal;
 	Matrix dchi_dx;
 	Hemisphere hemisphere;
 	DerivativeMode mode;
@@ -417,6 +419,8 @@ typedef vector<CircularInterface> CircularInterfacesPerAtom;
 
 typedef struct
 {
+	int i;
+	int i2;
 	int id0;
 	int id1;
 	int id2;
@@ -530,7 +534,12 @@ public:
 	
 
 	Vector generalPosition(CircularInterfacesPerAtom &circles);
-	
+	void print(FILE* outputfile);
+	float calculateKappa(TessellationAxis tessellationAxis, Vector &v);
+	fmat33 rotz(float theta);
+	fmat33 roty(float theta);
+	Vector PHI2V(TessellationAxis tessellationAxis, float PHI, float psi, float lambda, float kappa);
+
 	
 private:
 	
