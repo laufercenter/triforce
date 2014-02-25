@@ -74,14 +74,12 @@ void Tessellation::update(){
 
 
 
-void Tessellation::build(bool useDepthBuffer){
-	bool split;
+void Tessellation::build(bool useDepthBuffer, bool split){
 	CircularInterfacesPerAtom circlesPerAtom;
 	vector<int> neighbourlist;
 	vector<int> closestNeighbours;
 	
 	//always perform a split, no-split is not supported to this date
-	split=true;
 	
 	//molecule.update();
 	atoms = molecule.fetchCoordinates();
@@ -435,8 +433,8 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 			determineCircularIntersections(circlesBackHemisphere);
 			
 			bool tessellationComplete0, tessellationComplete1;
-			tessellationComplete0=buildIntersectionGraph(i, radius, frontTessellationAxis, circlesFrontHemisphere, sasas[sasas.size()-1], FRONTHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer);
-			tessellationComplete1=buildIntersectionGraph(i, radius, backTessellationAxis, circlesBackHemisphere, sasas[sasas.size()-1], BACKHEMISPHERE, string("gbonnet1.csv"), depthBuffer0, depthBuffer1, useDepthBuffer);
+			tessellationComplete0=buildIntersectionGraph(i, radius, frontTessellationAxis, circlesFrontHemisphere, sasas[sasas.size()-1], FRONTHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer, split);
+			tessellationComplete1=buildIntersectionGraph(i, radius, backTessellationAxis, circlesBackHemisphere, sasas[sasas.size()-1], BACKHEMISPHERE, string("gbonnet1.csv"), depthBuffer0, depthBuffer1, useDepthBuffer, split);
 			
 			tessellationComplete=tessellationComplete0 && tessellationComplete1;
 			if(!tessellationComplete){
@@ -445,16 +443,13 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 			}
 		}
 		else{
-			printf("not supported\n");
-			exit(-1);
-			/*
+			printf("integration not supported\n");
 			filterCircularInterfaces(frontTessellationAxis, radius, circles);
 			reindexCircularInterfaces(circles);
 			
 			determineCircularIntersections(circles);
 			
-			tessellationComplete=buildIntersectionGraph(i, radius, frontTessellationAxis, circles, *newSasas, FRONTHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer);
-			*/
+			tessellationComplete=buildIntersectionGraph(i, radius, frontTessellationAxis, circles, sasas[sasas.size()-1], FRONTHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer, split);
 		}
 	}
 	
@@ -3407,7 +3402,7 @@ float Tessellation::exposition(Hemisphere hemisphere, IntersectionBranches::iter
 
 
 
-bool Tessellation::buildIntersectionGraph(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer){
+bool Tessellation::buildIntersectionGraph(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer, bool split){
 	SASASegment sasaSegment;
 	
 	unsigned int j;
@@ -3659,12 +3654,55 @@ bool Tessellation::buildIntersectionGraph(int l, float radius, TessellationAxis 
 		
 	}
 	else{
-		//if there's no depth-buffer information, there is no real sense in figuring out which segments are joined.
-		segmentPointers.clear();
-		for(it_sl=segmentList.begin(); it_sl!=segmentList.end(); ++it_sl){
-			segmentPointers.push_back(it_sl);
+		
+		//we do this here just for the sake of printing extra information that will be used to build sasea tables. This will not be called in normal production runs
+		if(!split){
+			for(it_sl=segmentList.begin(); it_sl!=segmentList.end(); ++it_sl){
+				segmentPointers.clear();
+				segmentSearchForward=true;
+				it_sl2 = it_sl;
+				it_sl2_start=it_sl2;
+				while(it_sl2!=segmentList.end() && !it_sl2->visited){
+					segmentPointers.push_back(it_sl2);
+					it_sl2->visited=true;
+					if(segmentSearchForward){
+						if(it_sl2->hasForward) it_sl2=it_sl2->it_forw;
+						else {
+							//it's not guaranteed that the sasa is a cycle. 
+							//however, we get better results disregarding broken cycles
+							segmentSearchForward=false;
+							it_sl2=segmentList.end();
+							segmentPointers.clear();
+							
+							
+							it_sl2=it_sl2_start;
+						}
+					}
+					/*
+					if(!segmentSearchForward){
+						if(it_sl2->hasBackward) it_sl2=it_sl2->it_backw;
+						else {
+							it_sl2=segmentList.end();
+
+						}
+					}
+					*/
+					
+					
+				}
+				if(segmentPointers.size()>0) segmentPointerLists.push_back(segmentPointers);
+			}			
 		}
-		segmentPointerLists.push_back(segmentPointers);
+		else{
+		
+			
+			//if there's no depth-buffer information, there is no real sense in figuring out which segments are joined.
+			segmentPointers.clear();
+			for(it_sl=segmentList.begin(); it_sl!=segmentList.end(); ++it_sl){
+				segmentPointers.push_back(it_sl);
+			}
+			segmentPointerLists.push_back(segmentPointers);
+		}
 	}
 	
 

@@ -158,6 +158,18 @@ void TriforceInterface::printTessellation(FILE* outputfile){
 }
 
 
+
+void TriforceInterface::printSurfaces(Molecule &mol, FILE* outputfile){
+	t = new Tessellation(mol);
+	t->build(false, true);
+	t->print(outputfile);
+	delete(t);
+	
+}
+
+
+
+
 void TriforceInterface::minimise(Molecule &mol0, Molecule &mol1){
 	float area0,area1;
 	float step=0.001;

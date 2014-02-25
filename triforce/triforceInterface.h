@@ -42,6 +42,7 @@ public:
 	Benchmark getBenchmark();
 	void printBenchmark(FILE* outputfile);
 	void printTessellation(FILE* outputfile);
+	void printSurfaces(Molecule &mol, FILE* outputfile);
 	
 	
 protected:
