@@ -832,8 +832,8 @@ Topology* DataFile::digestTOP(TopologyMode topm, Topology* t){
 						if(content->size()>=7){
 							//is it already in the map?
 							if(data->contains(ident)){
-								data->setEpsilonValue(ident,string2float((*content)[6]));
-								data->setSigmaValue(ident,string2float((*content)[5]));
+								//data->setEpsilonValue(ident,string2float((*content)[6]));
+								//data->setSigmaValue(ident,string2float((*content)[5]));
 							}
 							else{
 								p.mass=-1;
@@ -1017,7 +1017,7 @@ Molecule *DataFile::digestPDB(Topology &top, bool useHydrogens){
 	string ident;
 	bool disregardingHydrogens;
 	string residue;
-	string atom;
+	string atom,atom2;
 	string xstr,ystr,zstr;
 	unsigned int chain;
 	string chainstr;
@@ -1058,12 +1058,15 @@ Molecule *DataFile::digestPDB(Topology &top, bool useHydrogens){
 				
 				residue = line.substr(17,4);
 				trim(residue);
-				if(top.mode==GROMACS || top.mode==GROMACS_GENERIC){
+				if(top.mode==GROMACS || top.mode==GROMACS_GENERIC || top.mode==GROMACS_GENERIC2){
 					atom = string2UpperCase(line.substr(11,6));
 				}
 				else if(top.mode==GROMACS_ELEMENTAL){
 					atom = string2UpperCase(line.substr(76,2));
 				}
+				atom2 = string2UpperCase(line.substr(76,2));
+				trim(atom2);
+				
 				trim(atom);
 				xstr = line.substr(30,8);
 				trim(xstr);
@@ -1093,7 +1096,7 @@ Molecule *DataFile::digestPDB(Topology &top, bool useHydrogens){
 				catch(AssociationException const &e){
 					if(top.mode==GROMACS_GENERIC2){
 						try{
-							ident=atom;
+							ident=atom2;
 							mol->addInternallyStoredAtom(x,y,z,name,ident);
 						}
 						catch(AssociationException const &e){

@@ -252,7 +252,7 @@ void Molecule::addAtom(CoordinatesDT* x, CoordinatesDT* y, CoordinatesDT* z, Are
 	atomicPointers[i]=c;
 	radii[i]=radius;
 	
-	//sea water modifications
+	//sea water modifications (includes the water probe)
 	epsilons[i]=sqrt(eps);
 	sigmas[i]=(sig+0.82)*0.5;
 	
