@@ -137,7 +137,7 @@ void Molecule::addInternallyStoredAtom(float x, float y, float z, string name, s
 	Parameters p;
 	p=topology.getAssociatedCell(string2UpperCase(type));
 	
-	addInternallyStoredAtom(x,y,z, p.sigma, name,i);
+	addInternallyStoredAtom(x,y,z, p.sigma*0.5+1.4, p.epsilon, p.sigma, name,i);
 	
 }
 
@@ -146,7 +146,7 @@ void Molecule::addInternallyStoredAtom(float x, float y, float z, float radius, 
 }
 
 void Molecule::addInternallyStoredAtom(float x, float y, float z, float eps, float sig, string name, int i){
-	addInternallyStoredAtom(x,y,z, sig, eps, sig, name,i);
+	addInternallyStoredAtom(x,y,z, sig*0.5+1.4, eps, sig, name,i);
 }
 	
 void Molecule::addInternallyStoredAtom(float x, float y, float z, float radius, float eps, float sig, string name, int i){
@@ -160,7 +160,6 @@ void Molecule::addInternallyStoredAtom(float x, float y, float z, float radius, 
 	realAtoms[i](1)=y;
 	realAtoms[i](2)=z;
 	
-	radius=0.5*radius+1.4;
 	
 	addAtom(&realAtoms[i](0),&realAtoms[i](1),&realAtoms[i](2),&realArea[realArea.size()-1],&realForceX[realForceX.size()-1],&realForceY[realForceY.size()-1],&realForceZ[realForceZ.size()-1], radius, eps, sig, name,i);
 	
@@ -356,9 +355,9 @@ void Molecule::print(FILE* outputfile){
 	}
 */
 	//fprintf(stderr,"Areas and forces:\n");
-	fprintf(outputfile,"index\tname\tarea\tgradx\tgrady\tgradz\tradius\tx\ty\tz\n");
+	fprintf(outputfile,"index\tname\tarea\tgradx\tgrady\tgradz\tradius\teps\tsig\tx\ty\tz\n");
 	for(unsigned int i=0;i<areas.size();++i){
-		fprintf(outputfile,"%d\t%s\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",i, names[i].c_str(),*(areas[i]), *(forces[i][0]), *(forces[i][1]), *(forces[i][2]), radii[i], atoms[i](0), atoms[i](1), atoms[i](2));
+		fprintf(outputfile,"%d\t%s\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",i, names[i].c_str(),*(areas[i]), *(forces[i][0]), *(forces[i][1]), *(forces[i][2]), radii[i], epsilons[i], sigmas[i], atoms[i](0), atoms[i](1), atoms[i](2));
 		//printf("[%d]: pointers: (%d, %d, %d, %d)\n",i,areas[i], forces[i][0], forces[i][1], forces[i][2]);
 	}
 	
