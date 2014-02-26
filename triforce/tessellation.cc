@@ -443,7 +443,6 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 			}
 		}
 		else{
-			printf("integration not supported\n");
 			filterCircularInterfaces(frontTessellationAxis, radius, circles);
 			reindexCircularInterfaces(circles);
 			

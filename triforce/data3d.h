@@ -184,8 +184,6 @@ void Data3D<T>::init(){
 	reciprocalCellLengthParameter2 = 1.0/abs((*headerParameter2)[1]-(*headerParameter2)[0]);
 
 	
-	printf("INIT CELL LENGTH: %f %f %f\n",cellLengthParameter0,cellLengthParameter1,cellLengthParameter2);
-	
 	minParameter0 = (*headerParameter0)[0];
 	minParameter1 = (*headerParameter1)[0];
 	minParameter2 = (*headerParameter2)[0];

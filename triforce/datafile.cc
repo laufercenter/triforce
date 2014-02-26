@@ -319,7 +319,6 @@ void DataFile::readAuxiliaryFloatData3D(){
 	VectorInt p(3);
 	
 	if(containsAuxiliaryData == 1){
-		printf("READING AUXILIARY DATA\n");
 		totalCells = parameter0Dim*parameter1Dim*parameter2Dim;
 		buffer=new char[totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE];
 		f->read(buffer,totalCells*BINARY_DATA_BLOCK_SIZE_DOUBLE);
@@ -404,14 +403,12 @@ Data3D<Vector>* DataFile::digest3DBinaryVectorialTable(){
 	p(0) = parameter0Dim;
 	p(1) = parameter1Dim;
 	p(2) = parameter2Dim;
-	printf("CREATING VECTORIAL TABLE\n");
 	tbl3Dvectorial = new Data3D<Vector>(p, derivativeLevel, containsAuxiliaryData);
 	readHeaderData3D();
 	readVectorialData3D();
 	readGradients3D();
 	readAuxiliaryVectorialData3D();
 	
-	printf("INIT\n");
 	tbl3Dvectorial->init();
 	
 
