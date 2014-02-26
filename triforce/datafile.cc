@@ -785,7 +785,7 @@ Topology* DataFile::digestMapCSV(){
 }
 
 
-Topology* DataFile::digestTOP(TopologyMode topm){
+Topology* DataFile::digestTOP(TopologyMode topm, Topology* t){
 	ifstream *ifs;
 	vector<string> *content;
 	string line;
@@ -803,7 +803,8 @@ Topology* DataFile::digestTOP(TopologyMode topm){
 
 	ifs = new ifstream(name.c_str(),ifstream::in);
 
-	data = new Topology(topm);
+	if(t!=NULL) data=t;
+	else data = new Topology(topm);
 	
 	p.mass = 0;
 	p.epsilon= 0;
@@ -859,7 +860,7 @@ Topology* DataFile::digestTOP(TopologyMode topm){
 							
 							if(topm==GROMACS)
 								ident0=chainstr+" "+(*content)[2]+" "+string2UpperCase((*content)[3])+" "+string2UpperCase((*content)[4]);
-							else if(topm==GROMACS_GENERIC)
+							else if(topm==GROMACS_GENERIC || topm==GROMACS_GENERIC2)
 								ident0=string2UpperCase((*content)[3])+" "+string2UpperCase((*content)[4]);
 							else if(topm==GROMACS_ELEMENTAL)
 								ident0=string2UpperCase((*content)[4]);
@@ -1078,7 +1079,7 @@ Molecule *DataFile::digestPDB(Topology &top, bool useHydrogens){
 				
 				name=chainstr + " " + residuenumstr + " " + residue + " " + atom;
 				
-				if(top.mode==GROMACS || top.mode==GROMACS_GENERIC){
+				if(top.mode==GROMACS || top.mode==GROMACS_GENERIC || top.mode==GROMACS_GENERIC2){
 					ident=residue+" "+atom;
 				}
 				else if(top.mode==GROMACS_ELEMENTAL){
@@ -1090,13 +1091,33 @@ Molecule *DataFile::digestPDB(Topology &top, bool useHydrogens){
 						mol->addInternallyStoredAtom(x,y,z,name,ident);
 				}
 				catch(AssociationException const &e){
-					if(atom[0]!='H')
-						printf("disregarded heavy atom %s for which no parameters could be found\n",name.c_str());
-					else
-						if(!disregardingHydrogens){
-							printf("disregarded some hydrogens for which no parameters could be found\n");
-							disregardingHydrogens=true;
+					if(top.mode==GROMACS_GENERIC2){
+						try{
+							ident=atom;
+							mol->addInternallyStoredAtom(x,y,z,name,ident);
 						}
+						catch(AssociationException const &e){
+							if(atom[0]!='H')
+								printf("disregarded heavy atom %s for which no parameters could be found\n",name.c_str());
+							else
+								if(!disregardingHydrogens){
+									printf("disregarded some hydrogens for which no parameters could be found\n");
+									disregardingHydrogens=true;
+								}
+						}
+						
+					}
+					else{
+				
+						
+						if(atom[0]!='H')
+							printf("disregarded heavy atom %s for which no parameters could be found\n",name.c_str());
+						else
+							if(!disregardingHydrogens){
+								printf("disregarded some hydrogens for which no parameters could be found\n");
+								disregardingHydrogens=true;
+							}
+					}
 					
 					//do nothing
 				}
