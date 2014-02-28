@@ -4057,7 +4057,7 @@ void Tessellation::print(FILE* outputfile){
 	Vector v;
 	float kappa;
 	float phi1,phi0,arclength,s_direction;
-	fprintf(outputfile,"%s\t%s\t%s\t%s\t%s\t%s\t%s\n","atom","id","i","i2","index0","index1","arclength");
+	fprintf(outputfile,"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","atom","id","i","i2","index0","index1","index2","arclength");
 	for(unsigned int i=0;i<sasasForMolecule.size();++i){
 		for(unsigned int j=0;j<sasasForMolecule[i].size();++j){
 			s=sasasForMolecule[i][j];
@@ -4073,7 +4073,7 @@ void Tessellation::print(FILE* outputfile){
 				arclength = 2*M_PI - arclength;
 			
 			
-			fprintf(outputfile,"%d\t%d\t%d\t%d\t%d\t%d\t%f\n",i,j,s.i,s.i2,s.index0, s.index1,arclength);
+			fprintf(outputfile,"%d\t%d\t%d\t%d\t%d\t%d\t%d\t%f\n",i,j,s.i,s.i2,s.index0, s.index1,s.index2,arclength);
 		}
 	}
 }
