@@ -4057,12 +4057,12 @@ void Tessellation::print(FILE* outputfile){
 	Vector v;
 	float kappa;
 	float phi1,phi0,arclength,s_direction;
-	fprintf(outputfile,"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","atom","id","i","i2","index0","index1","index2","arclength");
+	fprintf(outputfile,"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","atom","id","i","i2","index0","index1","index2","arclength","ipx","ipy","ipz");
 	for(unsigned int i=0;i<sasasForMolecule.size();++i){
 		for(unsigned int j=0;j<sasasForMolecule[i].size();++j){
 			s=sasasForMolecule[i][j];
-			//kappa=calculateKappa(s.tessellationAxis, s.normalForCircularInterface);
-			//v=PHI2V(tessellationAxis,s.rotation0.rotation, s.psi.rotation, s.lambda.rotation, kappa);
+			kappa=calculateKappa(s.tessellationAxis, s.normalForCircularInterface);
+			v=PHI2V(s.tessellationAxis,s.rotation0.rotation, s.psi.rotation, s.lambda.rotation, kappa);
 			phi0=s.rotation0.rotation;
 			phi1=s.rotation1.rotation;
 			if(phi1 >= phi0) s_direction=1;
@@ -4073,7 +4073,7 @@ void Tessellation::print(FILE* outputfile){
 				arclength = 2*M_PI - arclength;
 			
 			
-			fprintf(outputfile,"%d\t%d\t%d\t%d\t%d\t%d\t%d\t%f\n",i,j,s.i,s.i2,s.index0, s.index1,s.index2,arclength);
+			fprintf(outputfile,"%d\t%d\t%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%f\n",i,j,s.i,s.i2,s.index0, s.index1,s.index2,arclength,v(0),v(1),v(2));
 		}
 	}
 }
