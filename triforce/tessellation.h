@@ -631,15 +631,8 @@ private:
 	void addLimitingInterface(LimitingInterface &limit, CircularInterfacesPerAtom &circles);
 	void convertExposedVectors2PHIValues(TessellationAxis &tessellationAxis,Hemisphere hemisphere, CircularInterface &circle);
 	float exposition(Hemisphere hemisphere, IntersectionBranches::iterator it0, IntersectionBranches::iterator it1, CircularInterface &circle);
-	void glueSegments();
-	float splitPHI(float lambda, float psi);
-	float reversePHI(float PHI);
 	//void splitTessellation(SASASegmentList &sasa, TessellationAxis &frontTessellationAxis, TessellationAxis &backTessellationAxis, CircularInterfacesPerAtom &circles);
 	unsigned int coverHemisphere2(TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, CircularInterfaceForm form);
-	void addDerivatives(SASASegmentList &s, CircularInterfacesPerAtom &circles, TessellationAxis &frontTessellationAxis, TessellationAxis &backTessellationAxis);
-	PHIRotation newPHIContainer(SASASegment &seg, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, unsigned int id);
-	PHIRotation newSplittedPHIContainer(SASASegment &seg, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, unsigned int splitter);
-	PHIContainer newCompletePHIContainer(SASASegment &seg, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, unsigned int id);
 	
 	void reindexCircularInterfaces2(CircularInterfacesPerAtom &circles);
 	void reindexCircularInterfaces3(CircularInterfacesPerAtom &circles);
