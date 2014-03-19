@@ -134,7 +134,7 @@ void Tessellation::build(bool useDepthBuffer, bool split){
 
 
 
-CircularInterfacesPerAtom Tessellation::coverHemisphere(TessellationAxis &tessellationAxis, float radius, CircularInterfacesPerAtom circles, CircularInterfaceForm form){
+CircularInterfacesPerAtom Tessellation::coverHemisphere(TessellationAxis &tessellationAxis, CircularInterfacesPerAtom circles, CircularInterfaceForm form){
 	CircularInterface C;
 	Vector v(3);
 	Matrix NullMatrix(3,3);
@@ -148,7 +148,7 @@ CircularInterfacesPerAtom Tessellation::coverHemisphere(TessellationAxis &tessel
 	C.g=0;
 	C.normal = v;
 	C.form = form;
-	C.id = circles.size()+1;
+	C.id = circles.size();
 	C.valid = true;
 	C.index = -1;
 	C.hasDerivatives=true;
@@ -174,6 +174,45 @@ CircularInterfacesPerAtom Tessellation::coverHemisphere(TessellationAxis &tessel
 
 
 
+
+unsigned int Tessellation::coverHemisphere2(TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, CircularInterfaceForm form){
+	CircularInterface C;
+	Vector v(3);
+	Matrix NullMatrix(3,3);
+	NullMatrix.zeros();
+	
+	v = tessellationAxis.v;
+	
+	C.lambdaRotation.rotation = M_PI * 0.5;
+	C.lambda.rotation = M_PI * 0.5;
+	C.psi.rotation=0;
+	C.g=0;
+	C.normal = v;
+	C.form = form;
+	C.id = circles.size();
+	C.valid = true;
+	C.index = -1;
+	C.hasDerivatives=true;
+	C.extended=false;
+	
+	C.dmu_dx = NullMatrix;
+	C.lambda.drotation_dxi = Vector(3).zeros();
+	C.lambda.drotation_dxj = Vector(3).zeros();
+	C.lambda.drotation_dxl = Vector(3).zeros();
+	C.lambda.drotation_dxt = Vector(3).zeros();
+
+	C.psi.drotation_dxi = Vector(3).zeros();
+	C.psi.drotation_dxj = Vector(3).zeros();
+	C.psi.drotation_dxl = Vector(3).zeros();
+	C.psi.drotation_dxt = Vector(3).zeros();
+	
+	
+	circles.push_back(C);
+	
+	return circles.size()-1;
+}
+
+
 void Tessellation::addLimitingInterface(LimitingInterface &limit, CircularInterfacesPerAtom &circles){
 	CircularInterface C;
 	Vector v(3);
@@ -187,7 +226,7 @@ void Tessellation::addLimitingInterface(LimitingInterface &limit, CircularInterf
 	C.normal = limit.v;
 	if(limit.flip) C.form=CONCAVE;
 	else C.form = CONVEX;
-	C.id = circles.size()+1;
+	C.id = circles.size();
 	C.valid = true;
 	C.index = -1;
 	C.hasDerivatives=true;
@@ -273,7 +312,7 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 	CircularInterfacesPerAtom circles,precircles;
 	CircularInterfacesPerAtom circlesFrontHemisphere;
 	CircularInterfacesPerAtom circlesBackHemisphere;
-	CircularInterface *splitter0, *splitter1;
+	//CircularInterface *splitter0, *splitter1;
 	bool pass0, pass1;
 	
 	bool tessellationComplete;
@@ -287,6 +326,8 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 	Vector v;
 	MultiLayeredDepthBuffer depthBuffer0;
 	MultiLayeredDepthBuffer depthBuffer1;
+	unsigned int globalSegmentCounter;
+	SASASegmentList sasa;
 	
 	tessellationComplete=false;
 	
@@ -306,12 +347,15 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 	ti = i;
 	
 	
+	
+	globalSegmentCounter=0;
+	
+	
 
 	
 	
 	srand(2);
 	
-	SASASegmentList sasa;
 	
 	
 	sasas.push_back(sasa);
@@ -402,13 +446,13 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 		setupTessellationAxis(frontTessellationAxis, FRONTHEMISPHERE, closestNeighbour, atoms, radii, atoms[i], radii[i], dmode, circles);
 		setupTessellationAxis(backTessellationAxis, BACKHEMISPHERE, closestNeighbour, atoms, radii, atoms[i], radii[i], dmode, circles);
 			
-		
+		split=false;
 		
 		//there is room for optimisation here...
 		if(split){
 		
-			circlesFrontHemisphere = coverHemisphere(frontTessellationAxis, radius, circles, SPLITTER);
-			circlesBackHemisphere = coverHemisphere(backTessellationAxis, radius, circles, SPLITTER);
+/*			circlesFrontHemisphere = coverHemisphere(frontTessellationAxis, circles, SPLITTER);
+			circlesBackHemisphere = coverHemisphere(backTessellationAxis, circles, SPLITTER);
 			
 			
 			
@@ -422,8 +466,8 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 			}
 			
 			//this will remove interaces that are completely inside other interfaces
-			filterCircularInterfaces(frontTessellationAxis,radius, circlesFrontHemisphere);
-			filterCircularInterfaces(backTessellationAxis,radius, circlesBackHemisphere);
+			filterCircularInterfaces(circlesFrontHemisphere, false);
+			filterCircularInterfaces(circlesBackHemisphere, false);
 			
 			
 			reindexCircularInterfaces(circlesFrontHemisphere);
@@ -433,27 +477,124 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 			determineCircularIntersections(circlesBackHemisphere);
 			
 			bool tessellationComplete0, tessellationComplete1;
-			tessellationComplete0=buildIntersectionGraph(i, radius, frontTessellationAxis, circlesFrontHemisphere, sasas[sasas.size()-1], FRONTHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer, split);
-			tessellationComplete1=buildIntersectionGraph(i, radius, backTessellationAxis, circlesBackHemisphere, sasas[sasas.size()-1], BACKHEMISPHERE, string("gbonnet1.csv"), depthBuffer0, depthBuffer1, useDepthBuffer, split);
+			//when we parallelize triforce, globalsegmentpointer needs to be made parallel as well somehow
+			tessellationComplete0=buildIntersectionGraph(i, radius, frontTessellationAxis, circlesFrontHemisphere, sasas[sasas.size()-1], FRONTHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer, split, globalSegmentCounter,true);
+			tessellationComplete1=buildIntersectionGraph(i, radius, backTessellationAxis, circlesBackHemisphere, sasas[sasas.size()-1], BACKHEMISPHERE, string("gbonnet1.csv"), depthBuffer0, depthBuffer1, useDepthBuffer, split, globalSegmentCounter,true);
 			
 			tessellationComplete=tessellationComplete0 && tessellationComplete1;
 			if(!tessellationComplete){
 				sasas[sasas.size()-1].clear();
 				useDepthBuffer=false;
 			}
+*/			
 		}
 		else{
+			filterCircularInterfaces(circles, false);
+			reindexCircularInterfaces(circles);
+			determineCircularIntersections(circles, false);
+			buildIntersectionGraphFirstPass(i, radius, frontTessellationAxis, circles);
+			
+			determinePsiRotations(frontTessellationAxis, circles);
+				
+			
+			sortGaussBonnetPaths(i, radius, frontTessellationAxis, circles, sasas[sasas.size()-1], FRONTHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer, split, globalSegmentCounter,true);
+			
+			
+			copyIntersectionGraph(i, radius, backTessellationAxis, circles, circlesBackHemisphere);
+			
+			determinePsiRotations(backTessellationAxis, circlesBackHemisphere);
+			
+			
+			
+			
+			
+			coverHemisphere2(frontTessellationAxis, circles, SPLITTER);
+			coverHemisphere2(backTessellationAxis, circlesBackHemisphere, SPLITTER);
+			
+			
+			
+			
+			filterCircularInterfaces(circles, true);
+			filterCircularInterfaces(circlesBackHemisphere, true);
+			
+			
+
+			
+			
+			reindexCircularInterfaces2(circles);
+			reindexCircularInterfaces2(circlesBackHemisphere);
+			
+			
+			
+			
+			determineCircularIntersections(circles, true);
+			determineCircularIntersections(circlesBackHemisphere, true);
+			
+			
+			
+			
+			
+			buildIntersectionGraphSplitterPass(i, radius, frontTessellationAxis, circles);
+			
+/*			
+printf("____________________________\nBACKFLIPPED ROUND\n");			
+for(unsigned int j=0; j<circlesBackHemisphere.size(); ++j){
+	printf("CIRCLE[%d]\n",circlesBackHemisphere[j].index);
+	for(IntersectionBranches::iterator it=circlesBackHemisphere[j].intersectionBranches.begin(); it!=circlesBackHemisphere[j].intersectionBranches.end(); ++it){
+		if(it->second.direction==IN)
+			printf(" -> %d [IN]\n", circlesBackHemisphere[it->second.id].index);
+		else
+			printf(" -> %d [OUT]\n", circlesBackHemisphere[it->second.id].index);
+	}
+}			
+*/			
+			
+			buildIntersectionGraphSplitterPass(i, radius, backTessellationAxis, circlesBackHemisphere);
+			
+			
+			
+			
+			buildIntersectionGraphArtificialPointsPass(i, radius, frontTessellationAxis, circles, sasas[sasas.size()-1], FRONTHEMISPHERE);
+			buildIntersectionGraphArtificialPointsPass(i, radius, backTessellationAxis, circlesBackHemisphere, sasas[sasas.size()-1], BACKHEMISPHERE);
+			
+
+			//just to make sure there are no lonely branches floating around...
+			reindexCircularInterfaces3(circles);
+			reindexCircularInterfaces3(circlesBackHemisphere);
+
+			
+			
+			buildIntersectionGraphCollectionPass(i, radius, frontTessellationAxis, circles, sasas[sasas.size()-1], FRONTHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer, split, globalSegmentCounter,true);
+			buildIntersectionGraphCollectionPass(i, radius, backTessellationAxis, circlesBackHemisphere, sasas[sasas.size()-1], BACKHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer, split, globalSegmentCounter,true);
+
+tessellationComplete=true;			
+			
+/*			
 			filterCircularInterfaces(frontTessellationAxis, radius, circles);
 			reindexCircularInterfaces(circles);
 			
 			determineCircularIntersections(circles);
 			
-			tessellationComplete=buildIntersectionGraph(i, radius, frontTessellationAxis, circles, sasas[sasas.size()-1], FRONTHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer, split);
+			tessellationComplete=buildIntersectionGraph(i, radius, frontTessellationAxis, circles, sasas[sasas.size()-1], FRONTHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer, split, globalSegmentCounter,false);
+			splitTessellation(sasas[sasas.size()-1],frontTessellationAxis,backTessellationAxis, circles);
+			addDerivatives(sasas[sasas.size()-1],circles, frontTessellationAxis, backTessellationAxis);
+*/
 		}
 	}
 	
-	
-
+/*	
+	//quick print
+	for(unsigned int j=0; j<sasas[sasas.size()-1].size(); ++j){
+		SASASegment seg;
+		seg=sasas[sasas.size()-1][j];
+		
+		
+		
+		printf("SASA: %d %d,%d,%d [%d,%d,%d] (%d) {%d} psi:%f lmbd:%f PHI0:%f PHI1:%f\n",i,seg.id0,seg.id1,seg.id2,seg.index0,seg.index1,seg.index2,seg.tessellationAxis.hemisphere, seg.form1, seg.psi.rotation,seg.lambda.rotation,seg.rotation0.rotation, seg.rotation1.rotation);
+		
+		
+	}
+*/	
 	
 }
 
@@ -646,6 +787,7 @@ Rotation Tessellation::calculateLambdaDerivatives(LambdaRotation &r, CircularInt
 	
 	dd_dxi = q*mu_i;
 	
+	
 	dlambda_dxi = dlambda_dg * dg_dd * dd_dxi;
 	//smoothing
 	//if(norm(dlambda_dxi,2)>1.0) dlambda_dxi = normalise(dlambda_dxi);
@@ -673,6 +815,9 @@ void Tessellation::determineProjection(Vector &origin, float r_l, CircularInterf
 	circle.lambda.rotation = circle.lambdaRotation.rotation;
 	circle.valid=true;
 }
+
+
+
 
 
 
@@ -711,7 +856,7 @@ void Tessellation::calculateProjectionAndDerivatives(TessellationAxis &tessellat
 
 void Tessellation::determinePsiRotations(TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles){
 	for(unsigned i=0; i < circles.size(); ++i)
-		circles[i].psi=calculatePsi(tessellationAxis, circles[i]);
+		circles[i].psi.rotation = getAngle(tessellationAxis.v,circles[i].normal);
 }
 
 
@@ -804,7 +949,7 @@ bool Tessellation::makeCircularInterfaces(int l,Vector &origin, float r_l, vecto
 			
 			//reject, if no intersection
 			if(d_i < r_l + r_i && d_i+r_i > r_l && d_i+r_l > r_i){
-				circle.id = circles.size()+1;
+				circle.id = circles.size();
 				circle.normal = mu_i;
 				circle.d = d_i;
 				circle.sphereRadius = r_i;
@@ -813,6 +958,7 @@ bool Tessellation::makeCircularInterfaces(int l,Vector &origin, float r_l, vecto
 				circle.hasDerivatives=false;
 				circle.extended=false;
 				circle.erased=false;
+				circle.hemisphere=FRONTHEMISPHERE;
 				circles.push_back(circle);
 			}
 			//in this case, the atom is completely inside another atom and has no SASA
@@ -833,18 +979,71 @@ void Tessellation::depleteCircularInterfaces(TessellationAxis &tessellationAxis,
 	TessellationAxis t;
 	t=tessellationAxis;
 	t.v = -tessellationAxis.v;
-	circles = coverHemisphere(t, radius, circles, CONCAVE);
+	circles = coverHemisphere(t, circles, CONCAVE);
 }
 
-int Tessellation::filterCircularInterfaces(TessellationAxis &tessellationAxis, float radius, vector<CircularInterface> &circles){
+
+/*
+bool Tessellation::isOccludedBy(CircularInterface &a, CircularInterface &splitter){
+	float angle;
+	Vector n0,n1;
+	
+	n0 = a.normal;
+	n1 = splitter.normal;
+	
+	angle = getAngle(n0,n1);
+	
+	if(a.form==CONVEX){
+		//convex circle IT is inside of convex circle i
+		if(splitter.form == CONVEX){
+			
+			if(a.lambda.rotation + angle-THRESHOLD_INTERFACE < splitter.lambda.rotation){
+				return true;
+			}
+		}
+		//convex circle is outside of concave circle i
+		else{
+			if(angle+THRESHOLD_INTERFACE-a.lambda.rotation >  splitter.lambda.rotation){
+				return true;
+			}
+		}
+		
+	}
+	else{
+		//concave circle IT has a free area. This area is covered by convex circle i
+		if(splitter.form == CONVEX){
+			if(a.lambda.rotation + angle-THRESHOLD_INTERFACE < splitter.lambda.rotation){
+				return true;
+			}
+			
+		}
+		else{
+			//concave circle IT is completely inside the occlusion of concave circle i
+			if(a.lambda.rotation > splitter.lambda.rotation + angle-THRESHOLD_INTERFACE){
+				return true;
+			}
+			//concave circle IT has a free area. This area is covered by concave circle i
+			else if(angle+THRESHOLD_INTERFACE > a.lambda.rotation + splitter.lambda.rotation){
+				return true;
+				
+			}
+			
+		}
+
+	}
+	return false;
+}
+*/
+
+int Tessellation::filterCircularInterfaces(vector<CircularInterface> &circles, bool splitterOnly){
 	vector<CircularInterface>::iterator it;
 	float angle;
 	bool erased;
 	Vector n0,n1;
-	unsigned int c;
+	//sunsigned int c;
 	vector<CircularInterface> circles2;
 	
-	c=0;
+	//c=0;
 	it = circles.begin();
 	while(it != circles.end()){
 		erased=false;
@@ -854,60 +1053,62 @@ int Tessellation::filterCircularInterfaces(TessellationAxis &tessellationAxis, f
 		
 		for(unsigned i=0;i<circles.size();i++){
 			if(it->id != circles[i].id){// && !circles[i].erased){
+				if(!splitterOnly || (splitterOnly && circles[i].form==SPLITTER)){
 				
-				n1 = circles[i].normal;
-				
-				angle = getAngle(n0,n1);
-				
-				if(it->form==CONVEX){
-					//convex circle IT is inside of convex circle i
-					if(circles[i].form == CONVEX){
-						
-						if(it->lambda.rotation + angle-THRESHOLD_INTERFACE < circles[i].lambda.rotation){
-							it = circles.erase(it);
-							it->erased=true;
-							erased=true;
-							break;
-						}
-					}
-					//convex circle is outside of concave circle i
-					else{
-						if(angle+THRESHOLD_INTERFACE-it->lambda.rotation >  circles[i].lambda.rotation){
-							it = circles.erase(it);
-							it->erased=true;
-							erased=true;
-							break;
-						}
-					}
+					n1 = circles[i].normal;
 					
-				}
-				else{
-					//concave circle IT has a free area. This area is covered by convex circle i
-					if(circles[i].form == CONVEX){
-						if(it->lambda.rotation + angle-THRESHOLD_INTERFACE < circles[i].lambda.rotation){
-							circles.clear();
-							return -1;
+					angle = getAngle(n0,n1);
+					
+					if(it->form==CONVEX){
+						//convex circle IT is inside of convex circle i
+						if(circles[i].form == CONVEX){
+							
+							if(it->lambda.rotation + angle-THRESHOLD_INTERFACE < circles[i].lambda.rotation){
+								it = circles.erase(it);
+								it->erased=true;
+								erased=true;
+								break;
+							}
+						}
+						//convex circle is outside of concave circle i
+						else{
+							if(angle+THRESHOLD_INTERFACE-it->lambda.rotation >  circles[i].lambda.rotation){
+								it = circles.erase(it);
+								it->erased=true;
+								erased=true;
+								break;
+							}
 						}
 						
 					}
 					else{
-						//concave circle IT is completely inside the occlusion of concave circle i
-						if(it->lambda.rotation > circles[i].lambda.rotation + angle-THRESHOLD_INTERFACE){
-							it = circles.erase(it);
-							it->erased=true;
-							erased=true;
-							break;
-						}
-						//concave circle IT has a free area. This area is covered by concave circle i
-						else if(angle+THRESHOLD_INTERFACE > it->lambda.rotation + circles[i].lambda.rotation){
-							circles.clear();
-							return -1;
+						//concave circle IT has a free area. This area is covered by convex circle i
+						if(circles[i].form == CONVEX){
+							if(it->lambda.rotation + angle-THRESHOLD_INTERFACE < circles[i].lambda.rotation){
+								circles.clear();
+								return -1;
+							}
 							
 						}
-						
-					}
+						else{
+							//concave circle IT is completely inside the occlusion of concave circle i
+							if(it->lambda.rotation > circles[i].lambda.rotation + angle-THRESHOLD_INTERFACE){
+								it = circles.erase(it);
+								it->erased=true;
+								erased=true;
+								break;
+							}
+							//concave circle IT has a free area. This area is covered by concave circle i
+							else if(angle+THRESHOLD_INTERFACE > it->lambda.rotation + circles[i].lambda.rotation){
+								circles.clear();
+								return -1;
+								
+							}
+							
+						}
 
-				}	
+					}	
+				}
 				
 						
 					
@@ -941,8 +1142,6 @@ int Tessellation::filterCircularInterfaces(TessellationAxis &tessellationAxis, f
 
 
 
-
-
 void Tessellation::outputGaussBonnetPath(SASAs &points){
 	/*
 	SASASegmentList::iterator it;
@@ -956,11 +1155,75 @@ void Tessellation::outputGaussBonnetPath(SASAs &points){
 
 void Tessellation::reindexCircularInterfaces(CircularInterfacesPerAtom &circles){
 	for(unsigned i=0;i<circles.size();i++){
-		circles[i].id = i+1;
+		circles[i].id = i;
 	}
 }
 
+void Tessellation::reindexCircularInterfaces2(CircularInterfacesPerAtom &circles){
+	map<int,int> cross;
+	IntersectionBranches::iterator it,it2;
+	bool erased;
+	int m;
+	
+	
+	
+	
+	for(unsigned i=0;i<circles.size();i++){
+		cross[circles[i].id]=i;
+	}
+	
+	for(unsigned i=0;i<circles.size();i++){
+		circles[i].id = i;
+		it = circles[i].intersectionBranches.begin();
+		
+		//if the branch is pointing to a not-deleted circle, we update its id, or remove it in the other case
+		while(it != circles[i].intersectionBranches.end()){
+			erased=false;
+			if(cross.find(it->second.id)!=cross.end()){
+				it->second.id=cross[it->second.id];
+				it->second.PHI.omega.id_i=cross[it->second.PHI.omega.id_i];
+				it->second.PHI.omega.id_j=cross[it->second.PHI.omega.id_j];
+				it->second.PHI.eta.id_i=cross[it->second.PHI.eta.id_i];
+				it->second.PHI.eta.id_j=cross[it->second.PHI.eta.id_j];
+			}
+			else{
+				//it's not good to delete the intersection points, but we have to give them a different id
+				it->second.id=it->second.id+circles.size()+1;
+			}
+			if(!erased) ++it;
+		}
+	}
+}
 
+void Tessellation::reindexCircularInterfaces3(CircularInterfacesPerAtom &circles){
+	map<int,int> cross;
+	IntersectionBranches::iterator it,it2;
+	bool erased;
+	
+	
+	for(unsigned i=0;i<circles.size();i++){
+		cross[circles[i].id]=i;
+	}
+	
+	for(unsigned i=0;i<circles.size();i++){
+		it = circles[i].intersectionBranches.begin();
+		
+		//if the branch is pointing to a not-deleted circle, we update its id, or remove it in the other case
+		while(it != circles[i].intersectionBranches.end()){
+			erased=false;
+			if(cross.find(it->second.id)!=cross.end()){
+			}
+			else{
+				it2=it;
+				++it2;
+				circles[i].intersectionBranches.erase(it);
+				erased=true;
+				it=it2;
+			}
+			if(!erased) ++it;
+		}
+	}
+}
 
 
 
@@ -993,7 +1256,12 @@ void Tessellation::insertArtificialIntersectionPoints(CircularInterface &I, Tess
 	
 	sasaSegment.i = 0;
 	sasaSegment.i2 = 0;
+	sasaSegment.artificial=true;
 	
+	//this will create two improper intersection-points, but in the end, it's the same result as with proper ones..
+	sasaSegment.v0=I.normal;
+	sasaSegment.v1=I.normal;
+	sasaSegment.weight=1;
 	
 	sasaSegment.id0 = I.id;
 	sasaSegment.id1 = I.id;
@@ -1108,14 +1376,32 @@ int Tessellation::sgn(float d){
 	if(d>=0) return 1;
 	else return -1;
 }
-
-void Tessellation::determineCircularIntersections(CircularInterfacesPerAtom &circles){
+/*
+void Tessellation::doIntersect(CircularInterface &k, CircularInterface &j){
 	float angle;
 	RhoContainer c;
 	
+	angle = getAngle(k.normal,j.normal);
+	if(angle+THRESHOLD_INTERFACE < k.lambda.rotation + j.lambda.rotation){
+		if(angle-THRESHOLD_INTERFACE + k.lambda.rotation > j.lambda.rotation && angle-THRESHOLD_INTERFACE + j.lambda.rotation > k.lambda.rotation){
+			return true
+		}
+	}
+	return false;
+	
+}
+*/
+
+void Tessellation::determineCircularIntersections(CircularInterfacesPerAtom &circles, bool splitterOnly){
+	float angle;
+	RhoContainer c;
+	unsigned int start;
 	//this doesn't really need to be optimised. The reason is, that the number of excluded interface-interface intersections is much smaller and at most equal to the number of included intersections
-	for(unsigned k=0;k<circles.size();k++)
-		for(unsigned j=k+1;j<circles.size();j++){
+	for(unsigned k=0;k<circles.size();k++){
+		start=k+1;
+		if(splitterOnly && circles[k].form!=SPLITTER) continue;
+		if(splitterOnly) start=0;
+		for(unsigned j=start;j<circles.size();j++){
 			if(k!=j){
 				//determine if there will be intersections
 				angle = getAngle(circles[k].normal,circles[j].normal);
@@ -1123,13 +1409,14 @@ void Tessellation::determineCircularIntersections(CircularInterfacesPerAtom &cir
 					if(angle-THRESHOLD_INTERFACE + circles[k].lambda.rotation > circles[j].lambda.rotation && angle-THRESHOLD_INTERFACE + circles[j].lambda.rotation > circles[k].lambda.rotation){
 						c.rho=angle;
 						c.id = k;
-						circles[j].circularIntersections.push_back(c);
+						circles[j].circularIntersections[circles[k].index]=c;
 						c.id = j;
-						circles[k].circularIntersections.push_back(c);
+						circles[k].circularIntersections[circles[j].index]=c;
 					}
 				}
 			}
 		}
+	}
 		
 	
 }
@@ -1482,7 +1769,7 @@ float Tessellation::l(Vector &a){
 
 
 OmegaRotation Tessellation::calculateOmega(TessellationAxis &tessellationAxis, CircularInterface &I, CircularInterface &J, RhoContainer &rhoContainer){
-	return calculateOmega(tessellationAxis, I.normal, J.normal, I.id-1, J.id-1, I.form, J.form, rhoContainer,I.index);
+	return calculateOmega(tessellationAxis, I.normal, J.normal, I.id, J.id, I.form, J.form, rhoContainer,I.index);
 
 }
 
@@ -1753,6 +2040,9 @@ Rotation Tessellation::calculateOmegaDerivatives(OmegaRotation &r, CircularInter
 		
 
 		ni = normalise(cross(chi,mu_i),di);
+		
+		
+		
 		vi = cross(chi,mu_i);
 		dot_ni_nij=norm_dot(ni,nij);
 		
@@ -1803,7 +2093,10 @@ Rotation Tessellation::calculateOmegaDerivatives(OmegaRotation &r, CircularInter
 		
 		
 		A=0.5*M_PI*(q4-q2*q4+q5-q3*q5) + q2*q4*a_ni_nij + q3*q5*a_ni_niold;
-		if(abs(acos(r.dot_ni_nij)- A)>0.1) exit(-2);
+		if(abs(acos(r.dot_ni_nij)- A)>0.1){
+			printf("Alternative PHI derivative convergence error: %f %f\n",acos(r.dot_ni_nij),A);
+			exit(-2);
+		}
 		
 		
 	}
@@ -1880,7 +2173,6 @@ Rotation Tessellation::calculateOmegaDerivatives(OmegaRotation &r, CircularInter
 	dvarpi_dni = -(nij) / denominator;
 	dvarpi_dnij = -(ni) / denominator;
 	
-	
 
 	domega_dxi = s2* domega_dvarpi * ((dvarpi_dni.t() * dni_dvi * dvi_dmui * dmui_dxi).t() + (dvarpi_dnij.t() * dnij_dvij * dvij_dmui * dmui_dxi).t() );
 	domega_dxj = s2* domega_dvarpi * (dvarpi_dnij.t() * dnij_dvij * dvij_dmuj * dmuj_dxj).t();
@@ -1953,7 +2245,7 @@ float Tessellation::calculateRho(Vector &mu_i, Vector &mu_j, bool derivatives){
 
 
 EtaRotation Tessellation::calculateEta(TessellationAxis &tessellationAxis, CircularInterface &I, CircularInterface &J, RhoContainer &rhoContainer){
-	return calculateEta(tessellationAxis, I.normal, J.normal, I.lambda, J.lambda, I.id-1, J.id-1, I.form, J.form, rhoContainer);
+	return calculateEta(tessellationAxis, I.normal, J.normal, I.lambda, J.lambda, I.id, J.id, I.form, J.form, rhoContainer);
 }
 
 
@@ -2071,6 +2363,7 @@ Rotation Tessellation::calculateEtaDerivatives(EtaRotation &r, CircularInterface
 	lambda_j = circles[id_j].lambda;
 	dmui_dxi = circles[id_i].dmu_dx;
 	dmuj_dxj = circles[id_j].dmu_dx;
+	
 
 	eta.rotation = r.rotation;
 	
@@ -2120,6 +2413,7 @@ Rotation Tessellation::calculateEtaDerivatives(EtaRotation &r, CircularInterface
 		deta_dxj = deta_dlambdaj * lambda_j.drotation_dxi + deta_drhoij * drho_dxj;
 		deta_dxl = deta_dlambdai * lambda_i.drotation_dxl + deta_dlambdaj * lambda_j.drotation_dxl + deta_drhoij * drho_dxl;
 		
+		
 		eta.drotation_dxi = deta_dxi;
 		eta.drotation_dxj = deta_dxj;
 		eta.drotation_dxl = deta_dxl;
@@ -2132,7 +2426,7 @@ Rotation Tessellation::calculateEtaDerivatives(EtaRotation &r, CircularInterface
 }
 
 PHIContainer Tessellation::calculatePHI(TessellationAxis &tessellationAxis, CircularInterface &I, CircularInterface &J, float radius, RhoContainer &rhoContainer){
-	return calculatePHI(tessellationAxis, I.normal, J.normal, I.lambda, J.lambda, I.id-1, J.id-1, I.form, J.form, rhoContainer, I.index);
+	return calculatePHI(tessellationAxis, I.normal, J.normal, I.lambda, J.lambda, I.id, J.id, I.form, J.form, rhoContainer, I.index);
 	
 }
 
@@ -2217,7 +2511,6 @@ Rotation Tessellation::calculatePHIDerivatives(PHIRotation &r, CircularInterface
 	PHI.drotation_dxj = s*eta.drotation_dxj + omega.drotation_dxj;
 	PHI.drotation_dxl = s*eta.drotation_dxl + omega.drotation_dxl;
 	PHI.drotation_dxt = s*eta.drotation_dxt + omega.drotation_dxt;
-	
 	
 	
 	
@@ -3072,6 +3365,8 @@ Rotation Tessellation::calculatePsi(TessellationAxis &tessellationAxis, Vector &
 	r.drotation_dxl = Vector(3).zeros();
 	r.drotation_dxt = Vector(3).zeros();
 	
+	//printf("ANGLE: %d %d\n",tessellationAxis.v.size(), mu_i.size());
+	
 	r.rotation = getAngle(tessellationAxis.v,mu_i);
 	
 
@@ -3189,15 +3484,15 @@ Rotation Tessellation::calculatePsi(TessellationAxis &tessellationAxis, Vector &
 
 
 IntersectionBranches::iterator Tessellation::increaseBranchInterator(IntersectionBranches::iterator it, CircularInterface &circle){
-	IntersectionBranches* p;
-	p = it->second.body;
+	//IntersectionBranches* p;
+	//p = it->second.body;
 	if(circle.form == CONVEX){
 		++it;
-		if(it == p->end()) it=p->begin();
+		if(it == circle.intersectionBranches.end()) it=circle.intersectionBranches.begin();
 		
 	}
 	else{
-		if(it == p->begin()) it=p->end();
+		if(it == circle.intersectionBranches.begin()) it=circle.intersectionBranches.end();
 		--it;
 	}
 	
@@ -3206,17 +3501,17 @@ IntersectionBranches::iterator Tessellation::increaseBranchInterator(Intersectio
 }
 
 IntersectionBranches::iterator Tessellation::decreaseBranchInterator(IntersectionBranches::iterator it, CircularInterface &circle){
-	IntersectionBranches* p;
-	p = it->second.body;
+	//IntersectionBranches* p;
+	//p = it->second.body;
 	
 	if(circle.form == CONVEX){
-		if(it == p->begin()) it=p->end();
+		if(it == circle.intersectionBranches.begin()) it=circle.intersectionBranches.end();
 		--it;
 		
 	}
 	else{
 		++it;
-		if(it == p->end()) it=p->begin();
+		if(it == circle.intersectionBranches.end()) it=circle.intersectionBranches.begin();
 	}
 	
 	return it;
@@ -3227,30 +3522,38 @@ IntersectionBranches::iterator Tessellation::decreaseBranchInterator(Intersectio
 
 
 
-void Tessellation::createIntersectionBranch(PHIContainer &PHII, CircularInterface &I, CircularInterface &J){
+void Tessellation::createIntersectionBranch(PHIContainer &PHII, CircularInterface &I, CircularInterface &J, RhoContainer &rho, BranchMode mode){
 	
 	pair<float, IntersectionBranch> x;
 	IntersectionBranches::iterator it0;
 	IntersectionBranches::iterator it1;
 	
 	x.second.visited = -1;
+
 	
-	x.first = PHII.in.rotation;
-	x.second.direction = IN;
-	x.second.body = &I.intersectionBranches;
-	x.second.id = J.id;
-	x.second.flagged = false;
-	x.second.PHI = PHII.in;
-	it0 = I.intersectionBranches.insert(x);
+	if(mode==BRANCH_ALL || mode==BRANCH_IN){
+		x.first = PHII.in.rotation;
+		x.second.direction = IN;
+		x.second.body = &I.intersectionBranches;
+		x.second.id = J.id;
+		x.second.flagged = false;
+		x.second.PHI = PHII.in;
+		x.second.rho=rho;
+		x.second.weight=0;
+		it0 = I.intersectionBranches.insert(x);
+	}
 	
-	
-	x.first = PHII.out.rotation;
-	x.second.direction = OUT;
-	x.second.body = &I.intersectionBranches;
-	x.second.id = J.id;
-	x.second.flagged = false;
-	x.second.PHI = PHII.out;
-	it1 = I.intersectionBranches.insert(x);
+	if(mode==BRANCH_ALL || mode==BRANCH_OUT){
+		x.first = PHII.out.rotation;
+		x.second.direction = OUT;
+		x.second.body = &I.intersectionBranches;
+		x.second.id = J.id;
+		x.second.flagged = false;
+		x.second.PHI = PHII.out;
+		x.second.rho=rho;
+		x.second.weight=0;
+		it1 = I.intersectionBranches.insert(x);
+	}
 
 	
 		
@@ -3276,7 +3579,7 @@ void Tessellation::printIntersectionGraph(IntersectionGraph &g,CircularInterface
 	IntersectionGraph::iterator it;
 	
 	for(it = g.begin(); it != g.end(); ++it){
-		//fprintf(stderr,"NODE[%d,%d]: (%d,%d) -> (%d,%d)\n", circles[it->first.id0-1].index, circles[it->first.id1-1].index, circles[it->second.id0-1].index, circles[it->second.id1-1].index, circles[it->second.pointsTo0-1].index, circles[it->second.pointsTo1-1].index);
+		//fprintf(stderr,"NODE[%d,%d]: (%d,%d) -> (%d,%d)\n", circles[it->first.id0].index, circles[it->first.id1].index, circles[it->second.id0].index, circles[it->second.id1].index, circles[it->second.pointsTo0-1].index, circles[it->second.pointsTo1-1].index);
 		fprintf(stderr,"NODE[%d,%d]: (%d,%d) -> (%d,%d)\n", it->first.id0, it->first.id1, it->second.id0, it->second.id1, it->second.pointsTo0, it->second.pointsTo1);
 	}
 }
@@ -3401,12 +3704,12 @@ float Tessellation::exposition(Hemisphere hemisphere, IntersectionBranches::iter
 
 
 
-bool Tessellation::buildIntersectionGraph(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer, bool split){
+void Tessellation::buildIntersectionGraphFirstPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles){
 	SASASegment sasaSegment;
 	
 	unsigned int j;
 	CircularInterface *I, *J;
-	vector<RhoContainer>::iterator it_j;
+	map<int,RhoContainer>::iterator it_j;
 	
 	
 	Interfaces interfacesJ, interfacesI;
@@ -3438,28 +3741,24 @@ bool Tessellation::buildIntersectionGraph(int l, float radius, TessellationAxis 
 	for(unsigned int i=0; i < circles.size(); ++i){
 		I = &circles[i];
 		
-		if(I->circularIntersections.size()==0){
-			insertArtificialIntersectionPoints(*I,tessellationAxis,hemisphere,sasa);			
-		}
-		
+	
 		
 		
 		for(it_j=I->circularIntersections.begin(); it_j != I->circularIntersections.end(); ++it_j){
-			j=it_j->id;
-			rhoContainer = *it_j;
+			j=it_j->second.id;
+			rhoContainer = it_j->second;
 			J = &circles[j];
 			
 			//retrieve external and internal interfaces (respectively)
 			//PHIJ = calculatePHI(tessellationAxis, *J, *I, radius, rhoContainer);
 			PHII = calculatePHI(tessellationAxis, *I, *J, radius, rhoContainer);
 			
-			createIntersectionBranch(PHII, *I, *J);
+			createIntersectionBranch(PHII, *I, *J,rhoContainer, BRANCH_ALL);
 			
 			
 
 			
-			
-			
+			//iterate through branches and remove points that are occluded
 			for(it = I->intersectionBranches.begin(); it != I->intersectionBranches.end(); ++it){
 				if(it->second.id == J->id) searchMode=0;
 				else searchMode=1;
@@ -3493,7 +3792,7 @@ bool Tessellation::buildIntersectionGraph(int l, float radius, TessellationAxis 
 				if(it->second.flagged){
 					it2=it;
 					++it2;
-					//dist0 = buriedness(hemisphere, *I, circles[it->second.id-1], it->second.PHI.rotation, buffer0, buffer1);
+					//dist0 = buriedness(hemisphere, *I, circles[it->second.id], it->second.PHI.rotation, buffer0, buffer1);
 					//fprintf(stderr,"%f\n",dist0);
 					I->intersectionBranches.erase(it);
 					it=it2;
@@ -3513,7 +3812,557 @@ bool Tessellation::buildIntersectionGraph(int l, float radius, TessellationAxis 
 					
 		}
 	}
+}
 
+
+
+
+
+
+void Tessellation::buildIntersectionGraphSplitterPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles){
+	SASASegment sasaSegment;
+	
+	unsigned int j;
+	CircularInterface *I, *J;
+	map<int,RhoContainer>::iterator it_j;
+	
+	
+	Interfaces interfacesJ, interfacesI;
+	IntersectionBranches::iterator it, it2;
+	PHIContainer PHIJ, PHII;
+	
+	int searchMode;
+	bool erased;
+	bool done;
+	RhoContainer rhoContainer;
+	SegmentGraph segmentGraph0;
+	SegmentGraph segmentGraph1;
+	pair<PartialSegmentID,SegmentList::iterator> p;
+	SegmentGraph::iterator it_s0, it_s1;
+	PartialSegmentID ps0,ps1,pempty;
+	bool segmentSearchForward;
+	SegmentList segmentList;
+	SegmentList::iterator it_sl, it_sl2, it_sl2_start;
+	SegmentInfo seginfo;
+	vector<vector<SegmentList::iterator> > segmentPointerLists;
+	vector<SegmentList::iterator> segmentPointers;
+	vector<vector<SegmentList::iterator> >::iterator it_sp;
+	int segmentCount;
+	int id0,id1,id2;
+	bool iterateAll;
+	
+	
+	
+	//iterate through all circles and add them to the intersectiongraph, one by one
+	for(unsigned int i=0; i < circles.size(); ++i){
+		I = &circles[i];
+		
+		
+		
+		
+		it_j=I->circularIntersections.find(-1);
+	
+		iterateAll=false;
+		if(I->form==SPLITTER){
+			iterateAll=true;
+			it_j=I->circularIntersections.begin();
+		}
+		
+		if(it_j==I->circularIntersections.end()) continue;
+			
+		do{
+
+
+			j=it_j->second.id;
+			rhoContainer = it_j->second;
+			J = &circles[j];
+			
+			//retrieve external and internal interfaces (respectively)
+			//PHIJ = calculatePHI(tessellationAxis, *J, *I, radius, rhoContainer);
+			PHII = calculatePHI(tessellationAxis, *I, *J, radius, rhoContainer);
+			
+			createIntersectionBranch(PHII, *I, *J,rhoContainer,BRANCH_ALL);
+			
+			
+			
+			//iterate through branches and remove points that are occluded
+			for(it = I->intersectionBranches.begin(); it != I->intersectionBranches.end(); ++it){
+				if(it->second.id == J->id) searchMode=0;
+				else searchMode=1;
+
+				if(it->second.direction==OUT){
+				
+				
+					done=false;
+					it2 = it;
+					while(!done){
+						it2=increaseBranchInterator(it2, *I);
+						
+						
+						
+						if(	(it2->second.direction==IN && searchMode==0 && it2->second.id == J->id) ||
+							(it2->second.direction==IN && searchMode==1 && it2->second.id != J->id)){
+								done=true;
+							}
+							else{
+								it2->second.flagged=true;
+							}
+							
+							
+					}
+				}
+			}
+
+			it = I->intersectionBranches.begin();
+			while(it != I->intersectionBranches.end()){
+				erased=false;
+				if(it->second.flagged){
+					it2=it;
+					++it2;
+					//dist0 = buriedness(hemisphere, *I, circles[it->second.id], it->second.PHI.rotation, buffer0, buffer1);
+					//fprintf(stderr,"%f\n",dist0);
+					I->intersectionBranches.erase(it);
+					it=it2;
+					erased=true;
+				}
+				
+				if(!erased) ++it;
+					
+			}
+
+			
+			if(I->intersectionBranches.size()==0){
+				
+				break;
+			}
+			
+
+			
+			++it_j;
+
+		}
+		while(iterateAll && it_j != I->circularIntersections.end());
+		
+		
+
+	}
+	
+}
+
+
+
+
+
+
+void Tessellation::copyIntersectionGraph(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, CircularInterfacesPerAtom &newCircles){
+	SASASegment sasaSegment;
+	
+	
+	CircularInterface *I, *J;
+	vector<RhoContainer>::iterator it_j;
+	
+	
+	IntersectionBranches::iterator it;
+	PHIContainer PHII;
+	
+	RhoContainer rhoContainer;
+
+	//clear intersectionbranches. They will be refreshed in the next step.
+	newCircles=CircularInterfacesPerAtom(circles);
+	for(unsigned int i=0; i < newCircles.size(); ++i){
+		newCircles[i].intersectionBranches.clear();
+		newCircles[i].hasDerivatives=false;
+	}
+	
+	
+	
+	for(unsigned int i=0; i < circles.size(); ++i){
+		I = &circles[i];
+		
+		//here, the intersection graph is refreshed with the new PHI values with respect to the new tessellation axis
+		for(it = I->intersectionBranches.begin(); it != I->intersectionBranches.end(); ++it){
+			J=&circles[it->second.id];
+			rhoContainer=it->second.rho;
+			PHII = calculatePHI(tessellationAxis, *I, *J, radius, rhoContainer);
+			
+			if(it->second.direction==OUT) createIntersectionBranch(PHII, newCircles[i], newCircles[it->second.id], rhoContainer, BRANCH_OUT);
+			else createIntersectionBranch(PHII, newCircles[i], newCircles[it->second.id], rhoContainer, BRANCH_IN);
+			
+		}
+		
+
+	}
+
+}
+
+
+
+
+
+
+
+void Tessellation::buildIntersectionGraphArtificialPointsPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere){
+	SASASegment sasaSegment;
+	
+	unsigned int j;
+	CircularInterface *I, *J;
+	vector<RhoContainer>::iterator it_j;
+	
+	
+	Interfaces interfacesJ, interfacesI;
+	IntersectionBranches::iterator it, it2;
+	PHIContainer PHIJ, PHII;
+	
+	int searchMode;
+	bool erased;
+	bool done;
+	RhoContainer rhoContainer;
+	SegmentGraph segmentGraph0;
+	SegmentGraph segmentGraph1;
+	pair<PartialSegmentID,SegmentList::iterator> p;
+	SegmentGraph::iterator it_s0, it_s1;
+	PartialSegmentID ps0,ps1,pempty;
+	bool segmentSearchForward;
+	SegmentList segmentList;
+	SegmentList::iterator it_sl, it_sl2, it_sl2_start;
+	SegmentInfo seginfo;
+	vector<vector<SegmentList::iterator> > segmentPointerLists;
+	vector<SegmentList::iterator> segmentPointers;
+	vector<vector<SegmentList::iterator> >::iterator it_sp;
+	int segmentCount;
+	int id0,id1,id2;
+
+	for(unsigned int i=0; i < circles.size(); ++i){
+		I = &circles[i];
+		
+		//if the interface has no intersections with other interfaces, it needs to be treated specially
+		if(I->circularIntersections.size()==0 && I->form!=SPLITTER){
+			insertArtificialIntersectionPoints(*I,tessellationAxis,hemisphere,sasa);			
+		}
+	}
+}
+
+
+
+void Tessellation::sortGaussBonnetPaths(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer, bool split, unsigned int &globalSegmentCounter, bool derivatives){
+	SASASegment sasaSegment;
+	
+	unsigned int j;
+	CircularInterface *I, *J;
+	vector<RhoContainer>::iterator it_j;
+	
+	
+	Interfaces interfacesJ, interfacesI;
+	IntersectionBranches::iterator it, it2;
+	PHIContainer PHIJ, PHII;
+	
+	int searchMode;
+	bool erased;
+	bool done;
+	RhoContainer rhoContainer;
+	SegmentGraph segmentGraph0;
+	SegmentGraph segmentGraph1;
+	pair<PartialSegmentID,SegmentList::iterator> p;
+	SegmentGraph::iterator it_s0, it_s1;
+	PartialSegmentID ps0,ps1,pempty;
+	bool segmentSearchForward;
+	SegmentList segmentList;
+	SegmentList::iterator it_sl, it_sl2, it_sl2_start;
+	SegmentInfo seginfo;
+	vector<vector<SegmentList::iterator> > segmentPointerLists;
+	vector<SegmentList::iterator> segmentPointers;
+	vector<vector<SegmentList::iterator> >::iterator it_sp;
+	int segmentCount;
+	int id1;
+	
+	unsigned int k;
+	Vector v0,v1;
+	float s_direction;
+	float arclength;
+	float PHI0,PHI1;
+	float kappa;
+	
+	//count segments;
+	segmentCount=0;
+	for(unsigned int i=0; i < circles.size(); ++i){
+		I = &circles[i];
+		for(it = I->intersectionBranches.begin(); it != I->intersectionBranches.end(); ++it){
+			if(it->second.direction==IN){
+				segmentCount++;
+			}
+		}
+	}
+	
+
+	//build segmentgraph and assign distances
+	segmentList.clear(),
+	segmentList.reserve(segmentCount*2);
+	
+	pempty.i0=-1;
+	pempty.i1=-1;
+	for(unsigned int i=0; i < circles.size(); ++i){
+		I = &circles[i];
+		if(I->intersectionBranches.size()>0){
+			for(it = I->intersectionBranches.begin(); it != I->intersectionBranches.end(); ++it){
+				if(it->second.direction==IN){
+					it2=increaseBranchInterator(it,*I);
+					
+					ps0.i0 = it->second.id;
+					ps0.i1 = I->id;
+					
+					ps1.i0 = I->id;
+					ps1.i1 = it2->second.id;
+					
+					
+					
+					//printf("EXPOSING %d %d %d\n",circles[it->second.id].index,circles[I->id].index,circles[it2->second.id].index);
+					
+					seginfo.id0 = ps0;
+					seginfo.id1 = ps1;
+					seginfo.backw=pempty;
+					seginfo.forw=pempty;
+					seginfo.hasForward=false;
+					seginfo.hasBackward=false;
+					seginfo.PHI0 = it->second.PHI;
+					seginfo.PHI1 = it2->second.PHI;
+					seginfo.visited=false;
+					seginfo.source=&(it->second);
+					if(hasDepthBuffer && useDepthBuffer) seginfo.dist=exposition(hemisphere, it, it2, *I);
+					it_sl = segmentList.insert(segmentList.end(), seginfo);
+					
+					p.first=ps0;
+					p.second=it_sl;
+					segmentGraph0.insert(p);
+					
+					p.first=ps1;
+					p.second=it_sl;
+					segmentGraph1.insert(p);
+					
+					it_s0 = segmentGraph0.find(ps1);
+					if(it_s0!=segmentGraph0.end()){
+						it_sl2 = it_s0->second;
+						it_sl->it_forw=it_sl2;
+						it_sl->hasForward=true;
+						it_sl2->it_backw=it_sl;
+						it_sl2->hasBackward=true;
+					}
+					
+					it_s1 = segmentGraph1.find(ps0);
+					if(it_s1!=segmentGraph1.end()){
+						it_sl2 = it_s1->second;
+						it_sl->it_backw=it_sl2;
+						it_sl->hasBackward=true;
+						it_sl2->it_forw=it_sl;
+						it_sl2->hasForward=true;
+					}
+					
+					
+					
+				}
+			}
+		}
+	}
+	
+	
+	
+	//create a vector of SASAs
+	segmentPointerLists.clear();
+		
+		
+	for(it_sl=segmentList.begin(); it_sl!=segmentList.end(); ++it_sl){
+		segmentPointers.clear();
+		segmentSearchForward=true;
+		it_sl2 = it_sl;
+		it_sl2_start=it_sl2;
+		while(it_sl2!=segmentList.end() && !it_sl2->visited){
+			segmentPointers.push_back(it_sl2);
+			it_sl2->visited=true;
+			if(segmentSearchForward){
+				if(it_sl2->hasForward) it_sl2=it_sl2->it_forw;
+				else {
+					//it's not guaranteed that the sasa is a cycle. 
+					//however, we get better results disregarding broken cycles
+					segmentSearchForward=false;
+					it_sl2=segmentList.end();
+					segmentPointers.clear();
+					
+					
+					it_sl2=it_sl2_start;
+				}
+			}
+			
+			if(!segmentSearchForward){
+				if(it_sl2->hasBackward) it_sl2=it_sl2->it_backw;
+				else {
+					it_sl2=segmentList.end();
+
+				}
+			}
+			
+			
+			
+		}
+		if(segmentPointers.size()>0) segmentPointerLists.push_back(segmentPointers);
+	}			
+	
+	
+	//add intersection-points and semi-segment points
+	for(unsigned int i=0; i<segmentPointerLists.size(); ++i){
+		for(unsigned int j=0; j<segmentPointerLists[i].size(); ++j){
+				id1 = segmentPointerLists[i][j]->id0.i1;
+			
+				
+				PHI0=segmentPointerLists[i][j]->PHI0.rotation;
+				PHI1=segmentPointerLists[i][j]->PHI1.rotation;
+				
+				if(PHI1 >= PHI0) s_direction=1;
+				else s_direction=-1;
+				arclength = s_direction*PHI1 - s_direction*PHI0;
+				
+ 				if(PHI1 < PHI0)
+ 					arclength = 2*M_PI - arclength;
+				
+				if(circles[id1].form!=CONVEX)
+					arclength = 2*M_PI - arclength;
+				
+				arclength=arclength*sin(circles[id1].lambda.rotation);			
+				
+				kappa=calculateKappa(tessellationAxis, circles[id1].normal, circles[id1].form);
+				v0=PHI2V(tessellationAxis,PHI0, circles[id1].psi.rotation, circles[id1].lambda.rotation, kappa, circles[id1].form);
+				v1=PHI2V(tessellationAxis,PHI0+arclength/2.0, circles[id1].psi.rotation, circles[id1].lambda.rotation, kappa, circles[id1].form);
+				
+				k=j+1;
+				if(k>=segmentPointerLists[i].size()) k=0;
+				
+				segmentPointerLists[i][j]->source->v0=v0;
+				segmentPointerLists[i][j]->source->v1=v1;
+				//distribute weights
+				segmentPointerLists[i][j]->source->weight+=arclength;
+				segmentPointerLists[i][k]->source->weight+=arclength;
+				
+				
+				
+				
+		}
+	}
+
+	
+	
+
+			
+	//@TODO WE WILL DO THAT STUFF LATER
+	
+	//We compare here to the previous tessellation
+	//if there are differences, we break calculation and redo without depthbuffer
+	
+	/*
+	set<FullSegmentID,SegmentSetComparator> segmentSet;
+	FullSegmentID segmentID;
+	if(hasDepthBuffer && useDepthBuffer){
+		//printf("NEW SEGMENTS: ");
+	
+		for(unsigned int i=0; i<segmentPointerLists.size(); ++i){
+			for(unsigned int j=0; j<segmentPointerLists[i].size(); ++j){
+				id0 = segmentPointerLists[i][j]->id0.i0;
+				id1 = segmentPointerLists[i][j]->id0.i1;
+				id2 = segmentPointerLists[i][j]->id1.i1;
+				
+				segmentID.i0 = circles[id0].index;
+				segmentID.i1 = circles[id1].index;
+				segmentID.i2 = circles[id2].index;
+				
+				//printf(" (%d %d %d) ",segmentID.i0,segmentID.i1,segmentID.i2);
+				
+				segmentSet.insert(segmentID);
+			}
+		}
+		
+		//printf("\n");
+		
+		//printf("OLD SEGMENTS: ");
+		
+		int ac=0;
+		int bc=0;
+		//now we check if the previous and current tessellation are equivalent
+		for(unsigned int i=0; i<prevSasasForMolecule[l].size(); ++i){
+			segmentID.i0=prevSasasForMolecule[l][i].index0;
+			segmentID.i1=prevSasasForMolecule[l][i].index1;
+			segmentID.i2=prevSasasForMolecule[l][i].index2;
+			
+			if(prevSasasForMolecule[l][i].hemisphere==hemisphere){
+			//printf(" (%d %d %d) ",segmentID.i0,segmentID.i1,segmentID.i2);
+			
+			if(segmentSet.find(segmentID)==segmentSet.end()){
+				//return false;		
+				//printf("%d ",l);
+				return false;
+				ac++;
+			}else bc++;
+			}
+		}
+		//printf("\n");
+		//printf("AC: %d %d\n", ac,bc);
+//if(mismatch) return false;
+	}
+	if(hasDepthBuffer && !useDepthBuffer){
+		//printf("REVISED SEGMENTS: ");
+		
+		for(unsigned int i=0; i<segmentPointerLists.size(); ++i){
+			for(unsigned int j=0; j<segmentPointerLists[i].size(); ++j){
+				id0 = segmentPointerLists[i][j]->id0.i0;
+				id1 = segmentPointerLists[i][j]->id0.i1;
+				id2 = segmentPointerLists[i][j]->id1.i1;
+				
+				segmentID.i0 = circles[id0].index;
+				segmentID.i1 = circles[id1].index;
+				segmentID.i2 = circles[id2].index;
+				
+				//printf(" (%d %d %d) ",segmentID.i0,segmentID.i1,segmentID.i2);
+				
+			}
+		}
+		//printf("\n");
+		
+	}
+	
+*/
+
+	
+}
+
+
+
+
+bool Tessellation::buildIntersectionGraphCollectionPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer, bool split, unsigned int &globalSegmentCounter, bool derivatives){
+	SASASegment sasaSegment;
+	
+	unsigned int j;
+	CircularInterface *I, *J;
+	vector<RhoContainer>::iterator it_j;
+	
+	
+	Interfaces interfacesJ, interfacesI;
+	IntersectionBranches::iterator it, it2;
+	PHIContainer PHIJ, PHII;
+	
+	int searchMode;
+	bool erased;
+	bool done;
+	RhoContainer rhoContainer;
+	SegmentGraph segmentGraph0;
+	SegmentGraph segmentGraph1;
+	pair<PartialSegmentID,SegmentList::iterator> p;
+	SegmentGraph::iterator it_s0, it_s1;
+	PartialSegmentID ps0,ps1,pempty;
+	bool segmentSearchForward;
+	SegmentList segmentList;
+	SegmentList::iterator it_sl, it_sl2, it_sl2_start;
+	SegmentInfo seginfo;
+	vector<vector<SegmentList::iterator> > segmentPointerLists;
+	vector<SegmentList::iterator> segmentPointers;
+	vector<vector<SegmentList::iterator> >::iterator it_sp;
+	int segmentCount;
+	int id0,id1,id2;
 	
 	//count segments;
 	segmentCount=0;
@@ -3547,8 +4396,10 @@ bool Tessellation::buildIntersectionGraph(int l, float radius, TessellationAxis 
 					ps1.i0 = I->id;
 					ps1.i1 = it2->second.id;
 					
+					if(it2==I->intersectionBranches.end()) printf("STOP\n");
 					
-					//printf("EXPOSING %d %d %d\n",circles[it->second.id-1].index,circles[I->id-1].index,circles[it2->second.id-1].index);
+					
+					//printf("EXPOSING %d %d %d\n",circles[it->second.id].index,circles[I->id].index,circles[it2->second.id].index);
 					
 					seginfo.id0 = ps0;
 					seginfo.id1 = ps1;
@@ -3559,6 +4410,9 @@ bool Tessellation::buildIntersectionGraph(int l, float radius, TessellationAxis 
 					seginfo.PHI0 = it->second.PHI;
 					seginfo.PHI1 = it2->second.PHI;
 					seginfo.visited=false;
+					seginfo.v0=it->second.v0;
+					seginfo.v1=it->second.v1;
+					seginfo.weight=it->second.weight;
 					if(hasDepthBuffer && useDepthBuffer) seginfo.dist=exposition(hemisphere, it, it2, *I);
 					it_sl = segmentList.insert(segmentList.end(), seginfo);
 					
@@ -3655,7 +4509,8 @@ bool Tessellation::buildIntersectionGraph(int l, float radius, TessellationAxis 
 	else{
 		
 		//we do this here just for the sake of printing extra information that will be used to build sasea tables. This will not be called in normal production runs
-		if(!split){
+		{//if(!split){
+		
 			for(it_sl=segmentList.begin(); it_sl!=segmentList.end(); ++it_sl){
 				segmentPointers.clear();
 				segmentSearchForward=true;
@@ -3677,7 +4532,7 @@ bool Tessellation::buildIntersectionGraph(int l, float radius, TessellationAxis 
 							it_sl2=it_sl2_start;
 						}
 					}
-					/*
+					
 					if(!segmentSearchForward){
 						if(it_sl2->hasBackward) it_sl2=it_sl2->it_backw;
 						else {
@@ -3685,23 +4540,23 @@ bool Tessellation::buildIntersectionGraph(int l, float radius, TessellationAxis 
 
 						}
 					}
-					*/
+					
 					
 					
 				}
 				if(segmentPointers.size()>0) segmentPointerLists.push_back(segmentPointers);
 			}			
 		}
-		else{
-		
-			
-			//if there's no depth-buffer information, there is no real sense in figuring out which segments are joined.
-			segmentPointers.clear();
-			for(it_sl=segmentList.begin(); it_sl!=segmentList.end(); ++it_sl){
-				segmentPointers.push_back(it_sl);
-			}
-			segmentPointerLists.push_back(segmentPointers);
-		}
+// 		else{
+// 		
+// 			
+// 			//if there's no depth-buffer information, there is no real sense in figuring out which segments are joined.
+// 			segmentPointers.clear();
+// 			for(it_sl=segmentList.begin(); it_sl!=segmentList.end(); ++it_sl){
+// 				segmentPointers.push_back(it_sl);
+// 			}
+// 			segmentPointerLists.push_back(segmentPointers);
+// 		}
 	}
 	
 
@@ -3718,9 +4573,9 @@ bool Tessellation::buildIntersectionGraph(int l, float radius, TessellationAxis 
 				id1 = segmentPointerLists[i][j]->id0.i1;
 				id2 = segmentPointerLists[i][j]->id1.i1;
 				
-				segmentID.i0 = circles[id0-1].index;
-				segmentID.i1 = circles[id1-1].index;
-				segmentID.i2 = circles[id2-1].index;
+				segmentID.i0 = circles[id0].index;
+				segmentID.i1 = circles[id1].index;
+				segmentID.i2 = circles[id2].index;
 				
 				//printf(" (%d %d %d) ",segmentID.i0,segmentID.i1,segmentID.i2);
 				
@@ -3764,9 +4619,9 @@ bool Tessellation::buildIntersectionGraph(int l, float radius, TessellationAxis 
 				id1 = segmentPointerLists[i][j]->id0.i1;
 				id2 = segmentPointerLists[i][j]->id1.i1;
 				
-				segmentID.i0 = circles[id0-1].index;
-				segmentID.i1 = circles[id1-1].index;
-				segmentID.i2 = circles[id2-1].index;
+				segmentID.i0 = circles[id0].index;
+				segmentID.i1 = circles[id1].index;
+				segmentID.i2 = circles[id2].index;
 				
 				//printf(" (%d %d %d) ",segmentID.i0,segmentID.i1,segmentID.i2);
 				
@@ -3776,15 +4631,16 @@ bool Tessellation::buildIntersectionGraph(int l, float radius, TessellationAxis 
 		
 	}
 	
-	
+
 				
 	for(unsigned int i=0; i<segmentPointerLists.size(); ++i){
 		for(unsigned int j=0; j<segmentPointerLists[i].size(); ++j){
 				id0 = segmentPointerLists[i][j]->id0.i0;
 				id1 = segmentPointerLists[i][j]->id0.i1;
 				id2 = segmentPointerLists[i][j]->id1.i1;
-			
-				sasaSegment.i = i;
+				
+		
+				sasaSegment.i = globalSegmentCounter;
 				sasaSegment.i2 = j;
 				
 				sasaSegment.id0 = id0;
@@ -3792,33 +4648,51 @@ bool Tessellation::buildIntersectionGraph(int l, float radius, TessellationAxis 
 				sasaSegment.id2 = id2;
 				
 				
-				sasaSegment.index0 = circles[id0-1].index;
-				sasaSegment.index1 = circles[id1-1].index;
-				sasaSegment.index2 = circles[id2-1].index;
+				sasaSegment.index0 = circles[id0].index;
+				sasaSegment.index1 = circles[id1].index;
+				sasaSegment.index2 = circles[id2].index;
 				
-		
-				
-				if(!circles[id0-1].hasDerivatives) calculateProjectionAndDerivatives(tessellationAxis, circles[id0-1]);
-				if(!circles[id1-1].hasDerivatives) calculateProjectionAndDerivatives(tessellationAxis, circles[id1-1]);
-				if(!circles[id2-1].hasDerivatives) calculateProjectionAndDerivatives(tessellationAxis, circles[id2-1]);
-				
-				sasaSegment.lambda = circles[id1-1].lambda;
-				sasaSegment.psi = circles[id1-1].psi;
-				
-				
-				
-				sasaSegment.rotation0 = calculatePHIDerivatives(segmentPointerLists[i][j]->PHI0, circles, tessellationAxis);
-				sasaSegment.rotation1 = calculatePHIDerivatives(segmentPointerLists[i][j]->PHI1, circles, tessellationAxis);
-				sasaSegment.normalForCircularInterface = circles[id1-1].normal;
-				sasaSegment.form0 = circles[id0-1].form;
-				sasaSegment.form1 = circles[id1-1].form;
-				sasaSegment.form2 = circles[id2-1].form;
+				sasaSegment.PHI0=segmentPointerLists[i][j]->PHI0;
+				sasaSegment.PHI1=segmentPointerLists[i][j]->PHI1;
 				
 				sasaSegment.tessellationAxis = tessellationAxis;
 				sasaSegment.hemisphere = hemisphere;
 				sasaSegment.depthBufferEstimatedArea=depthBufferEstimatedArea;
 				sasaSegment.radius=radius;
 				
+				sasaSegment.normalForCircularInterface = circles[id1].normal;
+				sasaSegment.form0 = circles[id0].form;
+				sasaSegment.form1 = circles[id1].form;
+				sasaSegment.form2 = circles[id2].form;
+				
+				
+ 				if(!circles[id0].hasDerivatives) 
+					calculateProjectionAndDerivatives(tessellationAxis, circles[id0]);
+ 				if(!circles[id1].hasDerivatives) 
+					calculateProjectionAndDerivatives(tessellationAxis, circles[id1]);
+ 				if(!circles[id2].hasDerivatives) 
+					calculateProjectionAndDerivatives(tessellationAxis, circles[id2]);
+				
+				sasaSegment.lambda = circles[id1].lambda;
+				sasaSegment.psi = circles[id1].psi;
+				
+				sasaSegment.rotation0.rotation = sasaSegment.PHI0.rotation;
+				sasaSegment.rotation1.rotation = sasaSegment.PHI1.rotation;
+				
+
+				sasaSegment.v0=segmentPointerLists[i][j]->v0;
+				sasaSegment.v1=segmentPointerLists[i][j]->v1;
+				sasaSegment.weight=segmentPointerLists[i][j]->weight;
+
+				if(derivatives){
+					
+					sasaSegment.rotation0 = calculatePHIDerivatives(sasaSegment.PHI0, circles, tessellationAxis);
+					sasaSegment.rotation1 = calculatePHIDerivatives(sasaSegment.PHI1, circles, tessellationAxis);
+					
+					
+				}
+				
+				sasaSegment.artificial=false;
 			
 				
 				sasa.push_back(sasaSegment);
@@ -3829,8 +4703,7 @@ bool Tessellation::buildIntersectionGraph(int l, float radius, TessellationAxis 
 				
 				
 		}
-		
-		
+		globalSegmentCounter++;
 		
 		
 	}
@@ -3846,8 +4719,421 @@ bool Tessellation::buildIntersectionGraph(int l, float radius, TessellationAxis 
 }
 
 
+void Tessellation::addPsiAndLambda(TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles){
+	for(unsigned int i=0; i<circles.size(); ++i){
+		if(circles[i].intersectionBranches.size()>0 || (circles[i].intersectionBranches.size()==0 && circles[i].circularIntersections.size()==0)){
+			calculateProjectionAndDerivatives(tessellationAxis, circles[i]);
+		}
+	}
+}
 
 
+void Tessellation::addDerivatives(SASASegmentList &s, CircularInterfacesPerAtom &circles, TessellationAxis &frontTessellationAxis, TessellationAxis &backTessellationAxis){
+	int id0,id1,id2;
+	TessellationAxis tessellationAxis;
+	for(unsigned int j=0;j<s.size();++j){
+		id0=s[j].id0;
+		id1=s[j].id1;
+		id2=s[j].id2;
+		
+		
+		tessellationAxis=s[j].tessellationAxis;
+		
+		if(!circles[id0].hasDerivatives){
+			if(circles[id0].hemisphere==FRONTHEMISPHERE) calculateProjectionAndDerivatives(frontTessellationAxis, circles[id0]);
+			else calculateProjectionAndDerivatives(backTessellationAxis, circles[id0]);
+		}
+		if(!circles[id1].hasDerivatives){
+			if(circles[id1].hemisphere==FRONTHEMISPHERE) calculateProjectionAndDerivatives(frontTessellationAxis, circles[id1]);
+			else calculateProjectionAndDerivatives(backTessellationAxis, circles[id1]);
+ 		}
+ 		if(!circles[id2].hasDerivatives){
+			if(circles[id2].hemisphere==FRONTHEMISPHERE) calculateProjectionAndDerivatives(frontTessellationAxis, circles[id2]);
+			else calculateProjectionAndDerivatives(backTessellationAxis, circles[id2]);
+ 		}
+		
+		s[j].lambda = circles[id1].lambda;
+		s[j].psi = circles[id1].psi;
+		
+		if(!s[j].artificial){
+			s[j].rotation0 = calculatePHIDerivatives(s[j].PHI0, circles, tessellationAxis);
+			s[j].rotation1 = calculatePHIDerivatives(s[j].PHI1, circles, tessellationAxis);
+		}
+		
+		
+	}
+	
+}
+
+
+
+float Tessellation::splitPHI(float lambda, float psi){
+	return acos(-cot(lambda) * cot(psi));
+}
+
+float Tessellation::reversePHI(float PHI){
+	if(PHI>=0)
+		PHI=-M_PI+PHI;
+	else
+		PHI=M_PI+PHI;
+	
+	
+	//if(PHI0.rotation>M_PI) sasa[j].PHI0.rotation=-2*M_PI+sasa[j].PHI0.rotation;
+	//if(PHI0.rotation<-M_PI) sasa[j].PHI0.rotation=2*M_PI+sasa[j].PHI0.rotation;
+	
+	return PHI;
+		
+}
+
+
+PHIRotation Tessellation::newSplittedPHIContainer(SASASegment &seg, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, unsigned int splitter){
+	PHIRotation PHI;
+	RhoContainer rho;
+	rho.dot_mui_muj=norm_dot(seg.normalForCircularInterface, tessellationAxis.v);
+	rho.rho=acos(rho.dot_mui_muj);
+	PHI.eta=calculateEta(tessellationAxis, seg.normalForCircularInterface, tessellationAxis.v, seg.lambda, circles[splitter].lambda, seg.id1, splitter, seg.form1, SPLITTER, rho);
+	PHI.omega=calculateOmega(tessellationAxis, seg.normalForCircularInterface, tessellationAxis.v, seg.id1, splitter, seg.form1, SPLITTER, rho, seg.index1);
+	PHI.rotation=PHI.eta.rotation+PHI.omega.rotation;
+	
+	return PHI;
+	
+}
+
+PHIRotation Tessellation::newPHIContainer(SASASegment &seg, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, unsigned int id){
+	PHIRotation PHI;
+	RhoContainer rho;
+	rho.dot_mui_muj=norm_dot(seg.normalForCircularInterface, circles[id].normal);
+	rho.rho=acos(rho.dot_mui_muj);
+	PHI.eta=calculateEta(tessellationAxis, seg.normalForCircularInterface, circles[id].normal, seg.lambda, circles[id].lambda, seg.id1, id, seg.form1, circles[id].form, rho);
+	PHI.omega=calculateOmega(tessellationAxis, seg.normalForCircularInterface, circles[id].normal, seg.id1, id, seg.form1, circles[id].form, rho, seg.index1);
+	PHI.rotation=PHI.eta.rotation+PHI.omega.rotation;
+	
+	return PHI;
+	
+}
+
+
+PHIContainer Tessellation::newCompletePHIContainer(SASASegment &seg, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, unsigned int id){
+	PHIContainer PHI;
+	RhoContainer rho;
+	rho.dot_mui_muj=norm_dot(seg.normalForCircularInterface, circles[id].normal);
+	rho.rho=acos(rho.dot_mui_muj);
+	PHI=calculatePHI(tessellationAxis, seg.normalForCircularInterface, circles[id].normal, seg.lambda, circles[id].lambda, seg.id1, id, seg.form1, circles[id].form, rho, seg.index1);
+	
+	return PHI;
+	
+}
+
+/*
+void Tessellation::splitTessellation(SASASegmentList &sasa, TessellationAxis &frontTessellationAxis, TessellationAxis &backTessellationAxis, CircularInterfacesPerAtom &circles){
+	float dot0,dot1;
+	SASASegmentList sasa1;
+	SASASegment s;
+	unsigned int splitter0,splitter1;
+	map<float,unsigned int> hps;
+	map<float,unsigned int>::iterator it,it2;
+	float a;
+	unsigned int n;
+	float kappa;
+	Vector v0,v1;
+	unsigned int i,j;
+	SASASegment seg,seg0,seg1;
+	float q;
+	float r;
+	Vector v,eny(3),ez(3);
+	RhoContainer rho;
+	PHIContainer p0,p1,p2,p3;
+	bool in,out;
+	
+	eny(0)=0;
+	eny(1)=-1;
+	eny(2)=0;
+	
+	ez(0)=0;
+	ez(1)=0;
+	ez(2)=1;
+	
+	//calculate intersection-point vectors
+	for(unsigned int j=0;j<sasa.size();++j){
+		s=sasa[j];
+		kappa=calculateKappa(s.tessellationAxis, s.normalForCircularInterface, s.form1);
+		v0=PHI2V(s.tessellationAxis,s.rotation0.rotation, s.psi.rotation, s.lambda.rotation, kappa, s.form1);
+		v1=PHI2V(s.tessellationAxis,s.rotation1.rotation, s.psi.rotation, s.lambda.rotation, kappa, s.form1);
+		sasa[j].v0=v0;
+		sasa[j].v1=v1;
+		sasa[j].kappa=kappa;
+	}
+
+	splitter0 = coverHemisphere2(frontTessellationAxis, circles, SPLITTER);
+	splitter1 = coverHemisphere2(backTessellationAxis, circles, SPLITTER);
+	
+	
+	//duplicate interfaces
+	
+	n=circles.size();
+	circles.reserve(circles.size()*2);
+	for(unsigned int i=0; i<n; ++i){
+		circles.push_back(circles[i]);
+		circles[i].link=circles.size()-1;
+		circles[circles.size()-1].hemisphere=BACKHEMISPHERE;
+		circles[circles.size()-1].hasDerivatives=false;
+		circles[circles.size()-1].link=i;
+		circles[circles.size()-1].dmu_dx=circles[i].dmu_dx;
+		
+	}
+	
+	
+	//split
+	for(unsigned int j=0;j<sasa.size();++j){
+		s=sasa[j];
+		
+		if(doIntersect(circles[sasa[j]].id1,circles[splitter0])){
+			p0=newCompletePHIContainer(sasa[j], frontTessellationAxis, circles, splitter0);
+			if(isInBetween(p0.in,sasa[j].PHI0,sasa[j].PH1)) in=true;
+			else in=false;
+			if(isInBetween(p0.out,sasa[j].PHI0,sasa[j].PH1)) out=true;
+			else out=false;
+
+			
+			
+			dot0 = dot(s.v0,frontTessellationAxis.v);
+			dot1 = dot(s.v1,frontTessellationAxis.v);
+			printf("DOT [%d %d %d]: %f %f (%f %f %f),(%f %f %f) * (%f %f %f) \n", s.index0, s.index1, s.index2, dot0, dot1,s.v0(0),s.v0(1),s.v0(2),s.v1(0),s.v1(1),s.v1(2),frontTessellationAxis.v(0),frontTessellationAxis.v(1),frontTessellationAxis.v(2));
+			
+			//we have to split
+			if(in || out){
+				if(in && !out){
+					seg.id0=splitter1;
+					seg.id1=circles[sasa[j].id1].link;
+					seg.id2=circles[sasa[j].id2].link;
+					seg.index0=-1;
+					seg.index1=sasa[j].index1;
+					seg.index2=sasa[j].index2;
+					seg.tessellationAxis=backTessellationAxis;
+					seg.hemisphere=BACKHEMISPHERE;
+					seg.form0=SPLITTER;
+					seg.form1=sasa[j].form1;
+					seg.form2=sasa[j].form2;
+					seg.normalForCircularInterface=sasa[j].normalForCircularInterface;
+					seg.lambda=sasa[j].lambda;
+					seg.artificial=false;
+					
+					
+					p0=newCompletePHIContainer(seg, backTessellationAxis, circles, seg.id0);
+					p1=newCompletePHIContainer(seg, backTessellationAxis, circles, seg.id2);
+	// 				fprintf(stderr,"LEFT 1 COMPLETE PHI: [%d %d %d] %f %f %f %f\n",sasa[j].index0,sasa[j].index1,sasa[j].index2,p0.in.rotation,p0.out.rotation,p1.in.rotation,p1.out.rotation);
+					
+					seg.PHI0=p0.in;
+					seg.PHI1=p1.out;
+					
+					
+					p2=newCompletePHIContainer(sasa[j], frontTessellationAxis, circles, splitter0);
+	// 				fprintf(stderr,"LEFT 2 COMPLETE PHI: [%d %d %d] %f %f\n",sasa[j].index0,sasa[j].index1,sasa[j].index2,p0.in.rotation,p0.out.rotation);
+					
+					sasa[j].PHI1=p2.out;
+					
+					
+
+					sasa[j].id2=splitter0;
+					sasa[j].index2=-1;
+					sasa[j].htype=0;
+					q=1;
+					r=sasa[j].PHI1.rotation;
+					
+				}
+				else if(out && !in){
+					seg.id0=circles[sasa[j].id0].link;
+					seg.id1=circles[sasa[j].id1].link;
+					seg.id2=splitter1;
+					seg.index0=sasa[j].index0;
+					seg.index1=sasa[j].index1;
+					seg.index2=-1;
+					seg.tessellationAxis=backTessellationAxis;
+					seg.hemisphere=BACKHEMISPHERE;
+					seg.form0=sasa[j].form0;
+					seg.form1=sasa[j].form1;
+					seg.form2=SPLITTER;
+					seg.normalForCircularInterface=sasa[j].normalForCircularInterface;
+					seg.lambda=sasa[j].lambda;
+					seg.artificial=false;
+					
+					
+					
+					p0=newCompletePHIContainer(seg, backTessellationAxis, circles, splitter1);
+					p1=newCompletePHIContainer(seg, backTessellationAxis, circles, seg.id0);
+					
+					seg.PHI0=p1.in;
+					seg.PHI1=p0.out;
+	// 				printf(stderr,"RIGHT 1 COMPLETE PHI: [%d %d %d] %f %f %f %f\n",sasa[j].index0,sasa[j].index1,sasa[j].index2,p0.in.rotation,p0.out.rotation,p1.in.rotation,p1.out.rotation);
+					
+					
+					
+					
+					
+					p2=newCompletePHIContainer(sasa[j], frontTessellationAxis, circles, splitter0);
+	// 				printf(stderr,"RIGHT 2 COMPLETE PHI: [%d %d %d] %f %f\n",sasa[j].index0,sasa[j].index1,sasa[j].index2,p0.in.rotation,p0.out.rotation);
+					
+					sasa[j].PHI0=p2.in;
+					
+					sasa[j].id0=splitter0;
+					sasa[j].index0=-1;
+					sasa[j].htype=1;
+					q=-1;
+					r=sasa[j].PHI0.rotation;
+					
+					
+					
+				}
+				else if(in && out){
+				}
+				
+				
+				else if(dot0<0 && dot1<0){
+					//easy as pie
+					sasa[j].id0=circles[sasa[j].id0].link;
+					sasa[j].id1=circles[sasa[j].id1].link;
+					sasa[j].id2=circles[sasa[j].id2].link;
+					
+					p0=newCompletePHIContainer(sasa[j], backTessellationAxis, circles, sasa[j].id0);
+					p1=newCompletePHIContainer(sasa[j], backTessellationAxis, circles, sasa[j].id2);
+		// 			printf(stderr,"<0 <0 COMPLETE PHI: [%d %d %d] %f %f %f %f\n",sasa[j].index0,sasa[j].index1,sasa[j].index2,p0.in.rotation,p0.out.rotation,p1.in.rotation,p1.out.rotation);
+
+					sasa[j].PHI0=p0.in;
+					sasa[j].PHI1=p1.out;
+					
+					
+					//printf(stderr,"ROT: [%d %d %d] %f\n",sasa[j].index0, sasa[j].index1, sasa[j].index2,sasa[j].PHI0.rotation);
+				
+					sasa[j].tessellationAxis=backTessellationAxis;
+					sasa[j].hemisphere=BACKHEMISPHERE;
+				}
+				
+				
+			}
+			
+// 				v=PHI2V(frontTessellationAxis,r, sasa[j].psi.rotation, sasa[j].lambda.rotation, sasa[j].kappa, sasa[j].form1);
+// 				a=getAngle(v,eny);
+// 				a*=-sgn(dot(v,ez));
+// 				
+// 				//a=-reversePHI(sasa[j].kappa-q*acos(cos(sasa[j].lambda.rotation)*csc(sasa[j].psi.rotation)));
+// 				float b0=acos(-csc(sasa[j].psi.rotation) * (cos(sasa[j].kappa) * cos(sasa[j].lambda.rotation) + (    csc(sasa[j].psi.rotation) * sqrt(-(cos(2 * sasa[j].lambda.rotation) + cos(2 * sasa[j].psi.rotation)) * sin(sasa[j].kappa)*sin(sasa[j].kappa)* sin(sasa[j].psi.rotation)*sin(sasa[j].psi.rotation)))/sqrt(2)));
+// 				float b1=acos(-cos(sasa[j].kappa) * cos(sasa[j].lambda.rotation) * csc(sasa[j].psi.rotation) + (  csc(sasa[j].psi.rotation)*csc(sasa[j].psi.rotation)* sqrt(-(cos(2 *sasa[j].lambda.rotation) + cos(2 *sasa[j].psi.rotation)) *sin(sasa[j].kappa)*sin(sasa[j].kappa)* sin(sasa[j].psi.rotation)*sin(sasa[j].psi.rotation)))/sqrt(2));
+// 
+// 				hps[a]=j;
+// 				sasa1.push_back(seg);
+// 				sasa[j].link=sasa1.size()-1;
+// 				
+// 				printf("CROSS (%d %d %d) %f\n",sasa[j].index0,sasa[j].index1,sasa[j].index2,a);
+// 				
+// 				sasa1[sasa1.size()-1].rotation0.rotation=sasa1[sasa1.size()-1].PHI0.rotation;
+// 				sasa1[sasa1.size()-1].rotation1.rotation=sasa1[sasa1.size()-1].PHI1.rotation;
+				
+				
+			}
+
+			sasa[j].rotation0.rotation=sasa[j].PHI0.rotation;
+			sasa[j].rotation1.rotation=sasa[j].PHI1.rotation;
+		}
+	}
+	
+	//now take care of hemisphere-points
+	for(it=hps.begin(); it!=hps.end(); ++it){
+		if(sasa[it->second].htype==0){
+			i=it->second;
+			it2=map<float,unsigned int>::iterator(it);
+			it2++;
+			if(it2==hps.end()) it2=hps.begin();
+			j=it2->second;
+			
+			seg0.PHI0.rotation=it->first;
+			seg0.PHI1.rotation=it2->first;
+			seg0.id0=sasa[i].id1;
+			seg0.id1=splitter0;
+			seg0.id2=sasa[j].id1;
+			seg0.index0=sasa[i].index1;
+			seg0.index1=-1;
+			seg0.index2=sasa[j].index1;
+			seg0.tessellationAxis=frontTessellationAxis;
+			seg0.hemisphere=FRONTHEMISPHERE;
+			seg0.form0=sasa[i].form1;
+			seg0.form1=SPLITTER;
+			seg0.form2=sasa[j].form1;
+			seg0.normalForCircularInterface=frontTessellationAxis.v;
+			seg0.lambda=circles[splitter0].lambda;
+			seg0.artificial=false;
+			
+			
+			
+			
+			
+			
+			seg1.PHI0.rotation=-it2->first;
+			seg1.PHI1.rotation=-it->first;
+			seg1.id0=sasa1[sasa[j].link].id1;
+			seg1.id1=splitter1;
+			seg1.id2=sasa1[sasa[i].link].id1;
+			seg1.index0=sasa1[sasa[j].link].index1;
+			seg1.index1=-1;
+			seg1.index2=sasa1[sasa[i].link].index1;
+			seg1.tessellationAxis=backTessellationAxis;
+			seg1.hemisphere=BACKHEMISPHERE;
+			seg1.form0=sasa[j].form1;
+			seg1.form1=SPLITTER;
+			seg1.form2=sasa[i].form1;
+			seg1.normalForCircularInterface=backTessellationAxis.v;
+			seg1.lambda=circles[splitter1].lambda;
+			seg1.artificial=false;
+			
+
+			
+			
+			seg0.PHI0=newPHIContainer(seg0, frontTessellationAxis, circles, seg0.id0);
+			seg0.PHI1=newPHIContainer(seg1, frontTessellationAxis, circles, seg1.id0);
+			
+			
+			p0=newCompletePHIContainer(seg0, frontTessellationAxis, circles, seg0.id0);
+			p1=newCompletePHIContainer(seg1, backTessellationAxis, circles, seg1.id0);
+			
+
+			p2=newCompletePHIContainer(seg0, frontTessellationAxis, circles, seg0.id2);
+			p3=newCompletePHIContainer(seg1, backTessellationAxis, circles, seg1.id2);
+			
+
+			
+			seg0.PHI0=p0.in;
+			seg0.PHI1=p2.out;
+			
+			seg0.rotation0.rotation=seg0.PHI0.rotation;
+			seg0.rotation1.rotation=seg0.PHI1.rotation;
+			
+			
+			
+			seg1.PHI0=newPHIContainer(seg1, backTessellationAxis, circles, seg1.id0);
+			seg1.PHI1=newPHIContainer(seg0, backTessellationAxis, circles, seg0.id0);
+			
+			seg1.PHI0=p1.in;
+			seg1.PHI1=p3.out;
+			
+			seg1.rotation0.rotation=seg1.PHI0.rotation;
+			seg1.rotation1.rotation=seg1.PHI1.rotation;
+			
+			
+			
+			
+			sasa1.push_back(seg0);
+			sasa1.push_back(seg1);
+			
+		}
+	}
+	
+	//merge
+	sasa.insert(sasa.end(),sasa1.begin(),sasa1.end());
+		
+	
+
+}
+
+*/
 
 
 
@@ -3935,16 +5221,31 @@ void Tessellation::outputTessellation(string filename){
 }
 
 
-float Tessellation::calculateKappa(TessellationAxis tessellationAxis, Vector &v){
+
+
+float Tessellation::calculateKappa(TessellationAxis tessellationAxis, Vector &v, CircularInterfaceForm form){
 	float kappa;
 	Vector n2,n;
 	float s,dot_n_aux;
+	Vector ex(3),ey(3),ez(3);
+	
+	if(form==SPLITTER) return 0;
+	
 	n2=cross(v, tessellationAxis.v);
 	n=normalise(cross(tessellationAxis.v,n2));
 	s = sgn(dot(n,tessellationAxis.planeNormal));
 	dot_n_aux=dot(n,tessellationAxis.auxiliary);
-	kappa = acos(dot_n_aux);
-	if(s<0) kappa=2*M_PI-kappa;
+	kappa = s*acos(dot_n_aux);
+	//if(s<0) kappa=2*M_PI-kappa;
+	
+	
+	
+	
+// 	n2=cross(v, ex);
+// 	n=normalise(cross(ex,n2));
+// 	s = sgn(dot(n,ez));
+// 	dot_n_aux=dot(n,ey);
+// 	kappa = s*acos(dot_n_aux);
 	
 	return kappa;
 }
@@ -3988,6 +5289,26 @@ fmat33 Tessellation::roty(float theta){
 		
 }
 
+
+
+fmat33 Tessellation::rotx(float theta){
+	fmat33 m;
+	m(0,0) = 1;
+	m(0,1) = 0;
+	m(0,2) = 0;
+	
+	m(1,0) = 0;
+	m(1,1) = cos(theta);
+	m(1,2) = -sin(theta);
+	
+	m(2,0) = 0;
+	m(2,1) = sin(theta);
+	m(2,2) = cos(theta);
+	
+	return m;
+		
+}
+/*
 Vector Tessellation::PHI2V(TessellationAxis tessellationAxis, float PHI, float psi, float lambda, float kappa){
 	fmat33 T;
 	fmat33 r0, r1;
@@ -4050,30 +5371,143 @@ Vector Tessellation::PHI2V(TessellationAxis tessellationAxis, float PHI, float p
 
 
 }
+*/
 
+
+Vector Tessellation::PHI2V(TessellationAxis tessellationAxis, float PHI, float psi, float lambda, float kappa, CircularInterfaceForm form){
+	fmat33 T;
+	fmat33 r0, r1;
+	Vector n(3);
+	Vector n0(3);
+	Vector n1(3);
+	Vector n2(3);
+	Vector v(3),v2(2);
+	Vector ex(3),ey(3);
+	Vector p(3);
+	Vector x(3);
+	float ux,uy,uz;
+	float C,S,t;
+	float g;
+	double s,s1;
+	
+	
+	if(tessellationAxis.hemisphere==BACKHEMISPHERE) s1=-1;
+	else s1=1;
+	
+	if(form!=CONVEX) s=-1;
+	else s=1;
+	
+	
+	ex(0) = 1;
+	ex(1) = 0;
+	ex(2) = 0;
+	
+	
+	
+	ey(0) = 0;
+	ey(1) = 1;
+	ey(2) = 0;
+	
+	ex=tessellationAxis.v;
+	ey=tessellationAxis.auxiliary;
+	
+	
+/*	
+	
+	x=-ey*sin(lambda);
+	
+	x = rotx(-PHI)*x;
+	
+	v = ex*cos(lambda);
+	x=x+v;
+	x=rotz(psi) * x;
+	x=rotx(kappa) * x;
+	*/
+
+
+Vector t0,t1,t2,t3;
+	
+	
+	t0=x=-ey*sin(lambda);
+	
+	t1=x = rotx(-s1*PHI)*x;
+	
+	t2=v = ex*cos(lambda);
+	x=x+v;
+	t3=x=rotz(s1*psi) * x;
+	x=rotx(s1*kappa) * x;
+	
+	
+
+
+	return x;
+
+
+}
+
+
+void Tessellation::glueSegments(){
+	int i0, i1, i2;
+	map<int,int> glue;
+	map<int,int>::iterator it;
+	int l;
+	for(unsigned int i=0;i<sasasForMolecule.size();++i){
+		glue.clear();
+		for(unsigned int j=0;j<sasasForMolecule[i].size();++j){
+			if(sasasForMolecule[i][j].index2 == -1 || sasasForMolecule[i][j].index0 == -1){
+				it=glue.find(sasasForMolecule[i][j].index1);
+				if(it!=glue.end()){
+					l=sasasForMolecule[i][j].i;
+					if(it->second!=l){
+						for(unsigned int k=0;k<sasasForMolecule[i].size();++k){
+							if(sasasForMolecule[i][k].i==l) sasasForMolecule[i][k].i=it->second;
+						}
+						
+					}
+				}
+				else{
+					glue[sasasForMolecule[i][j].index1]=sasasForMolecule[i][j].i;
+				}
+			}
+		}
+	}
+	
+}
 
 void Tessellation::print(FILE* outputfile){
 	SASASegment s;
-	Vector v;
+	Vector v0,v1;
 	float kappa;
 	float phi1,phi0,arclength,s_direction;
-	fprintf(outputfile,"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","atom","id","i","i2","index0","index1","index2","arclength","ipx","ipy","ipz");
+	
+	//glueSegments();
+	fprintf(outputfile,"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","atom","id","i","i2","index0","index1","index2","arclength","ipx","ipy","ipz","hspx","hspy","hspz");
 	for(unsigned int i=0;i<sasasForMolecule.size();++i){
 		for(unsigned int j=0;j<sasasForMolecule[i].size();++j){
-			s=sasasForMolecule[i][j];
-			kappa=calculateKappa(s.tessellationAxis, s.normalForCircularInterface);
-			v=PHI2V(s.tessellationAxis,s.rotation0.rotation, s.psi.rotation, s.lambda.rotation, kappa);
-			phi0=s.rotation0.rotation;
-			phi1=s.rotation1.rotation;
-			if(phi1 >= phi0) s_direction=1;
-			else s_direction=-1;
-			arclength = s_direction*phi1 - s_direction*phi0;
-			
-			if(phi1 < phi0)
-				arclength = 2*M_PI - arclength;
-			
-			
-			fprintf(outputfile,"%d\t%d\t%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%f\n",i,j,s.i,s.i2,s.index0, s.index1,s.index2,arclength,v(0),v(1),v(2));
+			{//if(sasasForMolecule[i][j].form1==CONVEX){
+				s=sasasForMolecule[i][j];
+/*				kappa=calculateKappa(s.tessellationAxis, s.normalForCircularInterface, s.form1);
+				v0=PHI2V(s.tessellationAxis,s.rotation0.rotation, s.psi.rotation, s.lambda.rotation, kappa, s.form1);
+				v1=PHI2V(s.tessellationAxis,s.rotation1.rotation, s.psi.rotation, s.lambda.rotation, kappa, s.form1);
+				phi0=s.rotation0.rotation;
+				phi1=s.rotation1.rotation;
+				if(phi1 >= phi0) s_direction=1;
+				else s_direction=-1;
+				arclength = s_direction*phi1 - s_direction*phi0;
+				
+ 				if(phi1 < phi0)
+ 					arclength = 2*M_PI - arclength;
+				
+				if(s.form1!=CONVEX)
+					arclength = 2*M_PI - arclength;
+				
+				arclength=arclength*sin(s.lambda.rotation);
+				*/
+
+				//we filter to avoid outputting splitter intersectionpoints
+				if(s.weight>0)
+					fprintf(outputfile,"%d\t%d\t%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",i,j,s.i,s.i2,s.index0, s.index1,s.index2,s.weight,s.v0(0),s.v0(1),s.v0(2),s.v1(0),s.v1(1),s.v1(2));
+			}
 		}
 	}
 }

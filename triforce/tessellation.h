@@ -67,6 +67,11 @@ enum DerivativeMode{
 	ALIGNED
 };
 
+enum BranchMode{
+	BRANCH_ALL,
+	BRANCH_OUT,
+	BRANCH_IN
+};
 
 enum OcclusionState{
 	OCCLUDED,
@@ -220,6 +225,7 @@ PHIRotation;
 
 
 
+struct IntersectionBranch;
 
 
 typedef vector<SegmentInfo> SegmentList;
@@ -241,6 +247,10 @@ typedef struct SegmentInfo{
 	PHIRotation PHI0;
 	PHIRotation PHI1;
 	bool extended;
+	Vector v0;
+	Vector v1;
+	float weight;
+	IntersectionBranch* source;
 } SegmentInfo;
 
 
@@ -331,9 +341,16 @@ struct InteractionNodeComparator: public std::binary_function<IntersectionAddres
 
 
 
+typedef struct
+{
+	int id;
+	float rho;
+	float dot_mui_muj;
+}
+RhoContainer;
 
 
-struct IntersectionBranch;
+
 
 typedef multimap<float, IntersectionBranch> IntersectionBranches;
 
@@ -350,6 +367,10 @@ typedef struct IntersectionBranch
 	int id;
 	bool flagged;
 	PHIRotation PHI;
+	RhoContainer rho;
+	Vector v0;
+	Vector v1;
+	float weight;
 }
 IntersectionBranch;
 
@@ -369,14 +390,6 @@ struct IteratorComparator: public std::binary_function<IntersectionBranches::ite
 	}
 };
 
-typedef struct
-{
-	int id;
-	float rho;
-	float dot_mui_muj;
-}
-RhoContainer;
-
 
 
 typedef struct CircularInterface
@@ -393,7 +406,7 @@ typedef struct CircularInterface
 	float sphereRadius;
 	float d;
 	Matrix dmu_dx;
-	vector<RhoContainer> circularIntersections;
+	map<int,RhoContainer> circularIntersections;
 	IntersectionBranches intersectionBranches;
 	
 	CircularInterfaceForm form;
@@ -409,6 +422,8 @@ typedef struct CircularInterface
 	bool hasBase[2];
 	bool hasCenter;
 	bool erased;
+	Hemisphere hemisphere;
+	unsigned int link;
 }
 CircularInterface;
 
@@ -439,6 +454,15 @@ typedef struct
 	Hemisphere hemisphere;
 	float depthBufferEstimatedArea;
 	float radius;
+	Vector v0;
+	Vector v1;
+	float weight;
+	float kappa;
+	unsigned int link;
+	int htype;
+	PHIRotation PHI0;
+	PHIRotation PHI1;
+	bool artificial;
 }
 SASASegment;
 
@@ -535,10 +559,11 @@ public:
 
 	Vector generalPosition(CircularInterfacesPerAtom &circles);
 	void print(FILE* outputfile);
-	float calculateKappa(TessellationAxis tessellationAxis, Vector &v);
+	float calculateKappa(TessellationAxis tessellationAxis, Vector &v, CircularInterfaceForm form);
 	fmat33 rotz(float theta);
 	fmat33 roty(float theta);
-	Vector PHI2V(TessellationAxis tessellationAxis, float PHI, float psi, float lambda, float kappa);
+	fmat33 rotx(float theta);
+	Vector PHI2V(TessellationAxis tessellationAxis, float PHI, float psi, float lambda, float kappa, CircularInterfaceForm form);
 
 	
 private:
@@ -567,22 +592,32 @@ private:
 
 
 	void setupTessellationAxis(TessellationAxis &tessellationAxis, Hemisphere hemisphere, int closestNeighbour, vector<Vector> &atoms, vector<float> &radii, Vector &origin, float radius, DerivativeMode dmode, CircularInterfacesPerAtom &circles);
-	CircularInterfacesPerAtom coverHemisphere(TessellationAxis &tessellationAxis, float radius, CircularInterfacesPerAtom circles, CircularInterfaceForm form);
+	CircularInterfacesPerAtom coverHemisphere(TessellationAxis &tessellationAxis, CircularInterfacesPerAtom circles, CircularInterfaceForm form);
 	void buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<float> &radii, SASAs &sasas, bool split, vector<int> &neighbourlist, int closestNeighbour, bool useDepthBuffer);
 	void determineProjection(Vector &origin, float radius, CircularInterface &circle);
 	IntersectionPair determineIntersectionPoints(float radius, CircularInterface &K, CircularInterface &J);
 	bool makeCircularInterfaces(int i,Vector &origin, float radius, vector<fvec> &atoms, vector<float> &radii, vector<CircularInterface> &circles, vector<int> &neighbourlist);
-	int filterCircularInterfaces(TessellationAxis &tessellationAxis, float radius, vector<CircularInterface> &circles);
+	int filterCircularInterfaces(vector<CircularInterface> &circles, bool splitterOnly);
 	void outputGaussBonnetPath(SASAs &points);
 	void reindexCircularInterfaces(CircularInterfacesPerAtom &circles);
 	void insertArtificialIntersectionPoints(CircularInterface &I, TessellationAxis &tessellationAxis, Hemisphere hemisphere, SASASegmentList &sasa);
-	void determineCircularIntersections(CircularInterfacesPerAtom &circles);
+	void determineCircularIntersections(CircularInterfacesPerAtom &circles, bool splitterOnly);
 	IntersectionBranches::iterator increaseBranchInterator(IntersectionBranches::iterator it, CircularInterface &circle);
 	IntersectionBranches::iterator decreaseBranchInterator(IntersectionBranches::iterator it, CircularInterface &circle);
-	void createIntersectionBranch(PHIContainer &PHII, CircularInterface &I, CircularInterface &J);
+	void createIntersectionBranch(PHIContainer &PHII, CircularInterface &I, CircularInterface &J, RhoContainer &rho, BranchMode mode);
 	void printBranch(const char* s, multimap<float, IntersectionBranch>::iterator &it);
 	void printIntersectionGraph(IntersectionGraph &g, CircularInterfacesPerAtom &circles);
-	bool buildIntersectionGraph(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer, bool split);
+	
+	
+	//bool buildIntersectionGraph(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer, bool split, unsigned int &globalSegmentCounter, bool derivatives);
+	
+	void buildIntersectionGraphFirstPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles);
+	void buildIntersectionGraphSplitterPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles);
+	void copyIntersectionGraph(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, CircularInterfacesPerAtom &newCircles);
+	void buildIntersectionGraphArtificialPointsPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere);
+	bool buildIntersectionGraphCollectionPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer, bool split, unsigned int &globalSegmentCounter, bool derivatives);
+	
+	
 	void outputGaussBonnetData(string filename, float radius, CircularInterfacesPerAtom &circles, SASAs &sasas, IntersectionGraph &intersectionGraph);
 	void depleteCircularInterfaces(TessellationAxis &tessellationAxis, float radius, vector<CircularInterface> &circles);
 	OmegaRotation calculateOmega(TessellationAxis &tessellationAxis, CircularInterface &I, CircularInterface &J, RhoContainer &rhoContainer);
@@ -596,6 +631,34 @@ private:
 	void addLimitingInterface(LimitingInterface &limit, CircularInterfacesPerAtom &circles);
 	void convertExposedVectors2PHIValues(TessellationAxis &tessellationAxis,Hemisphere hemisphere, CircularInterface &circle);
 	float exposition(Hemisphere hemisphere, IntersectionBranches::iterator it0, IntersectionBranches::iterator it1, CircularInterface &circle);
+	void glueSegments();
+	float splitPHI(float lambda, float psi);
+	float reversePHI(float PHI);
+	//void splitTessellation(SASASegmentList &sasa, TessellationAxis &frontTessellationAxis, TessellationAxis &backTessellationAxis, CircularInterfacesPerAtom &circles);
+	unsigned int coverHemisphere2(TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, CircularInterfaceForm form);
+	void addDerivatives(SASASegmentList &s, CircularInterfacesPerAtom &circles, TessellationAxis &frontTessellationAxis, TessellationAxis &backTessellationAxis);
+	PHIRotation newPHIContainer(SASASegment &seg, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, unsigned int id);
+	PHIRotation newSplittedPHIContainer(SASASegment &seg, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, unsigned int splitter);
+	PHIContainer newCompletePHIContainer(SASASegment &seg, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, unsigned int id);
+	
+	void reindexCircularInterfaces2(CircularInterfacesPerAtom &circles);
+	void reindexCircularInterfaces3(CircularInterfacesPerAtom &circles);
+	void addPsiAndLambda(TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles);
+	void sortGaussBonnetPaths(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer, bool split, unsigned int &globalSegmentCounter, bool derivatives);
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 
 
 	

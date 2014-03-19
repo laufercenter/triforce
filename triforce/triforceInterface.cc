@@ -160,8 +160,8 @@ void TriforceInterface::printTessellation(FILE* outputfile){
 
 
 void TriforceInterface::printSurfaces(Molecule &mol, FILE* outputfile){
-	t = new Tessellation(mol);
-	t->build(false, false);
+// 	t = new Tessellation(mol);
+// 	t->build(false, false);
 	t->print(outputfile);
 	delete(t);
 	
