@@ -552,7 +552,8 @@ for(unsigned int j=0; j<circlesBackHemisphere.size(); ++j){
 			buildIntersectionGraphSplitterPass(i, radius, backTessellationAxis, circlesBackHemisphere);
 			
 			
-			
+			globalSegmentCounter=-2;
+
 			
 			buildIntersectionGraphArtificialPointsPass(i, radius, frontTessellationAxis, circles, sasas[sasas.size()-1], FRONTHEMISPHERE, globalSegmentCounter);
 			buildIntersectionGraphArtificialPointsPass(i, radius, backTessellationAxis, circlesBackHemisphere, sasas[sasas.size()-1], BACKHEMISPHERE, globalSegmentCounter);
@@ -1295,7 +1296,7 @@ void Tessellation::insertArtificialIntersectionPoints(CircularInterface &I, Tess
 	
 	sasa.push_back(sasaSegment);
 	
-	globalSegmentCounter++;
+	globalSegmentCounter--;
 	
 			
 }
@@ -5046,6 +5047,7 @@ Vector Tessellation::PHI2V(TessellationAxis tessellationAxis, float PHI, float p
 
 void Tessellation::print(FILE* outputfile){
 	SASASegment s;
+	Vector ip(3);
 	
 	fprintf(outputfile,"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","atom","id","i","i2","index0","index1","index2","weight0","weight1","ipx","ipy","ipz","hspx","hspy","hspz");
 	for(unsigned int i=0;i<sasasForMolecule.size();++i){
@@ -5055,8 +5057,21 @@ void Tessellation::print(FILE* outputfile){
 
 				//we filter to avoid outputting splitter intersectionpoints
 				//printf("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%f\n",i,j,s.i,s.i2,s.index0, s.index1,s.index2,s.weight);
-				if(s.weight>0)
-					fprintf(outputfile,"%d\t%d\t%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",i,j,s.i,s.i2,s.index0, s.index1,s.index2,s.weight,s.weight1,s.v0(0),s.v0(1),s.v0(2),s.v1(0),s.v1(1),s.v1(2));
+				if(s.weight>0){
+					if(s.i<=-2){
+						if(s.form1==CONVEX){
+							ip=s.normalForCircularInterface;
+						}
+						else{
+							ip=-s.normalForCircularInterface;
+						}
+					}
+					else{
+						ip = s.v0;
+					}
+						
+					fprintf(outputfile,"%d\t%d\t%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",i,j,s.i,s.i2,s.index0, s.index1,s.index2,s.weight,s.weight1,ip(0),ip(1),ip(2),s.v1(0),s.v1(1),s.v1(2));
+				}
 			}
 		}
 	}
