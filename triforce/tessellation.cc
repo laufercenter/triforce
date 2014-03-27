@@ -554,8 +554,8 @@ for(unsigned int j=0; j<circlesBackHemisphere.size(); ++j){
 			
 			
 			
-			buildIntersectionGraphArtificialPointsPass(i, radius, frontTessellationAxis, circles, sasas[sasas.size()-1], FRONTHEMISPHERE);
-			buildIntersectionGraphArtificialPointsPass(i, radius, backTessellationAxis, circlesBackHemisphere, sasas[sasas.size()-1], BACKHEMISPHERE);
+			buildIntersectionGraphArtificialPointsPass(i, radius, frontTessellationAxis, circles, sasas[sasas.size()-1], FRONTHEMISPHERE, globalSegmentCounter);
+			buildIntersectionGraphArtificialPointsPass(i, radius, backTessellationAxis, circlesBackHemisphere, sasas[sasas.size()-1], BACKHEMISPHERE, globalSegmentCounter);
 			
 
 			//just to make sure there are no lonely branches floating around...
@@ -1226,7 +1226,7 @@ void Tessellation::reindexCircularInterfaces3(CircularInterfacesPerAtom &circles
 
 
 
-void Tessellation::insertArtificialIntersectionPoints(CircularInterface &I, TessellationAxis &tessellationAxis, Hemisphere hemisphere, SASASegmentList &sasa){
+void Tessellation::insertArtificialIntersectionPoints(CircularInterface &I, TessellationAxis &tessellationAxis, Hemisphere hemisphere, SASASegmentList &sasa, unsigned int &globalSegmentCounter){
 	Rotation f,f_reverse;
 	SASASegment sasaSegment;
 	
@@ -1253,7 +1253,7 @@ void Tessellation::insertArtificialIntersectionPoints(CircularInterface &I, Tess
 	
 	calculateProjectionAndDerivatives(tessellationAxis, I);
 	
-	sasaSegment.i = 0;
+	sasaSegment.i = globalSegmentCounter;
 	sasaSegment.i2 = 0;
 	sasaSegment.artificial=true;
 	
@@ -1261,6 +1261,7 @@ void Tessellation::insertArtificialIntersectionPoints(CircularInterface &I, Tess
 	sasaSegment.v0=I.normal;
 	sasaSegment.v1=I.normal;
 	sasaSegment.weight=1;
+	sasaSegment.weight1=1;
 	
 	sasaSegment.id0 = I.id;
 	sasaSegment.id1 = I.id;
@@ -1294,6 +1295,7 @@ void Tessellation::insertArtificialIntersectionPoints(CircularInterface &I, Tess
 	
 	sasa.push_back(sasaSegment);
 	
+	globalSegmentCounter++;
 	
 			
 }
@@ -3521,7 +3523,7 @@ IntersectionBranches::iterator Tessellation::decreaseBranchInterator(Intersectio
 
 
 
-void Tessellation::createIntersectionBranch(PHIContainer &PHII, CircularInterface &I, CircularInterface &J, RhoContainer &rho, BranchMode mode){
+void Tessellation::createIntersectionBranch(PHIContainer &PHII, CircularInterface &I, CircularInterface &J, RhoContainer &rho){
 	
 	pair<float, IntersectionBranch> x;
 	IntersectionBranches::iterator it0;
@@ -3530,7 +3532,46 @@ void Tessellation::createIntersectionBranch(PHIContainer &PHII, CircularInterfac
 	x.second.visited = -1;
 
 	
-	if(mode==BRANCH_ALL || mode==BRANCH_IN){
+	x.first = PHII.in.rotation;
+	x.second.direction = IN;
+	x.second.body = &I.intersectionBranches;
+	x.second.id = J.id;
+	x.second.flagged = false;
+	x.second.PHI = PHII.in;
+	x.second.rho=rho;
+	x.second.weight=0;
+	x.second.weight1=0;
+	x.second.i=-1;
+	it0 = I.intersectionBranches.insert(x);
+	
+	x.first = PHII.out.rotation;
+	x.second.direction = OUT;
+	x.second.body = &I.intersectionBranches;
+	x.second.id = J.id;
+	x.second.flagged = false;
+	x.second.PHI = PHII.out;
+	x.second.rho=rho;
+	x.second.weight=0;
+	x.second.weight1=0;
+	x.second.i=-1;
+	it1 = I.intersectionBranches.insert(x);
+
+	
+		
+	
+	
+}
+
+void Tessellation::createIntersectionBranch(PHIContainer &PHII, CircularInterface &I, CircularInterface &J, RhoContainer &rho, IntersectionBranch &b){
+	
+	pair<float, IntersectionBranch> x;
+	IntersectionBranches::iterator it0;
+	IntersectionBranches::iterator it1;
+	
+	x.second.visited = -1;
+
+	
+	if(b.direction==IN){
 		x.first = PHII.in.rotation;
 		x.second.direction = IN;
 		x.second.body = &I.intersectionBranches;
@@ -3538,11 +3579,16 @@ void Tessellation::createIntersectionBranch(PHIContainer &PHII, CircularInterfac
 		x.second.flagged = false;
 		x.second.PHI = PHII.in;
 		x.second.rho=rho;
-		x.second.weight=0;
+		x.second.v0=b.v0;
+		x.second.v1=b.v1;
+		x.second.weight=b.weight;
+		x.second.weight1=b.weight1;
+		x.second.i=b.i;
+		
 		it0 = I.intersectionBranches.insert(x);
 	}
 	
-	if(mode==BRANCH_ALL || mode==BRANCH_OUT){
+	if(b.direction==OUT){
 		x.first = PHII.out.rotation;
 		x.second.direction = OUT;
 		x.second.body = &I.intersectionBranches;
@@ -3550,7 +3596,11 @@ void Tessellation::createIntersectionBranch(PHIContainer &PHII, CircularInterfac
 		x.second.flagged = false;
 		x.second.PHI = PHII.out;
 		x.second.rho=rho;
-		x.second.weight=0;
+		x.second.v0=b.v0;
+		x.second.v1=b.v1;
+		x.second.weight=b.weight;
+		x.second.weight1=b.weight1;
+		x.second.i=b.i;
 		it1 = I.intersectionBranches.insert(x);
 	}
 
@@ -3559,7 +3609,6 @@ void Tessellation::createIntersectionBranch(PHIContainer &PHII, CircularInterfac
 	
 	
 }
-
 
 
 
@@ -3748,7 +3797,7 @@ void Tessellation::buildIntersectionGraphFirstPass(int l, float radius, Tessella
 			//PHIJ = calculatePHI(tessellationAxis, *J, *I, radius, rhoContainer);
 			PHII = calculatePHI(tessellationAxis, *I, *J, radius, rhoContainer);
 			
-			createIntersectionBranch(PHII, *I, *J,rhoContainer, BRANCH_ALL);
+			createIntersectionBranch(PHII, *I, *J,rhoContainer);
 			
 			
 
@@ -3872,7 +3921,7 @@ void Tessellation::buildIntersectionGraphSplitterPass(int l, float radius, Tesse
 			//PHIJ = calculatePHI(tessellationAxis, *J, *I, radius, rhoContainer);
 			PHII = calculatePHI(tessellationAxis, *I, *J, radius, rhoContainer);
 			
-			createIntersectionBranch(PHII, *I, *J,rhoContainer,BRANCH_ALL);
+			createIntersectionBranch(PHII, *I, *J,rhoContainer);
 			
 			
 			
@@ -3976,8 +4025,7 @@ void Tessellation::copyIntersectionGraph(int l, float radius, TessellationAxis &
 			rhoContainer=it->second.rho;
 			PHII = calculatePHI(tessellationAxis, *I, *J, radius, rhoContainer);
 			
-			if(it->second.direction==OUT) createIntersectionBranch(PHII, newCircles[i], newCircles[it->second.id], rhoContainer, BRANCH_OUT);
-			else createIntersectionBranch(PHII, newCircles[i], newCircles[it->second.id], rhoContainer, BRANCH_IN);
+			createIntersectionBranch(PHII, newCircles[i], newCircles[it->second.id], rhoContainer, it->second);
 			
 		}
 		
@@ -3992,7 +4040,7 @@ void Tessellation::copyIntersectionGraph(int l, float radius, TessellationAxis &
 
 
 
-void Tessellation::buildIntersectionGraphArtificialPointsPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere){
+void Tessellation::buildIntersectionGraphArtificialPointsPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, unsigned int &globalSegmentCounter){
 	SASASegment sasaSegment;
 	
 	CircularInterface *I;
@@ -4019,7 +4067,7 @@ void Tessellation::buildIntersectionGraphArtificialPointsPass(int l, float radiu
 		
 		//if the interface has no intersections with other interfaces, it needs to be treated specially
 		if(I->circularIntersections.size()==0 && I->form!=SPLITTER){
-			insertArtificialIntersectionPoints(*I,tessellationAxis,hemisphere,sasa);			
+			insertArtificialIntersectionPoints(*I,tessellationAxis,hemisphere,sasa, globalSegmentCounter);			
 		}
 	}
 }
@@ -4215,13 +4263,17 @@ void Tessellation::sortGaussBonnetPaths(int l, float radius, TessellationAxis &t
 				segmentPointerLists[i][j]->source->v1=v1;
 				//distribute weights
 				segmentPointerLists[i][j]->source->weight+=arclength;
+				segmentPointerLists[i][j]->source->weight1=arclength;
 				segmentPointerLists[i][k]->source->weight+=arclength;
+				segmentPointerLists[i][k]->source->i=i;
 				
 				
 				
 				
 		}
 	}
+	
+	globalSegmentCounter=segmentPointerLists.size();
 
 	
 	
@@ -4384,6 +4436,8 @@ bool Tessellation::buildIntersectionGraphCollectionPass(int l, float radius, Tes
 					seginfo.v0=it->second.v0;
 					seginfo.v1=it->second.v1;
 					seginfo.weight=it->second.weight;
+					seginfo.weight1=it->second.weight1;
+					seginfo.i=it->second.i;
 					if(hasDepthBuffer && useDepthBuffer) seginfo.dist=exposition(hemisphere, it, it2, *I);
 					it_sl = segmentList.insert(segmentList.end(), seginfo);
 					
@@ -4611,7 +4665,7 @@ bool Tessellation::buildIntersectionGraphCollectionPass(int l, float radius, Tes
 				id2 = segmentPointerLists[i][j]->id1.i1;
 				
 		
-				sasaSegment.i = globalSegmentCounter;
+				sasaSegment.i = segmentPointerLists[i][j]->i;
 				sasaSegment.i2 = j;
 				
 				sasaSegment.id0 = id0;
@@ -4654,6 +4708,7 @@ bool Tessellation::buildIntersectionGraphCollectionPass(int l, float radius, Tes
 				sasaSegment.v0=segmentPointerLists[i][j]->v0;
 				sasaSegment.v1=segmentPointerLists[i][j]->v1;
 				sasaSegment.weight=segmentPointerLists[i][j]->weight;
+				sasaSegment.weight1=segmentPointerLists[i][j]->weight1;
 
 				if(derivatives){
 					
@@ -4951,8 +5006,8 @@ Vector Tessellation::PHI2V(TessellationAxis tessellationAxis, float PHI, float p
 	ey(1) = 1;
 	ey(2) = 0;
 	
-	ex=tessellationAxis.v;
-	ey=tessellationAxis.auxiliary;
+// 	ex=tessellationAxis.v;
+// 	ey=tessellationAxis.auxiliary;
 	
 	
 /*	
@@ -4968,16 +5023,15 @@ Vector Tessellation::PHI2V(TessellationAxis tessellationAxis, float PHI, float p
 	*/
 
 
-Vector t0,t1,t2,t3;
 	
 	
-	t0=x=-ey*sin(lambda);
+	x=-ey*sin(lambda);
 	
-	t1=x = rotx(-s1*PHI)*x;
+	x = rotx(-s1*PHI)*x;
 	
-	t2=v = ex*cos(lambda);
+	v = ex*cos(lambda);
 	x=x+v;
-	t3=x=rotz(s1*psi) * x;
+	x=rotz(s1*psi) * x;
 	x=rotx(s1*kappa) * x;
 	
 	
@@ -4993,15 +5047,16 @@ Vector t0,t1,t2,t3;
 void Tessellation::print(FILE* outputfile){
 	SASASegment s;
 	
-	fprintf(outputfile,"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","atom","id","i","i2","index0","index1","index2","arclength","ipx","ipy","ipz","hspx","hspy","hspz");
+	fprintf(outputfile,"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","atom","id","i","i2","index0","index1","index2","weight0","weight1","ipx","ipy","ipz","hspx","hspy","hspz");
 	for(unsigned int i=0;i<sasasForMolecule.size();++i){
 		for(unsigned int j=0;j<sasasForMolecule[i].size();++j){
 			{//if(sasasForMolecule[i][j].form1==CONVEX){
 				s=sasasForMolecule[i][j];
 
 				//we filter to avoid outputting splitter intersectionpoints
+				//printf("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%f\n",i,j,s.i,s.i2,s.index0, s.index1,s.index2,s.weight);
 				if(s.weight>0)
-					fprintf(outputfile,"%d\t%d\t%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",i,j,s.i,s.i2,s.index0, s.index1,s.index2,s.weight,s.v0(0),s.v0(1),s.v0(2),s.v1(0),s.v1(1),s.v1(2));
+					fprintf(outputfile,"%d\t%d\t%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",i,j,s.i,s.i2,s.index0, s.index1,s.index2,s.weight,s.weight1,s.v0(0),s.v0(1),s.v0(2),s.v1(0),s.v1(1),s.v1(2));
 			}
 		}
 	}

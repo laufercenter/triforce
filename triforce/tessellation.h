@@ -250,7 +250,9 @@ typedef struct SegmentInfo{
 	Vector v0;
 	Vector v1;
 	float weight;
+	float weight1;
 	IntersectionBranch* source;
+	int i;
 } SegmentInfo;
 
 
@@ -371,6 +373,8 @@ typedef struct IntersectionBranch
 	Vector v0;
 	Vector v1;
 	float weight;
+	float weight1;
+	int i;
 }
 IntersectionBranch;
 
@@ -457,6 +461,7 @@ typedef struct
 	Vector v0;
 	Vector v1;
 	float weight;
+	float weight1;
 	float kappa;
 	unsigned int link;
 	int htype;
@@ -600,11 +605,14 @@ private:
 	int filterCircularInterfaces(vector<CircularInterface> &circles, bool splitterOnly);
 	void outputGaussBonnetPath(SASAs &points);
 	void reindexCircularInterfaces(CircularInterfacesPerAtom &circles);
-	void insertArtificialIntersectionPoints(CircularInterface &I, TessellationAxis &tessellationAxis, Hemisphere hemisphere, SASASegmentList &sasa);
+	void insertArtificialIntersectionPoints(CircularInterface &I, TessellationAxis &tessellationAxis, Hemisphere hemisphere, SASASegmentList &sasa, unsigned int &globalSegmentCounter);
 	void determineCircularIntersections(CircularInterfacesPerAtom &circles, bool splitterOnly);
 	IntersectionBranches::iterator increaseBranchInterator(IntersectionBranches::iterator it, CircularInterface &circle);
 	IntersectionBranches::iterator decreaseBranchInterator(IntersectionBranches::iterator it, CircularInterface &circle);
-	void createIntersectionBranch(PHIContainer &PHII, CircularInterface &I, CircularInterface &J, RhoContainer &rho, BranchMode mode);
+	void createIntersectionBranch(PHIContainer &PHII, CircularInterface &I, CircularInterface &J, RhoContainer &rho);
+	void createIntersectionBranch(PHIContainer &PHII, CircularInterface &I, CircularInterface &J, RhoContainer &rho, IntersectionBranch &b);
+	
+
 	void printBranch(const char* s, multimap<float, IntersectionBranch>::iterator &it);
 	void printIntersectionGraph(IntersectionGraph &g, CircularInterfacesPerAtom &circles);
 	
@@ -614,7 +622,7 @@ private:
 	void buildIntersectionGraphFirstPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles);
 	void buildIntersectionGraphSplitterPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles);
 	void copyIntersectionGraph(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, CircularInterfacesPerAtom &newCircles);
-	void buildIntersectionGraphArtificialPointsPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere);
+	void buildIntersectionGraphArtificialPointsPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, unsigned int &globalSegmentCounter);
 	bool buildIntersectionGraphCollectionPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer, bool split, unsigned int &globalSegmentCounter, bool derivatives);
 	
 	
