@@ -64,7 +64,7 @@ void Molecule::generateNeighbourList(){
 	}
 	
 	
-	neighbourList = new NeighbourList(center, dim, maxRadius);
+	neighbourList = new NeighbourList(center, dim, maxRadius, &epsilons, &sigmas);
 	
 	for(unsigned int i=0; i<atoms.size(); ++i){
 		neighbourList->addSphere(atoms[i],i);
@@ -369,6 +369,11 @@ void Molecule::printxyz(){
 		//printf("[%d]: pointers: (%d, %d, %d, %d)\n",i,areas[i], forces[i][0], forces[i][1], forces[i][2]);
 	}
 	
+}
+
+
+void Molecule::printNeighbourList(FILE* outputfile0,FILE* outputfile1){
+	neighbourList->print(outputfile0, outputfile1);
 }
 
 

@@ -125,6 +125,7 @@ public:
 	vector<int> getNeighborListFor(int i);
 	vector<int> &fetchClosestNeighbours();
 	void calculateClosestNeighbours();
+	void printNeighbourList(FILE* outputfile0, FILE* outputfile1);
 	
 	
 private:
