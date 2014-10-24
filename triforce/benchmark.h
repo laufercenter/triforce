@@ -28,6 +28,7 @@
 #include <list>
 #include <set>
 #include <stdio.h>
+#include <string>
 
 
 using namespace std;

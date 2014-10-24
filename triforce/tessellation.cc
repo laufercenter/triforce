@@ -1179,16 +1179,16 @@ void Tessellation::reindexCircularInterfaces2(CircularInterfacesPerAtom &circles
 		//if the branch is pointing to a not-deleted circle, we update its id, or remove it in the other case
 		while(it != circles[i].intersectionBranches.end()){
 			erased=false;
-			if(cross.find(it->second.id)!=cross.end()){
-				it->second.id=cross[it->second.id];
-				it->second.PHI.omega.id_i=cross[it->second.PHI.omega.id_i];
-				it->second.PHI.omega.id_j=cross[it->second.PHI.omega.id_j];
-				it->second.PHI.eta.id_i=cross[it->second.PHI.eta.id_i];
-				it->second.PHI.eta.id_j=cross[it->second.PHI.eta.id_j];
+			if(cross.find(it->second->id)!=cross.end()){
+				it->second->id=cross[it->second->id];
+				it->second->PHI.omega.id_i=cross[it->second->PHI.omega.id_i];
+				it->second->PHI.omega.id_j=cross[it->second->PHI.omega.id_j];
+				it->second->PHI.eta.id_i=cross[it->second->PHI.eta.id_i];
+				it->second->PHI.eta.id_j=cross[it->second->PHI.eta.id_j];
 			}
 			else{
 				//it's not good to delete the intersection points, but we have to give them a different id
-				it->second.id=it->second.id+circles.size()+1;
+				it->second->id=it->second->id+circles.size()+1;
 			}
 			if(!erased) ++it;
 		}
@@ -1211,7 +1211,7 @@ void Tessellation::reindexCircularInterfaces3(CircularInterfacesPerAtom &circles
 		//if the branch is pointing to a not-deleted circle, we update its id, or remove it in the other case
 		while(it != circles[i].intersectionBranches.end()){
 			erased=false;
-			if(cross.find(it->second.id)!=cross.end()){
+			if(cross.find(it->second->id)!=cross.end()){
 			}
 			else{
 				it2=it;
@@ -3526,35 +3526,37 @@ IntersectionBranches::iterator Tessellation::decreaseBranchInterator(Intersectio
 
 void Tessellation::createIntersectionBranch(PHIContainer &PHII, CircularInterface &I, CircularInterface &J, RhoContainer &rho){
 	
-	pair<float, IntersectionBranch> x;
+	pair<float, IntersectionBranch*> x;
 	IntersectionBranches::iterator it0;
 	IntersectionBranches::iterator it1;
 	
-	x.second.visited = -1;
+	x.second->visited = -1;
 
 	
 	x.first = PHII.in.rotation;
-	x.second.direction = IN;
-	x.second.body = &I.intersectionBranches;
-	x.second.id = J.id;
-	x.second.flagged = false;
-	x.second.PHI = PHII.in;
-	x.second.rho=rho;
-	x.second.weight=0;
-	x.second.weight1=0;
-	x.second.i=-1;
+	x.second = new IntersectionBranch();
+	x.second->direction = IN;
+	x.second->body = &I.intersectionBranches;
+	x.second->id = J.id;
+	x.second->flagged = false;
+	x.second->PHI = PHII.in;
+	x.second->rho=rho;
+	x.second->weight=0;
+	x.second->weight1=0;
+	x.second->i=-1;
 	it0 = I.intersectionBranches.insert(x);
 	
 	x.first = PHII.out.rotation;
-	x.second.direction = OUT;
-	x.second.body = &I.intersectionBranches;
-	x.second.id = J.id;
-	x.second.flagged = false;
-	x.second.PHI = PHII.out;
-	x.second.rho=rho;
-	x.second.weight=0;
-	x.second.weight1=0;
-	x.second.i=-1;
+	x.second = new IntersectionBranch();
+	x.second->direction = OUT;
+	x.second->body = &I.intersectionBranches;
+	x.second->id = J.id;
+	x.second->flagged = false;
+	x.second->PHI = PHII.out;
+	x.second->rho=rho;
+	x.second->weight=0;
+	x.second->weight1=0;
+	x.second->i=-1;
 	it1 = I.intersectionBranches.insert(x);
 
 	
@@ -3565,43 +3567,45 @@ void Tessellation::createIntersectionBranch(PHIContainer &PHII, CircularInterfac
 
 void Tessellation::createIntersectionBranch(PHIContainer &PHII, CircularInterface &I, CircularInterface &J, RhoContainer &rho, IntersectionBranch &b){
 	
-	pair<float, IntersectionBranch> x;
+	pair<float, IntersectionBranch*> x;
 	IntersectionBranches::iterator it0;
 	IntersectionBranches::iterator it1;
 	
-	x.second.visited = -1;
+	x.second->visited = -1;
 
 	
 	if(b.direction==IN){
 		x.first = PHII.in.rotation;
-		x.second.direction = IN;
-		x.second.body = &I.intersectionBranches;
-		x.second.id = J.id;
-		x.second.flagged = false;
-		x.second.PHI = PHII.in;
-		x.second.rho=rho;
-		x.second.v0=b.v0;
-		x.second.v1=b.v1;
-		x.second.weight=b.weight;
-		x.second.weight1=b.weight1;
-		x.second.i=b.i;
+		x.second = new IntersectionBranch();
+		x.second->direction = IN;
+		x.second->body = &I.intersectionBranches;
+		x.second->id = J.id;
+		x.second->flagged = false;
+		x.second->PHI = PHII.in;
+		x.second->rho=rho;
+		x.second->v0=b.v0;
+		x.second->v1=b.v1;
+		x.second->weight=b.weight;
+		x.second->weight1=b.weight1;
+		x.second->i=b.i;
 		
 		it0 = I.intersectionBranches.insert(x);
 	}
 	
 	if(b.direction==OUT){
 		x.first = PHII.out.rotation;
-		x.second.direction = OUT;
-		x.second.body = &I.intersectionBranches;
-		x.second.id = J.id;
-		x.second.flagged = false;
-		x.second.PHI = PHII.out;
-		x.second.rho=rho;
-		x.second.v0=b.v0;
-		x.second.v1=b.v1;
-		x.second.weight=b.weight;
-		x.second.weight1=b.weight1;
-		x.second.i=b.i;
+		x.second = new IntersectionBranch();
+		x.second->direction = OUT;
+		x.second->body = &I.intersectionBranches;
+		x.second->id = J.id;
+		x.second->flagged = false;
+		x.second->PHI = PHII.out;
+		x.second->rho=rho;
+		x.second->v0=b.v0;
+		x.second->v1=b.v1;
+		x.second->weight=b.weight;
+		x.second->weight1=b.weight1;
+		x.second->i=b.i;
 		it1 = I.intersectionBranches.insert(x);
 	}
 
@@ -3805,10 +3809,10 @@ void Tessellation::buildIntersectionGraphFirstPass(int l, float radius, Tessella
 			
 			//iterate through branches and remove points that are occluded
 			for(it = I->intersectionBranches.begin(); it != I->intersectionBranches.end(); ++it){
-				if(it->second.id == J->id) searchMode=0;
+				if(it->second->id == J->id) searchMode=0;
 				else searchMode=1;
 				
-				if(it->second.direction==OUT){
+				if(it->second->direction==OUT){
 				
 				
 					done=false;
@@ -3818,12 +3822,12 @@ void Tessellation::buildIntersectionGraphFirstPass(int l, float radius, Tessella
 						
 						
 						
-						if(	(it2->second.direction==IN && searchMode==0 && it2->second.id == J->id) ||
-							(it2->second.direction==IN && searchMode==1 && it2->second.id != J->id)){
+						if(	(it2->second->direction==IN && searchMode==0 && it2->second->id == J->id) ||
+							(it2->second->direction==IN && searchMode==1 && it2->second->id != J->id)){
 								done=true;
 							}
 							else{
-								it2->second.flagged=true;
+								it2->second->flagged=true;
 							}
 							
 							
@@ -3834,7 +3838,7 @@ void Tessellation::buildIntersectionGraphFirstPass(int l, float radius, Tessella
 			it = I->intersectionBranches.begin();
 			while(it != I->intersectionBranches.end()){
 				erased=false;
-				if(it->second.flagged){
+				if(it->second->flagged){
 					it2=it;
 					++it2;
 					//dist0 = buriedness(hemisphere, *I, circles[it->second.id], it->second.PHI.rotation, buffer0, buffer1);
@@ -3928,10 +3932,10 @@ void Tessellation::buildIntersectionGraphSplitterPass(int l, float radius, Tesse
 			
 			//iterate through branches and remove points that are occluded
 			for(it = I->intersectionBranches.begin(); it != I->intersectionBranches.end(); ++it){
-				if(it->second.id == J->id) searchMode=0;
+				if(it->second->id == J->id) searchMode=0;
 				else searchMode=1;
 
-				if(it->second.direction==OUT){
+				if(it->second->direction==OUT){
 				
 				
 					done=false;
@@ -3941,12 +3945,12 @@ void Tessellation::buildIntersectionGraphSplitterPass(int l, float radius, Tesse
 						
 						
 						
-						if(	(it2->second.direction==IN && searchMode==0 && it2->second.id == J->id) ||
-							(it2->second.direction==IN && searchMode==1 && it2->second.id != J->id)){
+						if(	(it2->second->direction==IN && searchMode==0 && it2->second->id == J->id) ||
+							(it2->second->direction==IN && searchMode==1 && it2->second->id != J->id)){
 								done=true;
 							}
 							else{
-								it2->second.flagged=true;
+								it2->second->flagged=true;
 							}
 							
 							
@@ -3957,7 +3961,7 @@ void Tessellation::buildIntersectionGraphSplitterPass(int l, float radius, Tesse
 			it = I->intersectionBranches.begin();
 			while(it != I->intersectionBranches.end()){
 				erased=false;
-				if(it->second.flagged){
+				if(it->second->flagged){
 					it2=it;
 					++it2;
 					//dist0 = buriedness(hemisphere, *I, circles[it->second.id], it->second.PHI.rotation, buffer0, buffer1);
@@ -4022,11 +4026,11 @@ void Tessellation::copyIntersectionGraph(int l, float radius, TessellationAxis &
 		
 		//here, the intersection graph is refreshed with the new PHI values with respect to the new tessellation axis
 		for(it = I->intersectionBranches.begin(); it != I->intersectionBranches.end(); ++it){
-			J=&circles[it->second.id];
-			rhoContainer=it->second.rho;
+			J=&circles[it->second->id];
+			rhoContainer=it->second->rho;
 			PHII = calculatePHI(tessellationAxis, *I, *J, radius, rhoContainer);
 			
-			createIntersectionBranch(PHII, newCircles[i], newCircles[it->second.id], rhoContainer, it->second);
+			createIntersectionBranch(PHII, newCircles[i], newCircles[it->second->id], rhoContainer, *(it->second));
 			
 		}
 		
@@ -4113,7 +4117,7 @@ void Tessellation::sortGaussBonnetPaths(int l, float radius, TessellationAxis &t
 	for(unsigned int i=0; i < circles.size(); ++i){
 		I = &circles[i];
 		for(it = I->intersectionBranches.begin(); it != I->intersectionBranches.end(); ++it){
-			if(it->second.direction==IN){
+			if(it->second->direction==IN){
 				segmentCount++;
 			}
 		}
@@ -4130,14 +4134,14 @@ void Tessellation::sortGaussBonnetPaths(int l, float radius, TessellationAxis &t
 		I = &circles[i];
 		if(I->intersectionBranches.size()>0){
 			for(it = I->intersectionBranches.begin(); it != I->intersectionBranches.end(); ++it){
-				if(it->second.direction==IN){
+				if(it->second->direction==IN){
 					it2=increaseBranchInterator(it,*I);
 					
-					ps0.i0 = it->second.id;
+					ps0.i0 = it->second->id;
 					ps0.i1 = I->id;
 					
 					ps1.i0 = I->id;
-					ps1.i1 = it2->second.id;
+					ps1.i1 = it2->second->id;
 					
 					
 					
@@ -4149,10 +4153,10 @@ void Tessellation::sortGaussBonnetPaths(int l, float radius, TessellationAxis &t
 					seginfo.forw=pempty;
 					seginfo.hasForward=false;
 					seginfo.hasBackward=false;
-					seginfo.PHI0 = it->second.PHI;
-					seginfo.PHI1 = it2->second.PHI;
+					seginfo.PHI0 = it->second->PHI;
+					seginfo.PHI1 = it2->second->PHI;
 					seginfo.visited=false;
-					seginfo.source=&(it->second);
+					seginfo.source=it->second;
 					if(hasDepthBuffer && useDepthBuffer) seginfo.dist=exposition(hemisphere, it, it2, *I);
 					it_sl = segmentList.insert(segmentList.end(), seginfo);
 					
@@ -4394,7 +4398,7 @@ bool Tessellation::buildIntersectionGraphCollectionPass(int l, float radius, Tes
 	for(unsigned int i=0; i < circles.size(); ++i){
 		I = &circles[i];
 		for(it = I->intersectionBranches.begin(); it != I->intersectionBranches.end(); ++it){
-			if(it->second.direction==IN){
+			if(it->second->direction==IN){
 				segmentCount++;
 			}
 		}
@@ -4412,14 +4416,14 @@ bool Tessellation::buildIntersectionGraphCollectionPass(int l, float radius, Tes
 		if(I->intersectionBranches.size()>0){
 			if(hasDepthBuffer && useDepthBuffer) convertExposedVectors2PHIValues(tessellationAxis, hemisphere, *I);
 			for(it = I->intersectionBranches.begin(); it != I->intersectionBranches.end(); ++it){
-				if(it->second.direction==IN){
+				if(it->second->direction==IN){
 					it2=increaseBranchInterator(it,*I);
 					
-					ps0.i0 = it->second.id;
+					ps0.i0 = it->second->id;
 					ps0.i1 = I->id;
 					
 					ps1.i0 = I->id;
-					ps1.i1 = it2->second.id;
+					ps1.i1 = it2->second->id;
 					
 					
 					
@@ -4431,14 +4435,14 @@ bool Tessellation::buildIntersectionGraphCollectionPass(int l, float radius, Tes
 					seginfo.forw=pempty;
 					seginfo.hasForward=false;
 					seginfo.hasBackward=false;
-					seginfo.PHI0 = it->second.PHI;
-					seginfo.PHI1 = it2->second.PHI;
+					seginfo.PHI0 = it->second->PHI;
+					seginfo.PHI1 = it2->second->PHI;
 					seginfo.visited=false;
-					seginfo.v0=it->second.v0;
-					seginfo.v1=it->second.v1;
-					seginfo.weight=it->second.weight;
-					seginfo.weight1=it->second.weight1;
-					seginfo.i=it->second.i;
+					seginfo.v0=it->second->v0;
+					seginfo.v1=it->second->v1;
+					seginfo.weight=it->second->weight;
+					seginfo.weight1=it->second->weight1;
+					seginfo.i=it->second->i;
 					if(hasDepthBuffer && useDepthBuffer) seginfo.dist=exposition(hemisphere, it, it2, *I);
 					it_sl = segmentList.insert(segmentList.end(), seginfo);
 					

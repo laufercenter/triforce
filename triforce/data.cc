@@ -1,5 +1,5 @@
 
-
+#include <armadillo>
 #include <algorithm>
 #include <string>
 #include <limits>

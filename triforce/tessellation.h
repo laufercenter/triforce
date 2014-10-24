@@ -354,11 +354,10 @@ RhoContainer;
 
 
 
-typedef multimap<float, IntersectionBranch> IntersectionBranches;
+typedef multimap<float, IntersectionBranch*> IntersectionBranches;
 
 
-typedef struct IntersectionBranch
-{
+typedef struct IntersectionBranch{
 	IntersectionNode* node;
 	IntersectionBranches::iterator it;
 	int visited;
@@ -387,10 +386,10 @@ struct IteratorComparator: public std::binary_function<IntersectionBranches::ite
 {
 	bool operator()(const IntersectionBranches::iterator& lhs, const IntersectionBranches::iterator& rhs) const
 	{
-		if(lhs->second.node->id0 == rhs->second.node->id0){
-			return lhs->second.node->id1 < rhs->second.node->id1;
+		if(lhs->second->node->id0 == rhs->second->node->id0){
+			return lhs->second->node->id1 < rhs->second->node->id1;
 		}
-		else return lhs->second.node->id0 < rhs->second.node->id0;
+		else return lhs->second->node->id0 < rhs->second->node->id0;
 	}
 };
 
