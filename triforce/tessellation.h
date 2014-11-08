@@ -165,6 +165,26 @@ struct SegmentSetComparator: public std::binary_function<FullSegmentID, FullSegm
 		else return lhs.i0 < rhs.i0;
 	}
 };
+
+typedef struct{
+	int id;
+	Direction direction;
+}
+SplitterIntersection;
+
+struct SplitterIntersectionComparator: public std::binary_function<SplitterIntersection, SplitterIntersection, bool>
+{
+	bool operator()(const SplitterIntersection& lhs, const SplitterIntersection& rhs) const
+	{
+		if(lhs.id == rhs.id){
+			return lhs.direction < rhs.direction;
+		}
+		else return lhs.id < rhs.id;
+	}
+};
+
+
+
 typedef struct
 {
 	float rotation;
@@ -393,7 +413,7 @@ struct IteratorComparator: public std::binary_function<IntersectionBranches::ite
 	}
 };
 
-
+typedef map<int,RhoContainer> CircularIntersections;
 
 typedef struct CircularInterface
 {
@@ -409,7 +429,7 @@ typedef struct CircularInterface
 	float sphereRadius;
 	float d;
 	Matrix dmu_dx;
-	map<int,RhoContainer> circularIntersections;
+	CircularIntersections circularIntersections;
 	IntersectionBranches intersectionBranches;
 	
 	CircularInterfaceForm form;
@@ -620,6 +640,7 @@ private:
 	
 	void buildIntersectionGraphFirstPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles);
 	void buildIntersectionGraphSplitterPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles);
+	void splitterSanityCheck(CircularInterfacesPerAtom &circles);
 	void copyIntersectionGraph(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, CircularInterfacesPerAtom &newCircles);
 	void buildIntersectionGraphArtificialPointsPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, unsigned int &globalSegmentCounter);
 	bool buildIntersectionGraphCollectionPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer, bool split, unsigned int &globalSegmentCounter, bool derivatives);
@@ -646,7 +667,7 @@ private:
 	void addPsiAndLambda(TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles);
 	void sortGaussBonnetPaths(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer, bool split, unsigned int &globalSegmentCounter, bool derivatives);
 	
-	
+	void cleanCircularIntersections(CircularInterfacesPerAtom &circles);
 	
 	
 	
