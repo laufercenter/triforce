@@ -25,6 +25,29 @@ void Molecule::init(){
 	calculateClosestNeighbours();
 }
 
+Vector Molecule::getCenter(){
+	Vector maxPoint(3);
+	Vector minPoint(3);
+	Vector v;
+	Vector dim(3);
+	minPoint=maxPoint=atoms[0];
+	for(unsigned int i=0; i<atoms.size(); ++i){
+		v = atoms[i];
+		for(int j=0; j<3; ++j){
+			if(v(j) < minPoint(j)) minPoint(j) = v(j);
+			if(v(j) > maxPoint(j)) maxPoint(j) = v(j);
+		}
+	}
+	
+	
+	dim = (maxPoint - minPoint);
+	for(int i=0; i<3; ++i)
+		dim(i)=abs(dim(i));
+	
+	return minPoint+(dim/2.0);
+	
+}
+
 void Molecule::generateNeighbourList(){
 	Vector maxPoint(3);
 	Vector minPoint(3);
@@ -64,7 +87,7 @@ void Molecule::generateNeighbourList(){
 	}
 	
 	
-	neighbourList = new NeighbourList(center, dim, maxRadius, &epsilons, &sigmas);
+	neighbourList = new NeighbourList(center, dim, maxRadius);
 	
 	for(unsigned int i=0; i<atoms.size(); ++i){
 		neighbourList->addSphere(atoms[i],i);
@@ -106,6 +129,27 @@ unsigned int Molecule::identifySpecies(float eps, float sig){
 
 }
 
+
+void Molecule::jiggleInternallyStoredAtomCoordinates(float mag){
+	Vector v(3);
+	
+	for(unsigned int i=0; i<atoms.size(); ++i){
+		v = randu<fvec>(3);
+		v(0) = v(0)-0.5;
+		v(1) = v(1)-0.5;
+		v(2) = v(2)-0.5;
+
+		
+		v=mag*v/norm(v,2);
+		
+	
+		perturbInternallyStoredAtomCoordinates(i,v);
+		update();
+
+	}
+	
+	
+}
 
 
 Vector Molecule::getInternallyStoredAtomCoordinates(int i){
@@ -369,11 +413,6 @@ void Molecule::printxyz(){
 		//printf("[%d]: pointers: (%d, %d, %d, %d)\n",i,areas[i], forces[i][0], forces[i][1], forces[i][2]);
 	}
 	
-}
-
-
-void Molecule::printNeighbourList(FILE* outputfile0,FILE* outputfile1){
-	neighbourList->print(outputfile0, outputfile1);
 }
 
 

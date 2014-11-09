@@ -108,7 +108,6 @@ TriforceInterface::TriforceInterface(string path){
 	
 	if(buffer>0){
 		withDepthBuffer=true;
-		this->buffer=buffer;
 		df4 = new DataFile(path+"/depthBuffer.dat");
 		df5 = new DataFile(path+"/occludedDistribution.dat");
 		df6 = new DataFile(path+"/exposedDistribution.dat");

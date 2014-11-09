@@ -107,6 +107,8 @@ public:
 	Vector getInternallyStoredAtomCoordinates(int i);
 	void setInternallyStoredAtomCoordinates(int i, Vector &v);
 	void perturbInternallyStoredAtomCoordinates(int i, Vector p);
+	void jiggleInternallyStoredAtomCoordinates(float mag);
+	Vector getCenter();
 	
 	void print(FILE* outputfile);
 	void printxyz();
@@ -125,7 +127,7 @@ public:
 	vector<int> getNeighborListFor(int i);
 	vector<int> &fetchClosestNeighbours();
 	void calculateClosestNeighbours();
-	void printNeighbourList(FILE* outputfile0, FILE* outputfile1);
+	void refreshInternalPointers();
 	
 	
 private:
@@ -163,7 +165,6 @@ private:
 
 	NeighbourList *neighbourList;
 	
-	void refreshInternalPointers();
 	unsigned int identifySpecies(float eps, float sig);
 	
 	

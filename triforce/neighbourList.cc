@@ -1,10 +1,9 @@
 #include "neighbourList.h"
 
 
-NeighbourList::NeighbourList(Vector center, Vector dim, float searchRadius, vector<float> *epsilons, vector<float> *sigmas){
-	LJPair ljPair;
+NeighbourList::NeighbourList(Vector center, Vector dim, float searchRadius){
 	this->dim = dim;
-	searchRadius*=2; //get the diameter
+	searchRadius*=2;
 	this->searchRadius = searchRadius;
 	this->center = center;
 	
@@ -18,19 +17,14 @@ NeighbourList::NeighbourList(Vector center, Vector dim, float searchRadius, vect
 	for(int i=0; i<3; i++)
 		numCubes(i) = max(1.0f,ceil(dim(i) / searchRadius));
 	
-	printf("creating neighbourlist with dim (%f, %f, %f), center (%f, %f, %f) searchRadius (%f) gridcells (%d %d %d)\n",dim(0),dim(1),dim(2),center(0),center(1),center(2),searchRadius,numCubes(0),numCubes(1),numCubes(2));
+	//printf("creating neighbourlist with dim (%f, %f, %f), center (%f, %f, %f) searchRadius (%f) gridcells (%d %d %d)\n",dim(0),dim(1),dim(2),center(0),center(1),center(2),searchRadius,numCubes(0),numCubes(1),numCubes(2));
 	
 	
 	
 	cubicalGrid = new Grid(boost::extents[numCubes(0)][numCubes(1)][numCubes(2)]);
-	lennardJonesGrid = new LJGrid(boost::extents[numCubes(0)][numCubes(1)][numCubes(2)]);
-	ljPair.eps=0;
-	ljPair.sig=0;
-	std::fill(lennardJonesGrid->data(), lennardJonesGrid->data()+lennardJonesGrid->num_elements(),ljPair);
 				
 	origin = center - dim*0.5;
 }
-
 
 
 
@@ -45,30 +39,62 @@ void NeighbourList::addSphere(Vector &v, unsigned int id){
 	
 	//printf("adding sphere at (%d %d %d) (%f %f %f)\n",x,y,z, v(0), v(1), v(2));
 	
-	
-	(*cubicalGrid)[x][y][z].insert(id);
-	(*lennardJonesGrid)[x][y][z].eps+=(*epsilons)[id];
-	(*lennardJonesGrid)[x][y][z].sig+=(*sigmas)[id];
-	
-	C.x=0;
-	C.y=0;
-	C.z=0;
-	if(spheres.size()<=id){
-		spheres.resize(id+1,C);
-		dirty.resize(id+1,false);
-	}
+	if(x>=numCubes(0) || y>=numCubes(1) || z>=numCubes(2) || x<0 || y<0 || z<0){
+		//we have to recreate the whole grid at this point
+		Vector v1(3);
+		VectorInt nc(3);
+		nc=numCubes;
 		
-	C.x=x;
-	C.y=y;
-	C.z=z;
-	
-	if((*cubicalGrid)[x][y][z].size()==1) cellList[C]=C;
-	
-	
-	spheres[id]=C;
+		
+		numCubes(0)=(max(x,(int)numCubes(0)) - min(x,(int)0))*1.5;
+		numCubes(1)=(max(y,(int)numCubes(1)) - min(y,(int)0))*1.5;
+		numCubes(2)=(max(z,(int)numCubes(2)) - min(z,(int)0))*1.5;
+		
+		if(numCubes(0)>1000 || numCubes(1)>1000 || numCubes(2)>1000){
+			fprintf(stderr,"FAULTY VECTOR: %f %f %f\n",v(0),v(1),v(2));
+			exit(4);
+// 			throw new exception;
+			
+		}
+
+		
+		//printf("NUMCUBES: %d %d %d (%f %f %f) %f\n",numCubes(0),numCubes(1),numCubes(2),v(0),v(1),v(2),searchRadius);
+		delete cubicalGrid;
+		if(numCubes(0)>1000 || numCubes(1)>1000 || numCubes(2)>1000) exit(5);
+		cubicalGrid = new Grid(boost::extents[numCubes(0)][numCubes(1)][numCubes(2)]);
+		dim(0)=numCubes(0)*searchRadius;
+		dim(1)=numCubes(1)*searchRadius;
+		dim(2)=numCubes(2)*searchRadius;
+		origin=center - dim*0.5;
+		
+		for(unsigned int i=0; i<spheres.size(); ++i){
+			v1(0)=spheres[i].x;
+			v1(1)=spheres[i].y;
+			v1(2)=spheres[i].z;
+			addSphere(v1,i);
+		}
+		addSphere(v,id);
+		
+	}
+	else{
+		(*cubicalGrid)[x][y][z].insert(id);
+		
+		C.x=0;
+		C.y=0;
+		C.z=0;
+		if(spheres.size()<=id){
+			spheres.resize(id+1,C);
+			dirty.resize(id+1,false);
+		}
+			
+		C.x=x;
+		C.y=y;
+		C.z=z;
+		
+		spheres[id]=C;
+	}
 	
 }
-
 
 vector<int> NeighbourList::getNeighbors(Vector &v){
 	Vector c;
@@ -108,7 +134,6 @@ vector<int> NeighbourList::getNeighbors(Vector &v){
 }
 
 
-
 void NeighbourList::deleteSphere(unsigned int id){
 	int x,y,z;
 	Coordinate C;
@@ -117,19 +142,11 @@ void NeighbourList::deleteSphere(unsigned int id){
 	y=C.y;
 	z=C.z;
 	(*cubicalGrid)[x][y][z].erase(id);
-	(*lennardJonesGrid)[x][y][z].eps-=(*epsilons)[id];
-	(*lennardJonesGrid)[x][y][z].sig-=(*sigmas)[id];
-	
-	if((*cubicalGrid)[x][y][z].size()==0){
-		cellList.erase(C);
-		(*lennardJonesGrid)[x][y][z].eps=0;
-		(*lennardJonesGrid)[x][y][z].sig=0;
-	}
-	
 	
 	
 	
 }
+
 
 
 void NeighbourList::update(vector<Vector> &atoms){
@@ -165,75 +182,11 @@ bool NeighbourList::isDirty(unsigned int i){
 
 
 
-map<Coordinate, Coordinate, CoordinateComparator>& NeighbourList::getCellList(){
-	return cellList;
-}
-
-Vector NeighbourList::cellPosition(Coordinate &x){
-	Vector c,r;
-	c(0)=x.x;
-	c(1)=x.y;
-	c(2)=x.z;
-	c = c*searchRadius+origin;
-	r(0)=searchRadius*0.5;
-	r(1)=searchRadius*0.5;
-	r(2)=searchRadius*0.5;
-	c+=r; //this will move it into the center of the cell
-	return c;
-}
-
-float NeighbourList::lennardJonesPotential(LJPair &ljPair, float x){
-	float sig6;
-	float sig12;
-	float x6;
-	float x12;
-	
-	sig6=pow(ljPair.sig,6);
-	sig12=sig6*sig6;
-	
-	x6=pow(x,6);
-	x12=x*x;
-	
-	
-	return 4*ljPair.eps*(sig12/x12 - sig6/x6);
-}
 
 
-float NeighbourList::lennardJonesImpact(Vector &x, Coordinate &distantCell){
-	Vector dc;
-	float dist;
-	LJPair ljPair;
-	float n;
-	
-	ljPair = (*lennardJonesGrid)[distantCell.x][distantCell.y][distantCell.z];
-	n = (*cubicalGrid)[distantCell.x][distantCell.y][distantCell.z].size();
-	ljPair.eps/=n;
-	ljPair.sig/=n;
-	
-	dc=cellPosition(distantCell);
-	dist=norm(x-dc,2);
-	return lennardJonesPotential(ljPair,dist)*n;
-}
 
-void NeighbourList::print(FILE* outputfile0,FILE* outputfile1){
-	Vector x;
-	LJPair ljPair;
-	unsigned int n;
-	fprintf(outputfile0,"X\tY\tZ\tx\ty\tz\tn\teps\tsig\n");
-	map<Coordinate, Coordinate, CoordinateComparator>::iterator it;
-	for(it=cellList.begin(); it!=cellList.end(); ++it){
-		x=cellPosition(it->second);
-		ljPair=(*lennardJonesGrid)[it->first.x][it->first.y][it->first.z];
-		n = (*cubicalGrid)[it->first.x][it->first.y][it->first.z].size();
-		fprintf(outputfile0,"%d\t%d\t%d\t%f\t%f\t%f\t%d\t%f\t%f\n",it->first.x, it->first.y, it->first.y, x(0), x(1), x(2), n, ljPair.eps, ljPair.sig);
-	}
-	
-	fprintf(outputfile1,"index\tX\tY\tZ\n");
-	for(unsigned int i=0; i<spheres.size(); ++i){
-		fprintf(outputfile1,"%d\t%d\t%d\t%d\n",i, spheres[i].x, spheres[i].y, spheres[i].z);
-	}
-	
-}
+
+
 
 
 

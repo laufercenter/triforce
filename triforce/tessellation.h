@@ -262,7 +262,7 @@ typedef struct SegmentInfo{
 	SegmentList::iterator it_forw;
 	bool hasForward;
 	bool hasBackward;
-	bool visited;
+	unsigned int visited;
 	float dist;
 	PHIRotation PHI0;
 	PHIRotation PHI1;
@@ -381,6 +381,7 @@ typedef struct IntersectionBranch{
 	IntersectionNode* node;
 	IntersectionBranches::iterator it;
 	int visited;
+	int visited1;
 	Direction direction;
 	Location forward;
 	Location backward;

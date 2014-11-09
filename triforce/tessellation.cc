@@ -308,6 +308,27 @@ void Tessellation::setupTessellationAxis(TessellationAxis &tessellationAxis, Hem
 	
 }
 
+
+void Tessellation::cleanCircularIntersections(CircularInterfacesPerAtom &circles){
+	vector<CircularInterface>::iterator it;
+	float angle;
+	bool erased;
+	
+	it = circles.begin();
+	while(it != circles.end()){
+		erased=false;
+		if(it->form!=SPLITTER && it->intersectionBranches.size()==0){
+			it = circles.erase(it);
+			erased=true;
+		}
+		
+		if(!erased) ++it;
+	}
+	
+	
+}
+
+
 void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<float> &radii, SASAs &sasas, bool split, vector<int> &neighbourlist, int closestNeighbour, bool useDepthBuffer){
 	CircularInterfacesPerAtom circles,precircles;
 	CircularInterfacesPerAtom circlesFrontHemisphere;
@@ -316,7 +337,7 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 	bool pass0, pass1;
 	
 	bool tessellationComplete;
-	//printf("BUILDING PATH %d\n",i);
+	printf("BUILDING PATH %d\n",i);
 	
 	TessellationAxis frontTessellationAxis;
 	TessellationAxis backTessellationAxis;
@@ -493,11 +514,24 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 			reindexCircularInterfaces(circles);
 			determineCircularIntersections(circles, false);
 			buildIntersectionGraphFirstPass(i, radius, frontTessellationAxis, circles);
-			
+			cleanCircularIntersections(circles);
+			reindexCircularInterfaces2(circles);
 			determinePsiRotations(frontTessellationAxis, circles);
-				
 			
-			sortGaussBonnetPaths(i, radius, frontTessellationAxis, circles, sasas[sasas.size()-1], FRONTHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer, split, globalSegmentCounter,true);
+
+printf("____________________________\n INITIAL ROUND\n");			
+for(unsigned int j=0; j<circles.size(); ++j){
+	printf("CIRCLE[%d] (%d)\n",circles[j].index,circles[j].form);
+	for(IntersectionBranches::iterator it=circles[j].intersectionBranches.begin(); it!=circles[j].intersectionBranches.end(); ++it){
+		if(it->second->direction==IN)
+			printf(" -> %d [IN] %f\n", circles[it->second->id].index,it->first);
+		else
+			printf(" -> %d [OUT] %f\n", circles[it->second->id].index, it->first);
+	}
+}			
+	
+			
+			//sortGaussBonnetPaths(i, radius, frontTessellationAxis, circles, sasas[sasas.size()-1], FRONTHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer, split, globalSegmentCounter,true);
 			
 			
 			copyIntersectionGraph(i, radius, backTessellationAxis, circles, circlesBackHemisphere);
@@ -517,7 +551,8 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 			filterCircularInterfaces(circles, true);
 			filterCircularInterfaces(circlesBackHemisphere, true);
 			
-			
+			cleanCircularIntersections(circles);
+			cleanCircularIntersections(circlesBackHemisphere);
 
 			
 			
@@ -535,21 +570,35 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 			
 			
 			buildIntersectionGraphSplitterPass(i, radius, frontTessellationAxis, circles);
+			splitterSanityCheck(circles);
 			
-/*			
+			
+printf("____________________________\nFRONT ROUND\n");			
+for(unsigned int j=0; j<circles.size(); ++j){
+	printf("CIRCLE[%d]\n",circles[j].index);
+	for(IntersectionBranches::iterator it=circles[j].intersectionBranches.begin(); it!=circles[j].intersectionBranches.end(); ++it){
+		if(it->second->direction==IN)
+			printf(" -> %d [IN] %f\n", circles[it->second->id].index, it->first);
+		else
+			printf(" -> %d [OUT] %f\n", circles[it->second->id].index, it->first);
+	}
+}			
+			
+			
+			buildIntersectionGraphSplitterPass(i, radius, backTessellationAxis, circlesBackHemisphere);
+			splitterSanityCheck(circlesBackHemisphere);
+
+
 printf("____________________________\nBACKFLIPPED ROUND\n");			
 for(unsigned int j=0; j<circlesBackHemisphere.size(); ++j){
 	printf("CIRCLE[%d]\n",circlesBackHemisphere[j].index);
 	for(IntersectionBranches::iterator it=circlesBackHemisphere[j].intersectionBranches.begin(); it!=circlesBackHemisphere[j].intersectionBranches.end(); ++it){
-		if(it->second.direction==IN)
-			printf(" -> %d [IN]\n", circlesBackHemisphere[it->second.id].index);
+		if(it->second->direction==IN)
+			printf(" -> %d [IN] %f\n", circlesBackHemisphere[it->second->id].index,it->first);
 		else
-			printf(" -> %d [OUT]\n", circlesBackHemisphere[it->second.id].index);
+			printf(" -> %d [OUT] %f\n", circlesBackHemisphere[it->second->id].index,it->first);
 	}
 }			
-*/			
-			
-			buildIntersectionGraphSplitterPass(i, radius, backTessellationAxis, circlesBackHemisphere);
 			
 			
 			globalSegmentCounter=-2;
@@ -1163,6 +1212,7 @@ void Tessellation::reindexCircularInterfaces(CircularInterfacesPerAtom &circles)
 void Tessellation::reindexCircularInterfaces2(CircularInterfacesPerAtom &circles){
 	map<int,int> cross;
 	IntersectionBranches::iterator it,it2;
+	CircularIntersections::iterator it3;
 	bool erased;
 	
 	
@@ -1171,6 +1221,22 @@ void Tessellation::reindexCircularInterfaces2(CircularInterfacesPerAtom &circles
 	for(unsigned i=0;i<circles.size();i++){
 		cross[circles[i].id]=i;
 	}
+	
+	for(unsigned i=0;i<circles.size();i++){
+		it3=circles[i].circularIntersections.begin();
+		while(it3!=circles[i].circularIntersections.end()){
+			erased=false;
+			if(cross.find(it3->second.id)!=cross.end()){
+				it3->second.id=cross[it3->second.id];
+			}
+			else{
+				it3=circles[i].circularIntersections.erase(it3);
+				erased=true;
+			}
+			if(!erased) it3++;
+		}
+	}
+	
 	
 	for(unsigned i=0;i<circles.size();i++){
 		circles[i].id = i;
@@ -1188,7 +1254,8 @@ void Tessellation::reindexCircularInterfaces2(CircularInterfacesPerAtom &circles
 			}
 			else{
 				//it's not good to delete the intersection points, but we have to give them a different id
-				it->second->id=it->second->id+circles.size()+1;
+				it->second->id=i;
+				it->second->flagged=true;
 			}
 			if(!erased) ++it;
 		}
@@ -1412,8 +1479,10 @@ void Tessellation::determineCircularIntersections(CircularInterfacesPerAtom &cir
 						c.rho=angle;
 						c.id = k;
 						circles[j].circularIntersections[circles[k].index]=c;
+						//circles[j].circularIntersections[k]=c;
 						c.id = j;
 						circles[k].circularIntersections[circles[j].index]=c;
+						//circles[k].circularIntersections[j]=c;
 					}
 				}
 			}
@@ -3530,11 +3599,12 @@ void Tessellation::createIntersectionBranch(PHIContainer &PHII, CircularInterfac
 	IntersectionBranches::iterator it0;
 	IntersectionBranches::iterator it1;
 	
-	x.second->visited = -1;
-
+	
 	
 	x.first = PHII.in.rotation;
 	x.second = new IntersectionBranch();
+	x.second->visited = 0;
+	x.second->visited1 = 0;
 	x.second->direction = IN;
 	x.second->body = &I.intersectionBranches;
 	x.second->id = J.id;
@@ -3548,6 +3618,8 @@ void Tessellation::createIntersectionBranch(PHIContainer &PHII, CircularInterfac
 	
 	x.first = PHII.out.rotation;
 	x.second = new IntersectionBranch();
+	x.second->visited = 0;
+	x.second->visited1 = 0;
 	x.second->direction = OUT;
 	x.second->body = &I.intersectionBranches;
 	x.second->id = J.id;
@@ -3571,12 +3643,13 @@ void Tessellation::createIntersectionBranch(PHIContainer &PHII, CircularInterfac
 	IntersectionBranches::iterator it0;
 	IntersectionBranches::iterator it1;
 	
-	x.second->visited = -1;
 
 	
 	if(b.direction==IN){
 		x.first = PHII.in.rotation;
 		x.second = new IntersectionBranch();
+		x.second->visited = 0;
+		x.second->visited1 = 0;
 		x.second->direction = IN;
 		x.second->body = &I.intersectionBranches;
 		x.second->id = J.id;
@@ -3595,6 +3668,8 @@ void Tessellation::createIntersectionBranch(PHIContainer &PHII, CircularInterfac
 	if(b.direction==OUT){
 		x.first = PHII.out.rotation;
 		x.second = new IntersectionBranch();
+		x.second->visited = 0;
+		x.second->visited1 = 0;
 		x.second->direction = OUT;
 		x.second->body = &I.intersectionBranches;
 		x.second->id = J.id;
@@ -3756,110 +3831,90 @@ float Tessellation::exposition(Hemisphere hemisphere, IntersectionBranches::iter
 
 
 
-
+/**
+ * This method visits all circular interfaces. Within each interface, it cycles through all intersections with other interfaces and
+ * adds them to a structure called intersection graph.  This structure contains angular and connectivity information for the whole 
+ * sphere (disregarding front hemisphere and back hemisphere boundaries)
+ */
 void Tessellation::buildIntersectionGraphFirstPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles){
-	SASASegment sasaSegment;
-	
 	unsigned int j;
 	CircularInterface *I, *J;
 	map<int,RhoContainer>::iterator it_j;
 	
 	
-	Interfaces interfacesJ, interfacesI;
-	IntersectionBranches::iterator it, it2;
-	PHIContainer PHIJ, PHII;
+	IntersectionBranches::iterator it;
+	PHIContainer  PHII;
 	
-	int searchMode;
 	bool erased;
 	bool done;
 	RhoContainer rhoContainer;
-	SegmentGraph segmentGraph0;
-	SegmentGraph segmentGraph1;
-	pair<PartialSegmentID,SegmentList::iterator> p;
-	SegmentGraph::iterator it_s0, it_s1;
-	SegmentList segmentList;
-	SegmentList::iterator it_sl, it_sl2, it_sl2_start;
-	SegmentInfo seginfo;
-	vector<vector<SegmentList::iterator> > segmentPointerLists;
-	vector<SegmentList::iterator> segmentPointers;
-	vector<vector<SegmentList::iterator> >::iterator it_sp;
-	
+	int round;
+	map<int,bool> activeBranches;
 	
 	
 	//iterate through all circles and add them to the intersectiongraph, one by one
 	for(unsigned int i=0; i < circles.size(); ++i){
 		I = &circles[i];
 		
-	
+		if(I->circularIntersections.size()==0) continue;
 		
-		
+		//iterate through all intersections with other interfaces
 		for(it_j=I->circularIntersections.begin(); it_j != I->circularIntersections.end(); ++it_j){
 			j=it_j->second.id;
 			rhoContainer = it_j->second;
 			J = &circles[j];
 			
-			//retrieve external and internal interfaces (respectively)
-			//PHIJ = calculatePHI(tessellationAxis, *J, *I, radius, rhoContainer);
+			//retrieve external and internal interfaces and create a branch stored in PHII (which stands for PHI, circle I)
 			PHII = calculatePHI(tessellationAxis, *I, *J, radius, rhoContainer);
-			
 			createIntersectionBranch(PHII, *I, *J,rhoContainer);
+		}
+		
+		//now we have to do 2 rounds of eliminations
+		round=0;
+		activeBranches.clear();
+		
+		it = I->intersectionBranches.begin();
+		done=false;
+		while(!done){
+			//for out directions, we have to check if the ip should be deleted before we add the interface to the active branches
+			if(it->second->direction==OUT){
+				++it->second->visited;
+				if(activeBranches.size()>0) it->second->flagged=true;
+				activeBranches[it->second->id]=true;				
+			}
+			//for in directions the other way around
+			else{
+				activeBranches.erase(it->second->id);
+				if(activeBranches.size()>0) it->second->flagged=true;
+			}
 			
-			
+			it=increaseBranchInterator(it, *I);
+
+			if(round==0 && it->second->visited==1) ++round;
+			else if(round==1 && it->second->visited==2) done=true;
 
 			
-			//iterate through branches and remove points that are occluded
-			for(it = I->intersectionBranches.begin(); it != I->intersectionBranches.end(); ++it){
-				if(it->second->id == J->id) searchMode=0;
-				else searchMode=1;
-				
-				if(it->second->direction==OUT){
-				
-				
-					done=false;
-					it2 = it;
-					while(!done){
-						it2=increaseBranchInterator(it2, *I);
-						
-						
-						
-						if(	(it2->second->direction==IN && searchMode==0 && it2->second->id == J->id) ||
-							(it2->second->direction==IN && searchMode==1 && it2->second->id != J->id)){
-								done=true;
-							}
-							else{
-								it2->second->flagged=true;
-							}
-							
-							
-					}
-				}
-			}
 			
-			it = I->intersectionBranches.begin();
-			while(it != I->intersectionBranches.end()){
-				erased=false;
-				if(it->second->flagged){
-					it2=it;
-					++it2;
-					//dist0 = buriedness(hemisphere, *I, circles[it->second.id], it->second.PHI.rotation, buffer0, buffer1);
-					//fprintf(stderr,"%f\n",dist0);
-					I->intersectionBranches.erase(it);
-					it=it2;
-					erased=true;
-				}
-				
-				if(!erased) ++it;
-					
-			}
-			
-			
-			if(I->intersectionBranches.size()==0)
-				break;
-			
-			
-			
-					
 		}
+			
+
+		
+		
+		//The branches have been flagged to be deleted, here, we perform the actual deletion.
+		it = I->intersectionBranches.begin();
+		while(it != I->intersectionBranches.end()){
+			erased=false;
+			if(it->second->flagged){
+				//dist0 = buriedness(hemisphere, *I, circles[it->second.id], it->second.PHI.rotation, buffer0, buffer1);
+				//fprintf(stderr,"%f\n",dist0);
+				it=I->intersectionBranches.erase(it);
+				erased=true;
+			}
+			
+			if(!erased) ++it;
+				
+		}
+			
 	}
 }
 
@@ -3867,40 +3922,37 @@ void Tessellation::buildIntersectionGraphFirstPass(int l, float radius, Tessella
 
 
 
-
+/**
+ * The splitter is a newly placed artificial interface which might, or might not, intersect with other interfaces.
+ * We need to calculate its intersection points which is what this method is for.
+ * */
 void Tessellation::buildIntersectionGraphSplitterPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles){
-	SASASegment sasaSegment;
-	
 	unsigned int j;
 	CircularInterface *I, *J;
 	map<int,RhoContainer>::iterator it_j;
 	
 	
-	Interfaces interfacesJ, interfacesI;
-	IntersectionBranches::iterator it, it2;
-	PHIContainer PHIJ, PHII;
+	IntersectionBranches::iterator it;
+	PHIContainer  PHII;
 	
-	int searchMode;
 	bool erased;
 	bool done;
 	RhoContainer rhoContainer;
-	SegmentGraph segmentGraph0;
-	SegmentGraph segmentGraph1;
-	pair<PartialSegmentID,SegmentList::iterator> p;
-	SegmentGraph::iterator it_s0, it_s1;
-	SegmentList segmentList;
-	SegmentList::iterator it_sl, it_sl2, it_sl2_start;
-	SegmentInfo seginfo;
-	vector<vector<SegmentList::iterator> > segmentPointerLists;
-	vector<SegmentList::iterator> segmentPointers;
-	vector<vector<SegmentList::iterator> >::iterator it_sp;
+	int round;
+	map<int,bool> activeBranches;
+	unsigned int activeBranches2;
 	bool iterateAll;
-	
 	
 	
 	//iterate through all circles and add them to the intersectiongraph, one by one
 	for(unsigned int i=0; i < circles.size(); ++i){
 		I = &circles[i];
+		
+	
+		
+		
+		
+		if(I->circularIntersections.size()==0) continue;
 		
 		
 		
@@ -3928,69 +3980,70 @@ void Tessellation::buildIntersectionGraphSplitterPass(int l, float radius, Tesse
 			
 			createIntersectionBranch(PHII, *I, *J,rhoContainer);
 			
-			
-			
-			//iterate through branches and remove points that are occluded
-			for(it = I->intersectionBranches.begin(); it != I->intersectionBranches.end(); ++it){
-				if(it->second->id == J->id) searchMode=0;
-				else searchMode=1;
-
-				if(it->second->direction==OUT){
-				
-				
-					done=false;
-					it2 = it;
-					while(!done){
-						it2=increaseBranchInterator(it2, *I);
-						
-						
-						
-						if(	(it2->second->direction==IN && searchMode==0 && it2->second->id == J->id) ||
-							(it2->second->direction==IN && searchMode==1 && it2->second->id != J->id)){
-								done=true;
-							}
-							else{
-								it2->second->flagged=true;
-							}
-							
-							
-					}
-				}
-			}
-
-			it = I->intersectionBranches.begin();
-			while(it != I->intersectionBranches.end()){
-				erased=false;
-				if(it->second->flagged){
-					it2=it;
-					++it2;
-					//dist0 = buriedness(hemisphere, *I, circles[it->second.id], it->second.PHI.rotation, buffer0, buffer1);
-					//fprintf(stderr,"%f\n",dist0);
-					I->intersectionBranches.erase(it);
-					it=it2;
-					erased=true;
-				}
-				
-				if(!erased) ++it;
-					
-			}
-
-			
-			if(I->intersectionBranches.size()==0){
-				
-				break;
-			}
-			
-
-			
 			++it_j;
 
 		}
 		while(iterateAll && it_j != I->circularIntersections.end());
 		
+	
+		
+		
+		
+		
+		//now we have to do 2 rounds of eliminations
+		round=0;
+		activeBranches.clear();
+		activeBranches2=0;
+		it = I->intersectionBranches.begin();
+		done=false;
+		while(!done){
+			//for out directions, we have to check if the ip should be deleted before we add the interface to the active branches
+			if(it->second->direction==OUT){
+				++it->second->visited1;
+				if(activeBranches.size()>0 || activeBranches2>0){
+					it->second->flagged=true;
+				}
+				if(I->form==SPLITTER || circles[it->second->id].form==SPLITTER) activeBranches[it->second->id]=true;
+				else activeBranches2++;
+			}
+			//for in directions the other way around
+			else{
+				if(I->form==SPLITTER || circles[it->second->id].form==SPLITTER) activeBranches.erase(it->second->id);
+				else activeBranches2=max((int)0,(int)activeBranches2-1); //shouldn't go lower than zero
+				
+				
+				if(activeBranches.size()>0 || activeBranches2>0){
+					it->second->flagged=true;
+				}
+			}
+			
+			it=increaseBranchInterator(it, *I);
+
+			if(round==0 && it->second->visited1==1) ++round;
+			else if(round==1 && it->second->visited1==2) done=true;
+
+			
+			
+		}
 		
 
-	}
+		
+		//The branches have been flagged to be deleted, here, we perform the actual deletion.
+		it = I->intersectionBranches.begin();
+		while(it != I->intersectionBranches.end()){
+			erased=false;
+			if(it->second->flagged){
+				//dist0 = buriedness(hemisphere, *I, circles[it->second.id], it->second.PHI.rotation, buffer0, buffer1);
+				//fprintf(stderr,"%f\n",dist0);
+				it=I->intersectionBranches.erase(it);
+				erased=true;
+			}
+			
+			if(!erased) ++it;
+				
+		}
+			
+	}		
 	
 }
 
@@ -3999,6 +4052,61 @@ void Tessellation::buildIntersectionGraphSplitterPass(int l, float radius, Tesse
 
 
 
+/**
+ * This method removes invalid splitter intersectionpoints
+ * */
+void Tessellation::splitterSanityCheck(CircularInterfacesPerAtom &circles){
+	int splitter=0;
+	IntersectionBranches::iterator it;
+	map<SplitterIntersection,bool,SplitterIntersectionComparator> splitterIntersections;
+	CircularInterface *I;
+	bool erased;
+	SplitterIntersection s;
+	
+	//In a first pass, we traverse through the interfaces and register intersections with the splitter + id of the splitter
+	for(unsigned int i=0; i<circles.size(); ++i){
+		if(circles[i].form==SPLITTER){
+			splitter=i;
+		}
+		else{
+			I = &circles[i];
+			for(it = I->intersectionBranches.begin(); it != I->intersectionBranches.end(); ++it){
+				if(circles[it->second->id].form==SPLITTER){
+					if(it->second->direction==IN) s.direction=OUT;
+					else s.direction=IN;
+					s.id=i;
+					splitterIntersections[s]=true;
+				} 
+			}
+
+		}
+	}
+	I = &circles[splitter];
+	//In a second pass we traverse through the splitter's branches and check for validity
+	it = I->intersectionBranches.begin();
+	while(it != I->intersectionBranches.end()){
+		erased=false;
+		s.id=it->second->id;
+		s.direction=it->second->direction;
+		if(splitterIntersections.find(s)!=splitterIntersections.end()){
+			//do nothing, the branch is valid
+		}
+		else{
+			//invalid branch
+			it=I->intersectionBranches.erase(it);
+			erased=true;
+		}
+		if(!erased) ++it;
+	}
+	
+	
+}
+
+
+/**
+ * This method creates a duplicate of the entire intersectiongraph.
+ * It involves a recalculation of all phi angles for the new graph, with respect to a new tessellation axis.
+ * */
 void Tessellation::copyIntersectionGraph(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, CircularInterfacesPerAtom &newCircles){
 	SASASegment sasaSegment;
 	
@@ -4044,29 +4152,15 @@ void Tessellation::copyIntersectionGraph(int l, float radius, TessellationAxis &
 
 
 
-
+/**
+ * Some interfaces do not intersect with any other interface. In order to handle them using the same pipeline, we instert artificial "fake"
+ * intersection points anywhere on the interface.
+ * */
 void Tessellation::buildIntersectionGraphArtificialPointsPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, unsigned int &globalSegmentCounter){
 	SASASegment sasaSegment;
 	
 	CircularInterface *I;
-	vector<RhoContainer>::iterator it_j;
 	
-	
-	Interfaces interfacesJ, interfacesI;
-	IntersectionBranches::iterator it, it2;
-	PHIContainer PHIJ, PHII;
-	
-	SegmentGraph segmentGraph0;
-	SegmentGraph segmentGraph1;
-	pair<PartialSegmentID,SegmentList::iterator> p;
-	SegmentGraph::iterator it_s0, it_s1;
-	SegmentList segmentList;
-	SegmentList::iterator it_sl, it_sl2, it_sl2_start;
-	SegmentInfo seginfo;
-	vector<vector<SegmentList::iterator> > segmentPointerLists;
-	vector<SegmentList::iterator> segmentPointers;
-	vector<vector<SegmentList::iterator> >::iterator it_sp;
-
 	for(unsigned int i=0; i < circles.size(); ++i){
 		I = &circles[i];
 		
@@ -4427,7 +4521,7 @@ bool Tessellation::buildIntersectionGraphCollectionPass(int l, float radius, Tes
 					
 					
 					
-					//printf("EXPOSING %d %d %d\n",circles[it->second.id].index,circles[I->id].index,circles[it2->second.id].index);
+					printf("EXPOSING %d %d %d\n",circles[it->second->id].index,circles[I->id].index,circles[it2->second->id].index);
 					
 					seginfo.id0 = ps0;
 					seginfo.id1 = ps1;
@@ -4479,8 +4573,6 @@ bool Tessellation::buildIntersectionGraphCollectionPass(int l, float radius, Tes
 		}
 	}
 	
-	
-	
 	//create a vector of SASAs
 	segmentPointerLists.clear();
 	if(hasDepthBuffer && useDepthBuffer){
@@ -4498,14 +4590,13 @@ bool Tessellation::buildIntersectionGraphCollectionPass(int l, float radius, Tes
 						//it's not guaranteed that the sasa is a cycle. 
 						//however, we get better results disregarding broken cycles
 						segmentSearchForward=false;
-						it_sl2=segmentList.end();
-						segmentPointers.clear();
+						//segmentPointers.clear();
 						
 						
 						it_sl2=it_sl2_start;
 					}
 				}
-				/*
+				
 				if(!segmentSearchForward){
 					if(it_sl2->hasBackward) it_sl2=it_sl2->it_backw;
 					else {
@@ -4513,7 +4604,7 @@ bool Tessellation::buildIntersectionGraphCollectionPass(int l, float radius, Tes
 
 					}
 				}
-				*/
+				
 				
 				
 			}
@@ -4555,9 +4646,6 @@ bool Tessellation::buildIntersectionGraphCollectionPass(int l, float radius, Tes
 							//it's not guaranteed that the sasa is a cycle. 
 							//however, we get better results disregarding broken cycles
 							segmentSearchForward=false;
-							it_sl2=segmentList.end();
-							segmentPointers.clear();
-							
 							
 							it_sl2=it_sl2_start;
 						}
@@ -4661,7 +4749,22 @@ bool Tessellation::buildIntersectionGraphCollectionPass(int l, float radius, Tes
 		
 	}
 	
-
+		for(unsigned int i=0; i<segmentPointerLists.size(); ++i){
+			for(unsigned int j=0; j<segmentPointerLists[i].size(); ++j){
+				id0 = segmentPointerLists[i][j]->id0.i0;
+				id1 = segmentPointerLists[i][j]->id0.i1;
+				id2 = segmentPointerLists[i][j]->id1.i1;
+				
+				segmentID.i0 = circles[id0].index;
+				segmentID.i1 = circles[id1].index;
+				segmentID.i2 = circles[id2].index;
+				
+				printf(" (%d %d %d) ",segmentID.i0,segmentID.i1,segmentID.i2);
+				
+			}
+		printf(".\n");
+		}
+		printf("#\n");
 				
 	for(unsigned int i=0; i<segmentPointerLists.size(); ++i){
 		for(unsigned int j=0; j<segmentPointerLists[i].size(); ++j){
