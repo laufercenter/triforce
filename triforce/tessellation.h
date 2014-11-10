@@ -63,6 +63,7 @@ typedef fvec Vector;
 typedef Col<unsigned int> VectorInt;
 
 enum DerivativeMode{
+	FIXED_POSITION,
 	GENERAL_POSITION,
 	ALIGNED
 };
@@ -579,7 +580,7 @@ public:
 	bool isWithinNumericalLimits(float x, float l);
 	bool isWithinStrongNumericalLimits(float x, float l);
 	int sgn(float d);
-	float complLongAngle(Vector &vi, Vector &vj, Vector &vk);
+
 	
 
 	Vector generalPosition(CircularInterfacesPerAtom &circles);
@@ -620,8 +621,7 @@ private:
 	CircularInterfacesPerAtom coverHemisphere(TessellationAxis &tessellationAxis, CircularInterfacesPerAtom circles, CircularInterfaceForm form);
 	void buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<float> &radii, SASAs &sasas, bool split, vector<int> &neighbourlist, int closestNeighbour, bool useDepthBuffer);
 	void determineProjection(Vector &origin, float radius, CircularInterface &circle);
-	IntersectionPair determineIntersectionPoints(float radius, CircularInterface &K, CircularInterface &J);
-	bool makeCircularInterfaces(int i,Vector &origin, float radius, vector<fvec> &atoms, vector<float> &radii, vector<CircularInterface> &circles, vector<int> &neighbourlist);
+	void makeCircularInterfaces(int i,Vector &origin, float radius, vector<fvec> &atoms, vector<float> &radii, vector<CircularInterface> &circles, vector<int> &neighbourlist, bool &isInsideAnotherSphere);
 	int filterCircularInterfaces(vector<CircularInterface> &circles, bool splitterOnly);
 	void outputGaussBonnetPath(SASAs &points);
 	void reindexCircularInterfaces(CircularInterfacesPerAtom &circles);
@@ -648,7 +648,6 @@ private:
 	
 	
 	void outputGaussBonnetData(string filename, float radius, CircularInterfacesPerAtom &circles, SASAs &sasas, IntersectionGraph &intersectionGraph);
-	void depleteCircularInterfaces(TessellationAxis &tessellationAxis, float radius, vector<CircularInterface> &circles);
 	OmegaRotation calculateOmega(TessellationAxis &tessellationAxis, CircularInterface &I, CircularInterface &J, RhoContainer &rhoContainer);
 	EtaRotation calculateEta(TessellationAxis &tessellationAxis, CircularInterface &I, CircularInterface &J, RhoContainer &rhoContainer);
 	PHIContainer calculatePHI(TessellationAxis &tessellationAxis, CircularInterface &I, CircularInterface &J, float radius, RhoContainer &rhoContainer);
@@ -657,7 +656,6 @@ private:
 	Matrix matrixCross(Matrix &m, Vector &v);
 	Vector normalise(Vector x);
 	Vector normalise(Vector x, float &l);
-	void addLimitingInterface(LimitingInterface &limit, CircularInterfacesPerAtom &circles);
 	void convertExposedVectors2PHIValues(TessellationAxis &tessellationAxis,Hemisphere hemisphere, CircularInterface &circle);
 	float exposition(Hemisphere hemisphere, IntersectionBranches::iterator it0, IntersectionBranches::iterator it1, CircularInterface &circle);
 	//void splitTessellation(SASASegmentList &sasa, TessellationAxis &frontTessellationAxis, TessellationAxis &backTessellationAxis, CircularInterfacesPerAtom &circles);
