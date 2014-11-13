@@ -169,14 +169,21 @@ void TriforceInterface::printSurfaces(Molecule &mol, FILE* outputfile){
 
 
 
-void TriforceInterface::minimise(Molecule &mol0, Molecule &mol1){
+
+
+void TriforceInterface::minimise(Molecule &mol0){
 	float area0,area1;
-	float step=0.001;
+	float step=0.0001;
 	Tessellation *tref;
 	vector<vector<ForcesDT*> >forces;
 	Vector f(3);
 	vector<AreasDT*> areas0,areas1;
 	float diff,total;
+	vector<float> mag;
+	vector<float> mag2;
+	float med;
+	float mad;
+	float AR;
 	if(withDepthBuffer){
 		t = new Tessellation(mol0,buffer,*depth0,*dat5,*dat6);
 	}
@@ -184,49 +191,64 @@ void TriforceInterface::minimise(Molecule &mol0, Molecule &mol1){
 		t = new Tessellation(mol0);
 	}
 
+	printf("step\tarea\tarea2\n");
 	
-	for(unsigned int s=0; s<10; ++s){
+	for(unsigned int s=0; s<10000; ++s){
+
+
+		
 		mol0.update();
 		t->update();
-		printf("BUILDING 0\n");
-	
 		t->build(true);
 		area0 = integrator->integrate(&mol0, t);
 		forces=mol0.fetchForcePointers();
 		
-		mol1.update();
-		tref = new Tessellation(mol1);
-		printf("BUILDING 1\n");
-		tref->build(true);
-		area1 = integrator->integrate(&mol1, tref);
-		
+
 		total=0;
 		areas0=mol0.fetchAreaPointers();
-		areas1=mol1.fetchAreaPointers();
-		//compare
-		for(unsigned int i=0; i<mol1.fetchCoordinates().size(); ++i){
-			diff=*(areas0[i])- *(areas1[i]);
-			total=total+diff*diff;
+		AR=0;
+		mag.clear();
+		for(unsigned int i=0; i<mol0.fetchCoordinates().size(); ++i){
+			f(0)=*(forces[i][0]);
+			f(1)=*(forces[i][1]);
+			f(2)=*(forces[i][2]);
+			mag.push_back(norm(f,2));
+			AR+=*(areas0[i]);
 		}
-		total=sqrt(total);
-		delete(tref);
+		std::sort(mag.begin(),mag.end());
+		med=mag[(unsigned int)floor(mag.size()/2.0)];
+		mag2.clear();
+		for(unsigned int i=0; i<mol0.fetchCoordinates().size(); ++i){
+			mag2.push_back(fabs(mag[i]-med));
+		}
+		std::sort(mag2.begin(),mag2.end());
+		mad=mag2[(unsigned int)floor(mag2.size()/2.0)];
+		
+		
+		
 		
 		for(unsigned int i=0; i<mol0.fetchCoordinates().size(); ++i){
 			f(0)=*(forces[i][0]);
 			f(1)=*(forces[i][1]);
 			f(2)=*(forces[i][2]);
+			
+			//if((mag[i]-med)/mad >= 0.2) f=Vector(3).zeros();
+			
 			f*=-step;
 			mol0.perturbInternallyStoredAtomCoordinates(i,f);
 			Vector vec(3);
 			vec=mol0.getInternallyStoredAtomCoordinates(i);
-			mol1.setInternallyStoredAtomCoordinates(i,vec);
+		
+			
 		}
+		printf("%d\t%f\t%f\n",s,area0,AR);
+
 		
-		
-		
-		printf("TOTAL DIFFERENCE: %f AREAS: %f %f\n",total,area0, area1);
+			
 	}
 	tessellationBenchmark=t->getBenchmark();
+	
+
 	
 }
 

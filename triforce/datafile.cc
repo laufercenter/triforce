@@ -1184,5 +1184,44 @@ Molecule *DataFile::digestXYZR(){
 }
 
 
+Molecule *DataFile::digestTRI(){
+	ifstream *ifs;
+	string line;
+	unsigned int i;
+	Molecule *mol;
+	float x,y,z,r;
+	string ident;
+	vector<string> *content;
+	string element;
+	
+	
+	mol = new Molecule();
+	
+	ifs = new ifstream(name.c_str(),ifstream::in);
+	
+	
 
+	i = 0;
+	if(ifs->good()) std::getline(*ifs,line); //ignore header
+	while(ifs->good()){
+		std::getline(*ifs,line);
+		content=split(line,'\t');
+		if(content->size()>=12){
+			element = (*content)[0];
+			x = string2float((*content)[9]);
+			y = string2float((*content)[10]);
+			z = string2float((*content)[11]);
+			r = string2float((*content)[6]);
+			ident = (*content)[1];
+			mol->addInternallyStoredAtom(x, y, z, r, ident);
+			++i;
+		}
+	}
+	
+	ifs->close();
+	
+	mol->init();
+	
+	return mol;
+}
 

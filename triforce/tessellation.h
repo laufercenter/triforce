@@ -167,15 +167,16 @@ struct SegmentSetComparator: public std::binary_function<FullSegmentID, FullSegm
 	}
 };
 
+
 typedef struct{
 	int id;
 	Direction direction;
 }
-SplitterIntersection;
+IntersectionDictionaryEntry;
 
-struct SplitterIntersectionComparator: public std::binary_function<SplitterIntersection, SplitterIntersection, bool>
+struct IntersectionDictionaryComparator: public std::binary_function<IntersectionDictionaryEntry, IntersectionDictionaryEntry, bool>
 {
-	bool operator()(const SplitterIntersection& lhs, const SplitterIntersection& rhs) const
+	bool operator()(const IntersectionDictionaryEntry& lhs, const IntersectionDictionaryEntry& rhs) const
 	{
 		if(lhs.id == rhs.id){
 			return lhs.direction < rhs.direction;
@@ -184,7 +185,7 @@ struct SplitterIntersectionComparator: public std::binary_function<SplitterInter
 	}
 };
 
-
+typedef map<IntersectionDictionaryEntry,bool,IntersectionDictionaryComparator> IntersectionDictionary;
 
 typedef struct
 {
@@ -383,6 +384,7 @@ typedef struct IntersectionBranch{
 	IntersectionBranches::iterator it;
 	int visited;
 	int visited1;
+	bool missingPartner;
 	Direction direction;
 	Location forward;
 	Location backward;
@@ -433,10 +435,13 @@ typedef struct CircularInterface
 	Matrix dmu_dx;
 	CircularIntersections circularIntersections;
 	IntersectionBranches intersectionBranches;
+	IntersectionDictionary intersectionDictionary;
+	unsigned int missing[2];
 	
 	CircularInterfaceForm form;
 	bool intersect;
 	bool flagged;
+	bool lonely;
 	bool valid;
 	bool hasDerivatives;
 	bool extended;
@@ -535,6 +540,7 @@ enum OcclusionType{
 class Tessellation{
 	
 public:
+	int round;
 	Tessellation(Molecule &m);
 	Tessellation(Molecule &m, unsigned int numbBuffer, Depth3D &depthData, Data1D &occludedDistribution, Data1D &exposedDistribution);
 	
@@ -600,10 +606,6 @@ private:
 	Molecule molecule;
 	vector<Vector> atoms;
 	vector<float> radii;
-	Vector torigin;
-	float tradius;
-	int ti;
-	CircularInterfacesPerAtom tcircles;
 	Vector ttessellationAxis;
 	//#atoms #circularregions
 	//#atoms #sasas #circularregions
@@ -661,7 +663,7 @@ private:
 	//void splitTessellation(SASASegmentList &sasa, TessellationAxis &frontTessellationAxis, TessellationAxis &backTessellationAxis, CircularInterfacesPerAtom &circles);
 	unsigned int coverHemisphere2(TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, CircularInterfaceForm form);
 	
-	void reindexCircularInterfaces2(CircularInterfacesPerAtom &circles);
+	void reindexCircularInterfaces2(CircularInterfacesPerAtom &circles, bool eraseImproperBranches);
 	void reindexCircularInterfaces3(CircularInterfacesPerAtom &circles);
 	void addPsiAndLambda(TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles);
 	void sortGaussBonnetPaths(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer, bool split, unsigned int &globalSegmentCounter, bool derivatives);

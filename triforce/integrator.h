@@ -63,6 +63,7 @@ ForceElement;
 class Integrator{
 public:
 	virtual float integrate(Molecule *molecule, Tessellation *tessellation)=0;
+	int round;
 };
 
 

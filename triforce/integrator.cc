@@ -233,6 +233,7 @@ float IntegratorTriforce::integrateSASA(int l, SASASegmentList &sasa, float radi
 	
 	
 	
+	
 	area = area0 + area1;
 	
 	//if we have information from the depthbuffer, check if the calculated size coarsely matches the one from the buffer

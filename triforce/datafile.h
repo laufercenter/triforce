@@ -65,6 +65,7 @@ public:
 	Molecule *digestGRO(Topology &top, bool useHydrogens);
 	Molecule *digestPDB(Topology &top, bool useHydrogens);
 	Molecule *digestXYZR();
+	Molecule *digestTRI();
 
 		
 private:

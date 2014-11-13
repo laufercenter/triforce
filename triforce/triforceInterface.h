@@ -38,7 +38,7 @@ public:
 	TriforceInterface(string path, unsigned int buffer, unsigned int slack);
 	
 	float calculateSurfaceArea(Molecule &mol);
-	void minimise(Molecule &mol0, Molecule &mol1);
+	void minimise(Molecule &mol0);
 	Benchmark getBenchmark();
 	void printBenchmark(FILE* outputfile);
 	void printTessellation(FILE* outputfile);
