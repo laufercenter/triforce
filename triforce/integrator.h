@@ -76,7 +76,7 @@ public:
 	IntegratorTriforce(vector<Interpolator*> data);
 	
 	virtual float integrate(Molecule *molecule, Tessellation *tessellation);
-	void outputIntegrationData(string filename, Vector &integrationOrigin, list<IntersectionNode*> &frontHemisphere, list<IntersectionNode*> &backHemisphere);
+	void outputPatches(FILE* outputfile, Molecule *m, Tessellation *tessellation);
 	Benchmark getBenchmark();
 	
 	

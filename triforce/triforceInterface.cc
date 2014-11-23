@@ -184,6 +184,7 @@ void TriforceInterface::minimise(Molecule &mol0){
 	float med;
 	float mad;
 	float AR;
+	float n;
 	if(withDepthBuffer){
 		t = new Tessellation(mol0,buffer,*depth0,*dat5,*dat6);
 	}
@@ -193,16 +194,36 @@ void TriforceInterface::minimise(Molecule &mol0){
 
 	printf("step\tarea\tarea2\n");
 	
-	for(unsigned int s=0; s<10000; ++s){
+	unsigned int frame=0;
+	unsigned int periodicity;
+	unsigned int maxframes=200;
+	unsigned int maxs=12500;
+	periodicity=maxs/maxframes;
+	FILE *file;
+	for(unsigned int s=0; s<maxs; ++s){
 
 
 		
 		mol0.update();
 		t->update();
 		t->build(true);
+		integrator->round=0;//s;
 		area0 = integrator->integrate(&mol0, t);
-		forces=mol0.fetchForcePointers();
 		
+		//printf("%d %d %d %d %d\n",periodicity, s, frame)
+		if((s % periodicity)==0){
+			file = fopen(("frame"+DataFile::int2string(frame)+".patches").c_str(),"w");
+			integrator->outputPatches(file,&mol0,t);
+			fclose(file);
+			frame++;
+		}
+//		mol0.print(stdout);
+		
+		forces=mol0.fetchForcePointers();
+//		if(s>=4669){
+//			mol0.print(stderr);
+//		}
+//		if(s==4671) exit(4);
 
 		total=0;
 		areas0=mol0.fetchAreaPointers();
@@ -212,13 +233,14 @@ void TriforceInterface::minimise(Molecule &mol0){
 			f(0)=*(forces[i][0]);
 			f(1)=*(forces[i][1]);
 			f(2)=*(forces[i][2]);
-			mag.push_back(norm(f,2));
-			AR+=*(areas0[i]);
+			n=norm(f,2);
+			if(n>0)
+				mag.push_back(n);
 		}
 		std::sort(mag.begin(),mag.end());
 		med=mag[(unsigned int)floor(mag.size()/2.0)];
 		mag2.clear();
-		for(unsigned int i=0; i<mol0.fetchCoordinates().size(); ++i){
+		for(unsigned int i=0; i<mag.size(); ++i){
 			mag2.push_back(fabs(mag[i]-med));
 		}
 		std::sort(mag2.begin(),mag2.end());
@@ -231,8 +253,13 @@ void TriforceInterface::minimise(Molecule &mol0){
 			f(0)=*(forces[i][0]);
 			f(1)=*(forces[i][1]);
 			f(2)=*(forces[i][2]);
-			
-			//if((mag[i]-med)/mad >= 0.2) f=Vector(3).zeros();
+			n=norm(f,2);
+			if(n>0)
+			if((n-med)/mad >= 40.0){
+				//f=Vector(3).zeros();
+				f=med*f/n;
+//				printf("id: %d mag: %f med: %f mad: %f beta: %f force: (%f %f %f)\n",i,n,med,mad,n-med,f(0),f(1),f(2));
+			} 
 			
 			f*=-step;
 			mol0.perturbInternallyStoredAtomCoordinates(i,f);

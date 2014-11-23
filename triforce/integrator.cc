@@ -225,12 +225,14 @@ float IntegratorTriforce::integrateSASA(int l, SASASegmentList &sasa, float radi
 		
 	}
 	
+	if(round>=4669) printf("BEFORE %d area0:%f, area1:%f\n",l,area0,area1);
 	if(area0 < 0 && abs(area0) < THRESHOLD_NEGATIVE) area0 = 0;
 	if(area0 < 0) area0 = 2*M_PI+area0;
 
 	if(area1 < 0 && abs(area1) < THRESHOLD_NEGATIVE) area1 = 0;
 	if(area1 < 0) area1 = 2*M_PI+area1;
 	
+	if(round>=4669) printf("AFTER %d area0:%f, area1:%f\n",l,area0,area1);
 	
 	
 	
@@ -725,3 +727,42 @@ Benchmark IntegratorTriforce::getBenchmark(){
 	return benchmark;
 }
 
+
+void IntegratorTriforce::outputPatches(FILE* outputfile, Molecule *m, Tessellation *tessellation){
+	SASAs sasas;
+	Vector integrationOrigin;
+	vector<Vector> atoms;
+	vector<float> radii;	
+	SASASegmentList::iterator it;
+	SASASegment x;
+	float radius;
+	
+	
+	radii = molecule->fetchRadii();
+	atoms = molecule->fetchCoordinates();
+	
+	
+	sasas = tessellation->sasas();
+	
+	fprintf(outputfile,"normal_for_circular_interface\tPHI0\tPHI1\tpsi\tlambda\tradius\themisphere\tform\tindex\n");
+	for(unsigned int i=0;i<sasas.size();++i){
+		radius = radii[i];
+		for(it = sasas[i].begin(); it!=sasas[i].end(); ++it){
+			x=*it;
+		
+			fprintf(outputfile,"%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d\t%d\t%d\n",
+								x.normalForCircularInterface(0),
+								x.normalForCircularInterface(1),
+								x.normalForCircularInterface(2),
+								x.rotation0.rotation,
+								x.rotation1.rotation,
+								x.psi.rotation,
+								x.lambda.rotation,
+								radii[i],
+								x.hemisphere,
+								x.form1,
+								i								
+								);
+		}
+	}
+}

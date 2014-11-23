@@ -3343,11 +3343,12 @@ bool Tessellation::buildIntersectionGraphCollectionPass(int l, float radius, Tes
 				segmentID.i1 = circles[id1].index;
 				segmentID.i2 = circles[id2].index;
 				
-				
-				
+//				if(l==21)printf(" (%d %d %d)", segmentID.i0, segmentID.i1, segmentID.i2);
 			}
+//			if(l==21)printf("#\n");
 		}
 	for(unsigned int i=0; i<segmentPointerLists.size(); ++i){
+		if(segmentPointerLists[i].size()>1)
 		for(unsigned int j=0; j<segmentPointerLists[i].size(); ++j){
 				id0 = segmentPointerLists[i][j]->id0.i0;
 				id1 = segmentPointerLists[i][j]->id0.i1;

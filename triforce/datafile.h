@@ -68,6 +68,13 @@ public:
 	Molecule *digestTRI();
 
 		
+		
+	static float string2float(string s);
+	static int string2int(string s);
+	static vector<string>* split(string &s, char delimiter);
+	static string string2UpperCase(string s);
+	static string int2string(int d);
+		
 private:
 	
 	string name;
@@ -93,11 +100,6 @@ private:
 	
 	
 	
-	float string2float(string s);
-	int string2int(string s);
-	vector<string>* split(string &s, char delimiter);
-	string string2UpperCase(string s);
-	string int2string(int d);
 	
 	
 	void readHeader3D();
