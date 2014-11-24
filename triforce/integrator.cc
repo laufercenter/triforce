@@ -744,13 +744,13 @@ void IntegratorTriforce::outputPatches(FILE* outputfile, Molecule *m, Tessellati
 	
 	sasas = tessellation->sasas();
 	
-	fprintf(outputfile,"normal_for_circular_interface\tPHI0\tPHI1\tpsi\tlambda\tradius\themisphere\tform\tindex\n");
+	fprintf(outputfile,"normal_for_circular_interface\tPHI0\tPHI1\tpsi\tlambda\tradius\themisphere\tform\tindexl\tindex0\tindex1\tindex2\n");
 	for(unsigned int i=0;i<sasas.size();++i){
 		radius = radii[i];
 		for(it = sasas[i].begin(); it!=sasas[i].end(); ++it){
 			x=*it;
 		
-			fprintf(outputfile,"%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d\t%d\t%d\n",
+			fprintf(outputfile,"%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d\t%d\t%d\t%d\t%d\t%d\n",
 								x.normalForCircularInterface(0),
 								x.normalForCircularInterface(1),
 								x.normalForCircularInterface(2),
@@ -761,7 +761,10 @@ void IntegratorTriforce::outputPatches(FILE* outputfile, Molecule *m, Tessellati
 								radii[i],
 								x.hemisphere,
 								x.form1,
-								i								
+								i,
+								x.index0,
+								x.index1,
+								x.index2
 								);
 		}
 	}

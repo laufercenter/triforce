@@ -111,7 +111,8 @@ public:
 	Vector getCenter();
 	
 	void print(FILE* outputfile);
-	void printxyz();
+	void printxyz(FILE* outputfile);
+	void printxyzr(FILE* outputfile);
 	
 	void printDifference(Molecule *mol);
 	

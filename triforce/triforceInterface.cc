@@ -196,8 +196,8 @@ void TriforceInterface::minimise(Molecule &mol0){
 	
 	unsigned int frame=0;
 	unsigned int periodicity;
-	unsigned int maxframes=200;
-	unsigned int maxs=12500;
+	unsigned int maxframes=250;
+	unsigned int maxs=15000;
 	periodicity=maxs/maxframes;
 	FILE *file;
 	for(unsigned int s=0; s<maxs; ++s){
@@ -215,6 +215,10 @@ void TriforceInterface::minimise(Molecule &mol0){
 			file = fopen(("frame"+DataFile::int2string(frame)+".patches").c_str(),"w");
 			integrator->outputPatches(file,&mol0,t);
 			fclose(file);
+			file = fopen(("frame"+DataFile::int2string(frame)+".xyzr").c_str(),"w");
+			mol0.printxyzr(file);
+			fclose(file);
+			
 			frame++;
 		}
 //		mol0.print(stdout);

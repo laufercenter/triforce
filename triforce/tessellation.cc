@@ -3348,7 +3348,7 @@ bool Tessellation::buildIntersectionGraphCollectionPass(int l, float radius, Tes
 //			if(l==21)printf("#\n");
 		}
 	for(unsigned int i=0; i<segmentPointerLists.size(); ++i){
-		if(segmentPointerLists[i].size()>1)
+		if(segmentPointerLists[i].size()>1) //this is vital: There are no paths with only one segment, the minimum is 2
 		for(unsigned int j=0; j<segmentPointerLists[i].size(); ++j){
 				id0 = segmentPointerLists[i][j]->id0.i0;
 				id1 = segmentPointerLists[i][j]->id0.i1;

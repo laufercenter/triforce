@@ -1170,7 +1170,8 @@ Molecule *DataFile::digestXYZR(){
 			y = string2float((*content)[2]);
 			z = string2float((*content)[3]);
 			r = string2float((*content)[4]);
-			ident = int2string(i);
+			//ident = int2string(i);
+			ident=element;
 			mol->addInternallyStoredAtom(x, y, z, r, ident);
 			++i;
 		}
