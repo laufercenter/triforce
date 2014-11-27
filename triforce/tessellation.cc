@@ -247,7 +247,6 @@ void Tessellation::cleanCircularIntersections(CircularInterfacesPerAtom &circles
 
 void Tessellation::cleanCircularIntersections(CircularInterfacesPerAtom &circles){
 	vector<CircularInterface>::iterator it;
-	float angle;
 	bool erased;
 	
 	it = circles.begin();
@@ -288,10 +287,16 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 	MultiLayeredDepthBuffer depthBuffer1;
 	unsigned int globalSegmentCounter;
 	SASASegmentList sasa;
+	SegmentList segmentListFrontHemisphere;
+	SegmentList segmentListBackHemisphere;
+	SegmentPointerLists segmentPointerListsFrontHemisphere;
+	SegmentPointerLists segmentPointerListsBackHemisphere;
+	
+	
 	
 	tessellationComplete=false;
 	
-	if(hasDepthBuffer && prevSasasForMolecule.size()==0) useDepthBuffer=false;
+	//if(hasDepthBuffer && prevSasasForMolecule.size()==0) useDepthBuffer=false;
 	
 	if(hasDepthBuffer && useDepthBuffer){
 		if(numbBuffer>1)
@@ -314,7 +319,7 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 	srand(2);
 	
 	
-	
+
 	sasas.push_back(sasa);
 	
 	precircles.clear();
@@ -427,25 +432,28 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 		
 	
 		buildIntersectionGraphSplitterPass(i, radius, frontTessellationAxis, circles);
-		//splitterSanityCheck(circles);
-		
-
 		buildIntersectionGraphSplitterPass(i, radius, backTessellationAxis, circlesBackHemisphere);
 		
-		//splitterSanityCheck(circlesBackHemisphere);
+
+		buildIntersectionGraphArtificialPointsPass(i, radius, frontTessellationAxis, circles, sasa, FRONTHEMISPHERE, globalSegmentCounter);
+		buildIntersectionGraphArtificialPointsPass(i, radius, backTessellationAxis, circlesBackHemisphere, sasa, BACKHEMISPHERE, globalSegmentCounter);
+			
+		buildIntersectionGraphSortPass(i, radius, frontTessellationAxis, segmentListFrontHemisphere, circles, FRONTHEMISPHERE, depthBuffer0, depthBuffer1, useDepthBuffer);
+		buildIntersectionGraphSortPass(i, radius, backTessellationAxis, segmentListBackHemisphere, circlesBackHemisphere, BACKHEMISPHERE, depthBuffer0, depthBuffer1, useDepthBuffer);
+
+		buildIntersectionGraphSort2Pass(segmentPointerListsFrontHemisphere, segmentListFrontHemisphere, depthBuffer0, depthBuffer1, useDepthBuffer);
+		buildIntersectionGraphSort2Pass(segmentPointerListsBackHemisphere, segmentListBackHemisphere, depthBuffer0, depthBuffer1, useDepthBuffer);
+
 		
-			
-			
-		globalSegmentCounter=-2;
-
-		buildIntersectionGraphArtificialPointsPass(i, radius, frontTessellationAxis, circles, sasas[sasas.size()-1], FRONTHEMISPHERE, globalSegmentCounter);
-		buildIntersectionGraphArtificialPointsPass(i, radius, backTessellationAxis, circlesBackHemisphere, sasas[sasas.size()-1], BACKHEMISPHERE, globalSegmentCounter);
-			
+		buildIntersectionGraphCollectionPass(i, radius, frontTessellationAxis, segmentPointerListsFrontHemisphere, circles, sasa, FRONTHEMISPHERE, true);
+		buildIntersectionGraphCollectionPass(i, radius, backTessellationAxis, segmentPointerListsBackHemisphere, circlesBackHemisphere, sasa, BACKHEMISPHERE, true);
+		
+//		buildIntersectionGraphCollectionPassOld(i, radius, frontTessellationAxis, circles, sasa, FRONTHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer, split, globalSegmentCounter,true);
+//		buildIntersectionGraphCollectionPassOld(i, radius, backTessellationAxis, circlesBackHemisphere, sasa, BACKHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer, split, globalSegmentCounter,true);
 
 		
-		buildIntersectionGraphCollectionPass(i, radius, frontTessellationAxis, circles, sasas[sasas.size()-1], FRONTHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer, split, globalSegmentCounter,true);
-		buildIntersectionGraphCollectionPass(i, radius, backTessellationAxis, circlesBackHemisphere, sasas[sasas.size()-1], BACKHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer, split, globalSegmentCounter,true);
-
+		
+		sasas[sasas.size()-1]=sasa;
 		tessellationComplete=true;			
 			
 	}
@@ -1042,7 +1050,7 @@ void Tessellation::insertArtificialIntersectionPoints(CircularInterface &I, Tess
 	
 	sasa.push_back(sasaSegment);
 	
-	globalSegmentCounter--;
+	
 	
 			
 }
@@ -3046,11 +3054,419 @@ void Tessellation::sortGaussBonnetPaths(int l, float radius, TessellationAxis &t
 
 
 
+
+
+
+void Tessellation::buildIntersectionGraphSortPass(int l, float radius, TessellationAxis &tessellationAxis, SegmentList &segmentList, CircularInterfacesPerAtom &circles, Hemisphere hemisphere, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer){
+	SASASegment sasaSegment;
+	
+	CircularInterface *I;
+	vector<RhoContainer>::iterator it_j;
+	
+	
+	Interfaces interfacesJ, interfacesI;
+	IntersectionBranches::iterator it, it2;
+	PHIContainer PHIJ, PHII;
+	
+	SegmentGraph segmentGraph0;
+	SegmentGraph segmentGraph1;
+	pair<PartialSegmentID,SegmentList::iterator> p;
+	SegmentGraph::iterator it_s0, it_s1;
+	PartialSegmentID ps0,ps1,pempty;
+
+	SegmentList::iterator it_sl, it_sl2, it_sl2_start;
+	SegmentInfo seginfo;
+	vector<vector<SegmentList::iterator> > segmentPointerLists;
+	vector<SegmentList::iterator> segmentPointers;
+	vector<vector<SegmentList::iterator> >::iterator it_sp;
+	int segmentCount;
+	
+	//count segments;
+	segmentCount=0;
+	for(unsigned int i=0; i < circles.size(); ++i){
+		I = &circles[i];
+		for(it = I->intersectionBranches.begin(); it != I->intersectionBranches.end(); ++it){
+			if(it->second->direction==IN){
+				segmentCount++;
+			}
+		}
+	}
+	
+
+	//build segmentgraph and assign distances
+	segmentList.clear(),
+	segmentList.reserve(segmentCount*2);
+	
+	pempty.i0=-1;
+	pempty.i1=-1;
+	for(unsigned int i=0; i < circles.size(); ++i){
+		I = &circles[i];
+		if(I->intersectionBranches.size()>0){
+			if(hasDepthBuffer && useDepthBuffer) convertExposedVectors2PHIValues(tessellationAxis, hemisphere, *I);
+			for(it = I->intersectionBranches.begin(); it != I->intersectionBranches.end(); ++it){
+				if(it->second->direction==IN){
+					it2=increaseBranchInterator(it,*I);
+					
+					ps0.i0 = it->second->id;
+					ps0.i1 = I->id;
+					
+					ps1.i0 = I->id;
+					ps1.i1 = it2->second->id;
+					
+					
+					
+					//printf("EXPOSING %d %d %d\n",circles[it->second->id].index,circles[I->id].index,circles[it2->second->id].index);
+					
+					seginfo.id0 = ps0;
+					seginfo.id1 = ps1;
+					seginfo.backw=pempty;
+					seginfo.forw=pempty;
+					seginfo.hasForward=false;
+					seginfo.hasBackward=false;
+					seginfo.PHI0 = it->second->PHI;
+					seginfo.PHI1 = it2->second->PHI;
+					seginfo.visited=false;
+					seginfo.v0=it->second->v0;
+					seginfo.v1=it->second->v1;
+					seginfo.weight=it->second->weight;
+					seginfo.weight1=it->second->weight1;
+					seginfo.i=it->second->i;
+					if(hasDepthBuffer && useDepthBuffer) seginfo.dist=exposition(hemisphere, it, it2, *I);
+					it_sl = segmentList.insert(segmentList.end(), seginfo);
+					
+					p.first=ps0;
+					p.second=it_sl;
+					segmentGraph0.insert(p);
+					
+					p.first=ps1;
+					p.second=it_sl;
+					segmentGraph1.insert(p);
+					
+					it_s0 = segmentGraph0.find(ps1);
+					if(it_s0!=segmentGraph0.end()){
+						it_sl2 = it_s0->second;
+						it_sl->it_forw=it_sl2;
+						it_sl->hasForward=true;
+						it_sl2->it_backw=it_sl;
+						it_sl2->hasBackward=true;
+					}
+					
+					it_s1 = segmentGraph1.find(ps0);
+					if(it_s1!=segmentGraph1.end()){
+						it_sl2 = it_s1->second;
+						it_sl->it_backw=it_sl2;
+						it_sl->hasBackward=true;
+						it_sl2->it_forw=it_sl;
+						it_sl2->hasForward=true;
+					}
+					
+					
+					
+				}
+			}
+		}
+	}
+}
+
+
+void Tessellation::buildIntersectionGraphSort2Pass(SegmentPointerLists &segmentPointerLists, SegmentList &segmentList, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer){
+	SASASegment sasaSegment;
+	
+	vector<RhoContainer>::iterator it_j;
+	
+	
+	Interfaces interfacesJ, interfacesI;
+	IntersectionBranches::iterator it, it2;
+	PHIContainer PHIJ, PHII;
+	
+	SegmentGraph segmentGraph0;
+	SegmentGraph segmentGraph1;
+	pair<PartialSegmentID,SegmentList::iterator> p;
+	SegmentGraph::iterator it_s0, it_s1;
+	bool segmentSearchForward;
+	SegmentList::iterator it_sl, it_sl2, it_sl2_start;
+	SegmentInfo seginfo;
+	vector<SegmentList::iterator> segmentPointers;
+	vector<vector<SegmentList::iterator> >::iterator it_sp;
+	
+
+	
+	//create a vector of SASAs
+
+	
+	segmentPointerLists.clear();
+
+		
+	for(it_sl=segmentList.begin(); it_sl!=segmentList.end(); ++it_sl){
+		segmentPointers.clear();
+		segmentSearchForward=true;
+		it_sl2 = it_sl;
+		it_sl2_start=it_sl2;
+		while(it_sl2!=segmentList.end() && !it_sl2->visited){
+			segmentPointers.push_back(it_sl2);
+			it_sl2->visited=true;
+			if(segmentSearchForward){
+				if(it_sl2->hasForward) it_sl2=it_sl2->it_forw;
+				else {
+					//it's not guaranteed that the sasa is a cycle. 
+					segmentSearchForward=false;
+					
+					it_sl2=it_sl2_start;
+				}
+			}
+			
+			if(!segmentSearchForward){
+				if(it_sl2->hasBackward) it_sl2=it_sl2->it_backw;
+				else {
+					it_sl2=segmentList.end();
+
+				}
+			}
+			
+			
+			
+		}
+		if(segmentPointers.size()>0) segmentPointerLists.push_back(segmentPointers);
+	}
+	
+	
+	//filter SASAs
+	if(hasDepthBuffer && useDepthBuffer){
+		it_sp=segmentPointerLists.begin();
+		while(it_sp!=segmentPointerLists.end()){
+			buffer1.startNewCycle();
+			for(unsigned int j=0; j<it_sp->size(); ++j){
+				buffer1.addProbe((*it_sp)[j]->dist);
+				
+			}
+			if(!buffer1.isCycleExposed()){
+				it_sp=segmentPointerLists.erase(it_sp);
+			}
+			else ++it_sp;
+		}
+	}
+	
+
+	
+
+}
+
+
+
+
+/*EXPERIMENTAL STUFF
+
+	//We compare here to the previous tessellation
+	//if there are differences, we break calculation and redo without depthbuffer
+	set<FullSegmentID,SegmentSetComparator> segmentSet;
+	FullSegmentID segmentID;
+	if(hasDepthBuffer && useDepthBuffer){
+		//printf("NEW SEGMENTS: ");
+	
+		for(unsigned int i=0; i<segmentPointerLists.size(); ++i){
+			for(unsigned int j=0; j<segmentPointerLists[i].size(); ++j){
+				id0 = segmentPointerLists[i][j]->id0.i0;
+				id1 = segmentPointerLists[i][j]->id0.i1;
+				id2 = segmentPointerLists[i][j]->id1.i1;
+				
+				segmentID.i0 = circles[id0].index;
+				segmentID.i1 = circles[id1].index;
+				segmentID.i2 = circles[id2].index;
+				
+				//printf(" (%d %d %d) ",segmentID.i0,segmentID.i1,segmentID.i2);
+				
+				segmentSet.insert(segmentID);
+			}
+		}
+		
+		//printf("\n");
+		
+		//printf("OLD SEGMENTS: ");
+		
+		int ac=0;
+		int bc=0;
+		//now we check if the previous and current tessellation are equivalent
+		for(unsigned int i=0; i<prevSasasForMolecule[l].size(); ++i){
+			segmentID.i0=prevSasasForMolecule[l][i].index0;
+			segmentID.i1=prevSasasForMolecule[l][i].index1;
+			segmentID.i2=prevSasasForMolecule[l][i].index2;
+			
+			if(prevSasasForMolecule[l][i].hemisphere==hemisphere){
+			//printf(" (%d %d %d) ",segmentID.i0,segmentID.i1,segmentID.i2);
+			
+			if(segmentSet.find(segmentID)==segmentSet.end()){
+				//return false;		
+				//printf("%d ",l);
+				return false;
+				ac++;
+			}else bc++;
+			}
+		}
+		//printf("\n");
+		//printf("AC: %d %d\n", ac,bc);
+//if(mismatch) return false;
+	}
+	if(hasDepthBuffer && !useDepthBuffer){
+		//printf("REVISED SEGMENTS: ");
+		
+		for(unsigned int i=0; i<segmentPointerLists.size(); ++i){
+			for(unsigned int j=0; j<segmentPointerLists[i].size(); ++j){
+				id0 = segmentPointerLists[i][j]->id0.i0;
+				id1 = segmentPointerLists[i][j]->id0.i1;
+				id2 = segmentPointerLists[i][j]->id1.i1;
+				
+				segmentID.i0 = circles[id0].index;
+				segmentID.i1 = circles[id1].index;
+				segmentID.i2 = circles[id2].index;
+				
+				//printf(" (%d %d %d) ",segmentID.i0,segmentID.i1,segmentID.i2);
+				
+			}
+		}
+		//printf("\n");
+		
+	}
+	*/
+
+
+
+
+
+
 /**
  * After all intersection-points are calculated, we will traverse through the branches and collect them into gauss-bonnet paths. Then the paths are converted into a 
  * self-sufficient structure that can be used by the integrator to actually calculate some areas!
  * */
-bool Tessellation::buildIntersectionGraphCollectionPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer, bool split, unsigned int &globalSegmentCounter, bool derivatives){
+void Tessellation::buildIntersectionGraphCollectionPass(int l, float radius, TessellationAxis &tessellationAxis, SegmentPointerLists &segmentPointerLists, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, bool derivatives){
+	SASASegment sasaSegment;
+	vector<RhoContainer>::iterator it_j;
+	
+	
+	Interfaces interfacesJ, interfacesI;
+	IntersectionBranches::iterator it, it2;
+	PHIContainer PHIJ, PHII;
+	
+	SegmentGraph segmentGraph0;
+	SegmentGraph segmentGraph1;
+	pair<PartialSegmentID,SegmentList::iterator> p;
+	SegmentGraph::iterator it_s0, it_s1;
+	SegmentList segmentList;
+	SegmentList::iterator it_sl, it_sl2, it_sl2_start;
+	SegmentInfo seginfo;
+	vector<SegmentList::iterator> segmentPointers;
+	vector<vector<SegmentList::iterator> >::iterator it_sp;
+	int id0,id1,id2;
+	
+
+
+	
+//	for(unsigned int i=0; i<segmentPointerLists.size(); ++i){
+//		for(unsigned int j=0; j<segmentPointerLists[i].size(); ++j){
+//			id0 = segmentPointerLists[i][j]->id0.i0;
+//			id1 = segmentPointerLists[i][j]->id0.i1;
+//			id2 = segmentPointerLists[i][j]->id1.i1;
+//			
+//			segmentID.i0 = circles[id0].index;
+//			segmentID.i1 = circles[id1].index;
+//			segmentID.i2 = circles[id2].index;
+//			
+////				if(l==21)printf(" (%d %d %d)", segmentID.i0, segmentID.i1, segmentID.i2);
+//		}
+////			if(l==21)printf("#\n");
+//	}
+
+	
+	for(unsigned int i=0; i<segmentPointerLists.size(); ++i){
+		if(segmentPointerLists[i].size()>1) //this is vital: There are no paths with only one segment, the minimum is 2
+		for(unsigned int j=0; j<segmentPointerLists[i].size(); ++j){
+				id0 = segmentPointerLists[i][j]->id0.i0;
+				id1 = segmentPointerLists[i][j]->id0.i1;
+				id2 = segmentPointerLists[i][j]->id1.i1;
+				
+		
+				sasaSegment.i = segmentPointerLists[i][j]->i;
+				sasaSegment.i2 = j;
+				
+				sasaSegment.id0 = id0;
+				sasaSegment.id1 = id1;
+				sasaSegment.id2 = id2;
+				
+				
+				sasaSegment.index0 = circles[id0].index;
+				sasaSegment.index1 = circles[id1].index;
+				sasaSegment.index2 = circles[id2].index;
+				
+				sasaSegment.PHI0=segmentPointerLists[i][j]->PHI0;
+				sasaSegment.PHI1=segmentPointerLists[i][j]->PHI1;
+				
+				sasaSegment.tessellationAxis = tessellationAxis;
+				sasaSegment.hemisphere = hemisphere;
+				sasaSegment.depthBufferEstimatedArea=depthBufferEstimatedArea;
+				sasaSegment.radius=radius;
+				
+				sasaSegment.normalForCircularInterface = circles[id1].normal;
+				sasaSegment.form0 = circles[id0].form;
+				sasaSegment.form1 = circles[id1].form;
+				sasaSegment.form2 = circles[id2].form;
+				
+				
+ 				if(!circles[id0].hasDerivatives) 
+					calculateProjectionAndDerivatives(tessellationAxis, circles[id0]);
+ 				if(!circles[id1].hasDerivatives) 
+					calculateProjectionAndDerivatives(tessellationAxis, circles[id1]);
+ 				if(!circles[id2].hasDerivatives) 
+					calculateProjectionAndDerivatives(tessellationAxis, circles[id2]);
+				
+				sasaSegment.lambda = circles[id1].lambda;
+				sasaSegment.psi = circles[id1].psi;
+				
+				sasaSegment.rotation0.rotation = sasaSegment.PHI0.rotation;
+				sasaSegment.rotation1.rotation = sasaSegment.PHI1.rotation;
+				
+
+				sasaSegment.v0=segmentPointerLists[i][j]->v0;
+				sasaSegment.v1=segmentPointerLists[i][j]->v1;
+				sasaSegment.weight=segmentPointerLists[i][j]->weight;
+				sasaSegment.weight1=segmentPointerLists[i][j]->weight1;
+
+				if(derivatives){
+					
+					sasaSegment.rotation0 = calculatePHIDerivatives(sasaSegment.PHI0, circles, tessellationAxis);
+					sasaSegment.rotation1 = calculatePHIDerivatives(sasaSegment.PHI1, circles, tessellationAxis);
+					
+					
+				}
+				
+				sasaSegment.artificial=false;
+			
+				
+				sasa.push_back(sasaSegment);
+				
+			
+			
+			
+				
+				
+		}
+		
+		
+		
+	}
+	
+
+
+	
+
+
+	
+	
+}
+
+
+
+
+
+bool Tessellation::buildIntersectionGraphCollectionPassOld(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer, bool split, unsigned int &globalSegmentCounter, bool derivatives){
 	SASASegment sasaSegment;
 	
 	CircularInterface *I;
@@ -3433,6 +3849,8 @@ bool Tessellation::buildIntersectionGraphCollectionPass(int l, float radius, Tes
 	
 	
 }
+
+
 
 
 

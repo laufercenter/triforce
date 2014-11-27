@@ -196,8 +196,8 @@ void TriforceInterface::minimise(Molecule &mol0){
 	
 	unsigned int frame=0;
 	unsigned int periodicity;
-	unsigned int maxframes=250;
-	unsigned int maxs=15000;
+	unsigned int maxframes=200;
+	unsigned int maxs=12500;
 	periodicity=maxs/maxframes;
 	FILE *file;
 	for(unsigned int s=0; s<maxs; ++s){

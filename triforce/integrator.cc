@@ -225,14 +225,12 @@ float IntegratorTriforce::integrateSASA(int l, SASASegmentList &sasa, float radi
 		
 	}
 	
-	if(round>=4669) printf("BEFORE %d area0:%f, area1:%f\n",l,area0,area1);
 	if(area0 < 0 && abs(area0) < THRESHOLD_NEGATIVE) area0 = 0;
 	if(area0 < 0) area0 = 2*M_PI+area0;
 
 	if(area1 < 0 && abs(area1) < THRESHOLD_NEGATIVE) area1 = 0;
 	if(area1 < 0) area1 = 2*M_PI+area1;
 	
-	if(round>=4669) printf("AFTER %d area0:%f, area1:%f\n",l,area0,area1);
 	
 	
 	

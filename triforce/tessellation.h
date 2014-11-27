@@ -533,7 +533,7 @@ enum OcclusionType{
 	NA
 };
 
-
+typedef vector<vector<SegmentList::iterator> > SegmentPointerLists;
 
 
 
@@ -646,7 +646,11 @@ private:
 	void splitterSanityCheck(CircularInterfacesPerAtom &circles);
 	void copyIntersectionGraph(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, CircularInterfacesPerAtom &newCircles);
 	void buildIntersectionGraphArtificialPointsPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, unsigned int &globalSegmentCounter);
-	bool buildIntersectionGraphCollectionPass(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer, bool split, unsigned int &globalSegmentCounter, bool derivatives);
+	void buildIntersectionGraphSortPass(int l, float radius, TessellationAxis &tessellationAxis, SegmentList &segmentList, CircularInterfacesPerAtom &circles, Hemisphere hemisphere, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer);
+	void buildIntersectionGraphSort2Pass(SegmentPointerLists &segmentPointerLists, SegmentList &segmentList, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer);
+	void buildIntersectionGraphCollectionPass(int l, float radius, TessellationAxis &tessellationAxis, SegmentPointerLists &segmentPointerLists, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, bool derivatives);
+
+bool buildIntersectionGraphCollectionPassOld(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer, bool split, unsigned int &globalSegmentCounter, bool derivatives);
 	
 	
 	void outputGaussBonnetData(string filename, float radius, CircularInterfacesPerAtom &circles, SASAs &sasas, IntersectionGraph &intersectionGraph);

@@ -26,7 +26,6 @@
 
 #define PURE =0
 
-class tm;
 using namespace std;
 using namespace arma;
 
