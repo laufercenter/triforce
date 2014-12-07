@@ -1,0 +1,96 @@
+using clang ;
+using mpi ;
+
+INCLUDES_SEARCH_DIRECTORIES =
+/include
+/usr/include
+/usr/local/include ;
+
+LIBRARIES_SEARCH_DIRECTORIES =
+/usr/lib
+/usr/local/lib ;
+
+
+INCLUDES = 
+#armadillo
+#boost/multi_array.hpp
+#boost/numeric/ublas/matrix.hpp ;
+/usr/local/include ;
+
+
+
+variant double : release : 	<define>DOUBLE_COORDINATE_POINTERS
+				<define>DOUBLE_AREA_POINTERS
+				<define>DOUBLE_FORCE_POINTERS				
+				<define>PARALLEL_NOMPI
+				;
+
+variant float : release : 	<define>FLOAT_COORDINATE_POINTERS
+				<define>FLOAT_AREA_POINTERS
+				<define>FLOAT_FORCE_POINTERS				
+				<define>PARALLEL_NOMPI
+				;
+
+variant double_mpi : release : 	<define>DOUBLE_COORDINATE_POINTERS
+				<define>DOUBLE_AREA_POINTERS
+				<define>DOUBLE_FORCE_POINTERS				
+				<define>PARALLEL_MPI
+				;
+
+variant float_mpi : release : 	<define>FLOAT_COORDINATE_POINTERS
+				<define>FLOAT_AREA_POINTERS
+				<define>FLOAT_FORCE_POINTERS
+				<define>PARALLEL_MPI
+				;
+
+lib armadillo : : <name>armadillo <search>$(LIBRARIES_SEARCH_DIRECTORIES) ;
+lib boost_mpi-mt : : <name>boost_mpi-mt <search>$(LIBRARIES_SEARCH_DIRECTORIES) ;
+lib mpi : : <name>mpi <search>$(LIBRARIES_SEARCH_DIRECTORIES) ;
+lib boost_serialization-mt : : <name>boost_serialization-mt <search>$(LIBRARIES_SEARCH_DIRECTORIES) ;
+
+
+
+#project triforce-config : requirements <include>$(INCLUDES) <variant>double ;
+project triforce-config : requirements <include>$(INCLUDES) ;
+
+SOURCES = 
+tessellation.cc
+data1d.cc
+datafile.cc
+molecule.cc
+interpolation.cc
+interpolationPolytopical.cc
+topology.cc
+integrator.cc
+integratorNumerical.cc
+triforceInterface.cc
+neighbourList.cc 
+multiLayeredDepthBuffer.cc
+benchmark.cc
+depth3d.cc ;
+
+
+HEADERS = 
+tessellation.h
+data.h
+data3d.h
+data1d.h
+datafile.h
+molecule.h
+interpolation.h
+interpolationPolytopical.h
+topology.h
+integrator.h
+integratorNumerical.h
+triforceInterface.h
+neighbourList.h
+multiLayeredDepthBuffer.h
+benchmark.h
+depth3d.h ;
+
+
+lib triforce : armadillo mpi boost_mpi-mt boost_serialization-mt triforce/$(SOURCES) ;
+
+install install-bin : triforce : <location>/usr/local/lib ;
+install install-headers : triforce/$(HEADERS) triforce.h : <location>/usr/local/include <install-source-root>. ;
+

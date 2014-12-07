@@ -62,6 +62,13 @@ using namespace arma;
 typedef fvec Vector;
 typedef Col<unsigned int> VectorInt;
 
+enum MPI_Messages{
+	MPI_POPULATE,
+	MPI_REDUCE_AREAS,
+	MPI_REDUCE_FORCES
+};
+
+
 enum DerivativeMode{
 	FIXED_POSITION,
 	GENERAL_POSITION,
@@ -499,9 +506,14 @@ SASASegment;
 
 typedef vector<SASASegment> SASASegmentList;
 
+typedef struct
+{
+	unsigned int l;
+	SASASegmentList sasaSegmentList;
+}
+SASASegmentUnit;
 
-
-typedef vector<SASASegmentList> SASAs;
+typedef vector<SASASegmentUnit> SASAs;
 
 
 typedef map<IntersectionAddress, IntersectionNode, InteractionNodeComparator> IntersectionGraph;
@@ -547,7 +559,7 @@ public:
 	void build(bool useDepthBuffer, bool split=true);
 	SASAs &sasas();
 	void update();
-	
+	void init();
 	
 	Vector calculateInterfaceNormal(const Vector &v_l, const Vector &v_i);
 	Vector calculateInterfaceNormal(const Vector &v_l, const Vector &v_i, float &d);
@@ -618,6 +630,9 @@ private:
 	int totalInterfaces;
 	int survivedInterfaces;
 
+	int numprocs, rank;
+	vector<vector<unsigned int> > atomsForNodes;
+	vector<unsigned int> assignedAtoms;
 
 	void setupTessellationAxis(TessellationAxis &tessellationAxis, Hemisphere hemisphere, int closestNeighbour, vector<Vector> &atoms, vector<float> &radii, Vector &origin, float radius, DerivativeMode dmode, CircularInterfacesPerAtom &circles);
 	CircularInterfacesPerAtom coverHemisphere(TessellationAxis &tessellationAxis, CircularInterfacesPerAtom circles, CircularInterfaceForm form);
@@ -650,7 +665,7 @@ private:
 	void buildIntersectionGraphSort2Pass(SegmentPointerLists &segmentPointerLists, SegmentList &segmentList, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer);
 	void buildIntersectionGraphCollectionPass(int l, float radius, TessellationAxis &tessellationAxis, SegmentPointerLists &segmentPointerLists, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, bool derivatives);
 
-bool buildIntersectionGraphCollectionPassOld(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer, bool split, unsigned int &globalSegmentCounter, bool derivatives);
+	bool buildIntersectionGraphCollectionPassOld(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer, bool split, unsigned int &globalSegmentCounter, bool derivatives);
 	
 	
 	void outputGaussBonnetData(string filename, float radius, CircularInterfacesPerAtom &circles, SASAs &sasas, IntersectionGraph &intersectionGraph);
@@ -674,7 +689,9 @@ bool buildIntersectionGraphCollectionPassOld(int l, float radius, TessellationAx
 	
 	void cleanCircularIntersections(CircularInterfacesPerAtom &circles);
 	
-	
+#ifdef PARALLEL_MPI
+	void populateNodesWithAtoms();
+#endif
 	
 	
 	

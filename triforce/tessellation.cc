@@ -8,14 +8,83 @@
 #include <limits>
 #include <boost/math/distributions/normal.hpp>
 
+#ifdef PARALLEL_MPI
+	#include <boost/mpi.hpp>
+	#include <boost/serialization/string.hpp>
+	#include <boost/mpi/environment.hpp>
+	#include <boost/mpi/communicator.hpp>
+	namespace mpi = boost::mpi;
+#endif
+
+
+#ifdef PARALLEL_MPI
+void Tessellation::populateNodesWithAtoms(){
+	unsigned int n;
+	double atomsPerNode;
+	vector<unsigned int> atoms;
+	vector<unsigned int> atomsForNode;
+	boost::mpi::communicator world;
+	
+	
+	n=molecule.fetchCoordinates().size();
+	atoms.resize(n,0);
+	for(unsigned int i=0; i<n; ++i) atoms[i]=i;
+	std::random_shuffle(atoms.begin(),atoms.end());
+	
+	atomsPerNode=static_cast<unsigned int>(ceil(static_cast<double>(n)/static_cast<double>(world.size())));
+	
+	for(unsigned int i=0; i<world.size(); ++i){
+		atomsForNode.clear();
+		for(unsigned int j=0; j<atomsPerNode && i*atomsPerNode+j<n; ++j){
+			atomsForNode.push_back(atoms[i*atomsPerNode+j]);
+		}
+		atomsForNodes.push_back(atomsForNode);
+	}
+	
+	assignedAtoms = atomsForNodes[0];
+	
+	
+	
+	for(unsigned int i=1; i<world.size(); ++i){
+		world.send(i, MPI_POPULATE, atomsForNodes[i]);
+	}
+	
+	
+}
+#endif
+
+
+
+void Tessellation::init(){
+#ifdef PARALLEL_MPI
+	boost::mpi::communicator world;
+	if(world.rank()==0)
+		populateNodesWithAtoms();
+	else
+		world.recv(0, MPI_POPULATE, assignedAtoms);
+#else
+	unsigned int n;
+	n=molecule.fetchCoordinates().size();
+	assignedAtoms.clear();
+	assignedAtoms.resize(n,0);
+	for(unsigned int i=0; i<n; ++i) assignedAtoms[i]=i;	
+#endif
+
+}
+
+
+
+
+
+
 /**
  * Use this if you don't plan to use a depthbuffer
  * */
 Tessellation::Tessellation(Molecule &m){
 	molecule = m;
 	hasDepthBuffer=false;
+	init();
 	benchmark=Benchmark(string("Tessellation"));
-
 }
 
 /**
@@ -28,8 +97,9 @@ Tessellation::Tessellation(Molecule &m, unsigned int numbBuffer, Depth3D &depthD
 	this->exposedDistribution = exposedDistribution;
 	hasDepthBuffer=true;
 	this->numbBuffer=numbBuffer;
-	
+	init();
 	benchmark=Benchmark(string("Tessellation"));
+	
 
 
 }
@@ -50,11 +120,10 @@ void Tessellation::update(){
  * Main entry function to do some work. After calling this, the class will represent a valid tessellation and functions as getSASA etc. will return something meaningful
  * */
 void Tessellation::build(bool useDepthBuffer, bool split){
-	
 	CircularInterfacesPerAtom circlesPerAtom;
 	vector<int> neighbourlist;
 	vector<int> closestNeighbours;
-	
+	unsigned int l;
 	
 	atoms = molecule.fetchCoordinates();
 	radii = molecule.fetchRadii();
@@ -67,17 +136,17 @@ void Tessellation::build(bool useDepthBuffer, bool split){
 	sasasForMolecule.clear();
 	
 	
-	//iterate over all atoms and build the tessellation for each of them
-	for(unsigned int i=0; i<atoms.size(); ++i){
+	//iterate over all assigned atoms and build the tessellation for each of them
+	for(unsigned int i=0; i<assignedAtoms.size(); ++i){
 		benchmark.start(string("initialisation"));
-		
-		neighbourlist = molecule.getNeighborListFor(i);
+		l=assignedAtoms[i];
+		neighbourlist = molecule.getNeighborListFor(l);
 
 		
 		benchmark.stop();
 		benchmark.start(string("gauss-bonnet path"));
 	
-		buildGaussBonnetPath(i, atoms, radii, sasasForMolecule, split, neighbourlist, closestNeighbours[i], useDepthBuffer);
+		buildGaussBonnetPath(l, atoms, radii, sasasForMolecule, split, neighbourlist, closestNeighbours[l], useDepthBuffer);
 		
 		benchmark.stop();
 		
@@ -292,7 +361,7 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 	MultiLayeredDepthBuffer depthBuffer0;
 	MultiLayeredDepthBuffer depthBuffer1;
 	unsigned int globalSegmentCounter;
-	SASASegmentList sasa;
+	SASASegmentUnit sasa;
 	SegmentList segmentListFrontHemisphere;
 	SegmentList segmentListBackHemisphere;
 	SegmentPointerLists segmentPointerListsFrontHemisphere;
@@ -324,7 +393,7 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 	
 	srand(2);
 	
-	
+	sasa.l=i;
 
 	sasas.push_back(sasa);
 	
@@ -441,8 +510,8 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 		buildIntersectionGraphSplitterPass(i, radius, backTessellationAxis, circlesBackHemisphere);
 		
 
-		buildIntersectionGraphArtificialPointsPass(i, radius, frontTessellationAxis, circles, sasa, FRONTHEMISPHERE, globalSegmentCounter);
-		buildIntersectionGraphArtificialPointsPass(i, radius, backTessellationAxis, circlesBackHemisphere, sasa, BACKHEMISPHERE, globalSegmentCounter);
+		buildIntersectionGraphArtificialPointsPass(i, radius, frontTessellationAxis, circles, sasa.sasaSegmentList, FRONTHEMISPHERE, globalSegmentCounter);
+		buildIntersectionGraphArtificialPointsPass(i, radius, backTessellationAxis, circlesBackHemisphere, sasa.sasaSegmentList, BACKHEMISPHERE, globalSegmentCounter);
 			
 		buildIntersectionGraphSortPass(i, radius, frontTessellationAxis, segmentListFrontHemisphere, circles, FRONTHEMISPHERE, depthBuffer0, depthBuffer1, useDepthBuffer);
 		buildIntersectionGraphSortPass(i, radius, backTessellationAxis, segmentListBackHemisphere, circlesBackHemisphere, BACKHEMISPHERE, depthBuffer0, depthBuffer1, useDepthBuffer);
@@ -451,11 +520,11 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 		buildIntersectionGraphSort2Pass(segmentPointerListsBackHemisphere, segmentListBackHemisphere, depthBuffer0, depthBuffer1, useDepthBuffer);
 
 		
-		buildIntersectionGraphCollectionPass(i, radius, frontTessellationAxis, segmentPointerListsFrontHemisphere, circles, sasa, FRONTHEMISPHERE, true);
-		buildIntersectionGraphCollectionPass(i, radius, backTessellationAxis, segmentPointerListsBackHemisphere, circlesBackHemisphere, sasa, BACKHEMISPHERE, true);
+		buildIntersectionGraphCollectionPass(i, radius, frontTessellationAxis, segmentPointerListsFrontHemisphere, circles, sasa.sasaSegmentList, FRONTHEMISPHERE, true);
+		buildIntersectionGraphCollectionPass(i, radius, backTessellationAxis, segmentPointerListsBackHemisphere, circlesBackHemisphere, sasa.sasaSegmentList, BACKHEMISPHERE, true);
 		
-//		buildIntersectionGraphCollectionPassOld(i, radius, frontTessellationAxis, circles, sasa, FRONTHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer, split, globalSegmentCounter,true);
-//		buildIntersectionGraphCollectionPassOld(i, radius, backTessellationAxis, circlesBackHemisphere, sasa, BACKHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer, split, globalSegmentCounter,true);
+//		buildIntersectionGraphCollectionPassOld(i, radius, frontTessellationAxis, circles, sasa.sasaSegmentList, FRONTHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer, split, globalSegmentCounter,true);
+//		buildIntersectionGraphCollectionPassOld(i, radius, backTessellationAxis, circlesBackHemisphere, sasa.sasaSegmentList, BACKHEMISPHERE, string("gbonnet0.csv"), depthBuffer0, depthBuffer1, useDepthBuffer, split, globalSegmentCounter,true);
 
 		
 		
@@ -3473,7 +3542,7 @@ void Tessellation::buildIntersectionGraphCollectionPass(int l, float radius, Tes
 
 
 bool Tessellation::buildIntersectionGraphCollectionPassOld(int l, float radius, TessellationAxis &tessellationAxis, CircularInterfacesPerAtom &circles, SASASegmentList &sasa, Hemisphere hemisphere, string filename, MultiLayeredDepthBuffer &buffer0, MultiLayeredDepthBuffer &buffer1, bool useDepthBuffer, bool split, unsigned int &globalSegmentCounter, bool derivatives){
-	SASASegment sasaSegment;
+/*	SASASegment sasaSegment;
 	
 	CircularInterface *I;
 	vector<RhoContainer>::iterator it_j;
@@ -3714,10 +3783,10 @@ bool Tessellation::buildIntersectionGraphCollectionPassOld(int l, float radius, 
 		int ac=0;
 		int bc=0;
 		//now we check if the previous and current tessellation are equivalent
-		for(unsigned int i=0; i<prevSasasForMolecule[l].size(); ++i){
-			segmentID.i0=prevSasasForMolecule[l][i].index0;
-			segmentID.i1=prevSasasForMolecule[l][i].index1;
-			segmentID.i2=prevSasasForMolecule[l][i].index2;
+		for(unsigned int i=0; i<prevSasasForMolecule[l].sasaSegmentList.size(); ++i){
+			segmentID.i0=prevSasasForMolecule[l].sasaSegmentList[i].index0;
+			segmentID.i1=prevSasasForMolecule[l].sasaSegmentList[i].index1;
+			segmentID.i2=prevSasasForMolecule[l].sasaSegmentList[i].index2;
 			
 			if(prevSasasForMolecule[l][i].hemisphere==hemisphere){
 			//printf(" (%d %d %d) ",segmentID.i0,segmentID.i1,segmentID.i2);
@@ -3739,9 +3808,9 @@ bool Tessellation::buildIntersectionGraphCollectionPassOld(int l, float radius, 
 		
 		for(unsigned int i=0; i<segmentPointerLists.size(); ++i){
 			for(unsigned int j=0; j<segmentPointerLists[i].size(); ++j){
-				id0 = segmentPointerLists[i][j]->id0.i0;
-				id1 = segmentPointerLists[i][j]->id0.i1;
-				id2 = segmentPointerLists[i][j]->id1.i1;
+				id0 = segmentPointerLists[i].sasaSegmentList[j]->id0.i0;
+				id1 = segmentPointerLists[i].sasaSegmentList[j]->id0.i1;
+				id2 = segmentPointerLists[i].sasaSegmentList[j]->id1.i1;
 				
 				segmentID.i0 = circles[id0].index;
 				segmentID.i1 = circles[id1].index;
@@ -3846,7 +3915,7 @@ bool Tessellation::buildIntersectionGraphCollectionPassOld(int l, float radius, 
 		
 	}
 	
-
+*/
 
 	//indicating tessellation is complete
 	return true;
@@ -3919,7 +3988,7 @@ void Tessellation::outputTessellation(string filename){
 	int i;
 	i=0;
 	for(it_atom=sasasForMolecule.begin(); it_atom!=sasasForMolecule.end(); ++it_atom){
-		for(it=it_atom->begin(); it!=it_atom->end(); ++it){
+		for(it=it_atom->sasaSegmentList.begin(); it!=it_atom->sasaSegmentList.end(); ++it){
 			fprintf(file, "%f %f %f %f %f %f %f %f %d %d %d\n",
 				it->normalForCircularInterface(0),it->normalForCircularInterface(1),it->normalForCircularInterface(2),
 				it->rotation0.rotation, it->rotation1.rotation,
@@ -4101,9 +4170,9 @@ void Tessellation::print(FILE* outputfile){
 	
 	fprintf(outputfile,"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","atom","id","i","i2","index0","index1","index2","weight0","weight1","ipx","ipy","ipz","hspx","hspy","hspz");
 	for(unsigned int i=0;i<sasasForMolecule.size();++i){
-		for(unsigned int j=0;j<sasasForMolecule[i].size();++j){
+		for(unsigned int j=0;j<sasasForMolecule[i].sasaSegmentList.size();++j){
 			{//if(sasasForMolecule[i][j].form1==CONVEX){
-				s=sasasForMolecule[i][j];
+				s=sasasForMolecule[i].sasaSegmentList[j];
 
 				//we filter to avoid outputting splitter intersectionpoints
 				//printf("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%f\n",i,j,s.i,s.i2,s.index0, s.index1,s.index2,s.weight);

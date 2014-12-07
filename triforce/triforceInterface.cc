@@ -1,3 +1,10 @@
+/**
+	Copyright (c) 2009-2014 Nils J. D. Drechsel, Christopher J. Fennell, Ken A. Dill, Jordi Villà-Freixa
+	Email: nils.drechsel@gmail.com
+	License: MIT-license, which can be found in file LICENSE.txt as well as here: http://opensource.org/licenses/MIT
+*/
+
+
 #include "triforceInterface.h"
 
 #include <algorithm>
@@ -6,7 +13,25 @@
 using namespace std;
 
 
+
+	
+	
+TriforceInterface::TriforceInterface(string path){
+	TriforceInterface(path, 0, 0);
+}
+
+	
+TriforceInterface::~TriforceInterface(){
+}
+
+
+	
+	
+
 TriforceInterface::TriforceInterface(string path, unsigned int buffer, unsigned int slack){
+		
+
+  
 	benchmark=Benchmark(string("Interface"));
 	benchmark.start(string("loading tables"));
 	df0 = new DataFile(path+"/dataConcave.dat");
@@ -68,59 +93,6 @@ TriforceInterface::TriforceInterface(string path, unsigned int buffer, unsigned 
 
 
 
-TriforceInterface::TriforceInterface(string path){
-	benchmark=Benchmark(string("Interface"));
-	benchmark.start(string("loading tables"));
-	
-	df0 = new DataFile(path+"/dispersionFieldEps.dat");
-	df1 = new DataFile(path+"/dataConcave0.dat");
-	df2 = new DataFile(path+"/dataConcave1.dat");
-	df3 = new DataFile(path+"/dataConcave2.dat");
-	df7 = new DataFile(path+"/barycentricWeights.dat");
-	
-	dat0 = df0->digest3DBinaryTable();
-	dat1 = df1->digest3DBinaryTable();
-	dat2 = df2->digest3DBinaryTable();
-	dat3 = df3->digest3DBinaryTable();
-	dat7 = df7->digest3DBinaryVectorialTable();
-	
-	
-	interpolator0 = new Interpolation(dat0,TAYLOR_LINEAR);
-	interpolator1 = new Interpolation(dat1,TAYLOR_LINEAR);
-	interpolator2 = new Interpolation(dat2,TAYLOR_LINEAR);
-	interpolator3 = new Interpolation(dat3,TAYLOR_LINEAR);
-/*	
-	interpolator0 = new InterpolationPolytopical(dat0,dat7);
-	interpolator1 = new InterpolationPolytopical(dat1,dat7);
-	interpolator2 = new InterpolationPolytopical(dat2,dat7);
-	interpolator3 = new InterpolationPolytopical(dat3,dat7);
-*/	
-	
-	interpolators.clear();
-	interpolators.push_back(interpolator0);
-	interpolators.push_back(interpolator1);
-	interpolators.push_back(interpolator2);
-	interpolators.push_back(interpolator3);
-	
-
-	integrator = new IntegratorTriforce(interpolators);
-	withDepthBuffer=false;
-	
-	if(buffer>0){
-		withDepthBuffer=true;
-		df4 = new DataFile(path+"/depthBuffer.dat");
-		df5 = new DataFile(path+"/occludedDistribution.dat");
-		df6 = new DataFile(path+"/exposedDistribution.dat");
-
-		dat4 = df4->digest3DBinaryTable();
-		dat5 = df5->digest1DBinaryTable();
-		dat6 = df6->digest1DBinaryTable();
-	}
-	
-		
-	benchmark.stop();
-	
-}
 
 
 float TriforceInterface::calculateSurfaceArea(Molecule &mol){
@@ -131,7 +103,7 @@ float TriforceInterface::calculateSurfaceArea(Molecule &mol){
 // 	t->outputTessellation(string("patches.csv"));
 	area = integrator->integrate(&mol, t);
 	tessellationBenchmark=t->getBenchmark();
-	//delete(t); //THIS NEEDS TO BE UN-DECOMMENTED
+	delete(t);
 	
 	return area;
 }

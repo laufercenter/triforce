@@ -93,6 +93,10 @@ private:
 	vector<float> radii;
 	Benchmark benchmark;
 	
+#ifdef PARALLEL_MPI
+	vector<vector<float> > mpiForces;
+	vector<float> mpiAreas;
+#endif
 	
 	float csc(float a);
 	int sgn(float d);

@@ -15,6 +15,14 @@ using namespace std;
 using namespace arma;
 using namespace boost;
 
+#ifdef PARALLEL_MPI
+	#include <boost/mpi.hpp>
+	#include <boost/serialization/string.hpp>
+	#include <boost/mpi/environment.hpp>
+	#include <boost/mpi/communicator.hpp>
+	namespace mpi = boost::mpi;
+#endif
+
 
 IntegratorTriforce::IntegratorTriforce(){
 	
@@ -50,6 +58,12 @@ IntegratorTriforce::IntegratorTriforce(vector<Interpolator*> data){
 void IntegratorTriforce::clearForces(){
 	purgeForces();
 	
+#ifdef PARALLEL_MPI
+	mpiForces.resize(forces.size(),vector<float>());
+	for(unsigned int i=0; i<forces.size(); ++i){
+		mpiForces[i].resize(3,0);
+	}
+#endif	
 	for(unsigned int i=0; i<forces.size(); ++i)
 		for(unsigned int j=0; j<3; ++j){
 			*(forces[i][j]) = 0;
@@ -60,6 +74,9 @@ void IntegratorTriforce::clearForces(){
 void IntegratorTriforce::pushForces(){
 	for(unsigned int i=0; i<forcesDelayed.size(); ++i)
 		for(unsigned int j=0; j<3; ++j){
+#ifdef PARALLEL_MPI
+				mpiForces[forcesDelayed[i].i][j]+=forcesDelayed[i].force(j);
+#endif
 			*(forces[forcesDelayed[i].i][j]) += static_cast<ForcesDT>(forcesDelayed[i].force(j));
 		}
 }
@@ -75,7 +92,7 @@ float IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 	Vector integrationOrigin;
 	float radius;
 	float area,a;
-	
+	SASASegmentUnit sasa;
 	
 	this->molecule = m;
 	this->tessellation = tessellation;
@@ -86,6 +103,14 @@ float IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 	atoms = molecule->fetchCoordinates();
 	forces = molecule->fetchForcePointers();
 	areas = molecule->fetchAreaPointers();
+	
+#ifdef PARALLEL_MPI
+	mpiForces.resize(forces.size(),vector<float>());
+	for(unsigned int i=0; i<forces.size(); ++i)
+		mpiForces[i].resize(3,0);
+	mpiAreas.resize(areas.size(),0);
+#endif
+	
 	
 	clearForces();
 	
@@ -100,15 +125,20 @@ float IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 	benchmark.start(string("integrating"));
 	
 	for(unsigned int i=0;i<sasas.size();++i){
-		radius = radii[i];
+		sasa=sasas[i];
+		radius = radii[sasa.l];
 		tradius=radius;
-		a = integrateSASA(i, sasas[i], radius);
+		a = integrateSASA(sasa.l, sasa.sasaSegmentList, radius);
 		
 		
 		a = radius*radius * a;
 		
-		*(areas[i]) = static_cast<AreasDT>(a);
+		*(areas[sasa.l]) = static_cast<AreasDT>(a);
 		area += a;
+		
+#ifdef PARALLEL_MPI
+		mpiAreas[sasa.l] = a;
+#endif
 		
 		if(a>0) pushForces();
 		purgeForces();
@@ -116,6 +146,38 @@ float IntegratorTriforce::integrate(Molecule *m, Tessellation *tessellation){
 	}
 	
 	benchmark.stop();
+	
+#ifdef PARALLEL_MPI
+	boost::mpi::communicator world;
+	if(world.rank()==0){
+		for(unsigned int i=1; i<world.size(); ++i){
+			world.recv(i, MPI_REDUCE_AREAS, mpiAreas);
+			for(unsigned int j=0; j<areas.size(); ++j){
+				*(areas[j]) += static_cast<AreasDT>(mpiAreas[j]);
+			}
+		}
+		
+		for(unsigned int i=1; i<world.size(); ++i){
+			world.recv(i, MPI_REDUCE_FORCES, mpiForces);
+			for(unsigned int j=0; j<forces.size(); ++j){
+				for(unsigned int k=0; k<3; ++k)
+					*(forces[j][k]) += static_cast<ForcesDT>(mpiForces[j][k]);
+			}
+		}
+		
+		
+	}
+	else{
+		world.send(0, MPI_REDUCE_AREAS, mpiAreas);
+		world.send(0, MPI_REDUCE_FORCES, mpiForces);
+	}
+	area=0;
+	for(unsigned int i=0; i<areas.size(); ++i)
+		area+=*(areas[i]);
+#endif
+
+	
+	
 	
 	return area;
 	
@@ -751,7 +813,7 @@ void IntegratorTriforce::outputPatches(FILE* outputfile, Molecule *m, Tessellati
 	fprintf(outputfile,"normal_for_circular_interface\tPHI0\tPHI1\tpsi\tlambda\tradius\themisphere\tform\tindexl\tindex0\tindex1\tindex2\n");
 	for(unsigned int i=0;i<sasas.size();++i){
 		radius = radii[i];
-		for(it = sasas[i].begin(); it!=sasas[i].end(); ++it){
+		for(it = sasas[i].sasaSegmentList.begin(); it!=sasas[i].sasaSegmentList.end(); ++it){
 			x=*it;
 		
 			fprintf(outputfile,"%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d\t%d\t%d\t%d\t%d\t%d\n",

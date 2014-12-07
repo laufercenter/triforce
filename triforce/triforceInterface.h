@@ -30,12 +30,24 @@
 using namespace std;
 using namespace arma;
 
+#ifdef PARALLEL_MPI
+	#include <boost/mpi.hpp>
+	#include <boost/serialization/string.hpp>
+	#include <boost/mpi/environment.hpp>
+	#include <boost/mpi/communicator.hpp>
+	namespace mpi = boost::mpi;
+#endif
+
 
 
 class TriforceInterface{
 public:
 	TriforceInterface(string path);
 	TriforceInterface(string path, unsigned int buffer, unsigned int slack);
+	~TriforceInterface();
+	
+
+	
 	
 	float calculateSurfaceArea(Molecule &mol);
 	void minimise(Molecule &mol0);
@@ -74,6 +86,9 @@ protected:
 	IntegratorTriforce *integrator;	
 	
 	vector<Interpolator*> interpolators;
+	
+	
+
 	
 private:
 	bool withDepthBuffer;
