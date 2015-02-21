@@ -327,6 +327,13 @@ typedef struct
 }
 Interfaces;
 
+typedef struct{
+	unsigned int atom;
+	unsigned int interface;
+} InterfaceTask;
+
+typedef vector<InterfaceTask> InterfaceTaskList;
+
 typedef struct
 {
 	int id0;
@@ -466,8 +473,18 @@ CircularInterface;
 
 
 
+
+
 typedef vector<CircularInterface> CircularInterfacesPerAtom;
 
+typedef struct {
+	CircularInterfacesPerAtom circles;
+	bool isInsideOtherSpheres;
+	TessellationAxis frontTessellationAxis;
+	TessellationAxis backTessellationAxis;	
+}InterfaceElement;
+
+typedef vector<InterfaceElement> Interfaces;
 
 typedef struct
 {
@@ -638,7 +655,7 @@ private:
 	CircularInterfacesPerAtom coverHemisphere(TessellationAxis &tessellationAxis, CircularInterfacesPerAtom circles, CircularInterfaceForm form);
 	void buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<float> &radii, SASAs &sasas, bool split, vector<int> &neighbourlist, int closestNeighbour, bool useDepthBuffer);
 	void determineProjection(Vector &origin, float radius, CircularInterface &circle);
-	void makeCircularInterfaces(int i,Vector &origin, float radius, vector<fvec> &atoms, vector<float> &radii, vector<CircularInterface> &circles, vector<int> &neighbourlist, bool &isInsideAnotherSphere);
+	void makeCircularInterfaces(int i,Vector &origin, float radius, vector<fvec> &atoms, vector<float> &radii, vector<CircularInterface> &circles, vector<int> &neighbourlist, bool &isInsideOtherSpheres);
 	int filterCircularInterfaces(vector<CircularInterface> &circles, bool splitterOnly);
 	void outputGaussBonnetPath(SASAs &points);
 	void reindexCircularInterfaces(CircularInterfacesPerAtom &circles);
@@ -694,9 +711,21 @@ private:
 #endif
 	
 	
+	void buildGaussBonnetPath(vector<Vector> &atoms, vector<float> &radii, vector<int> &neighbourlist, int closestNeighbour);
+
 	
-	
-	
+	class ExtractInterfaceTask{
+		
+		ExtractInterfaceTask(Molecule &mol);
+		
+		Molecule mol;
+		Interfaces interfaces;
+		vector<fvec> atoms;
+		vector<float> radii;
+		vector<int> closestNeighbours;
+		
+		
+	};
 	
 	
 	

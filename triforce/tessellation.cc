@@ -340,6 +340,624 @@ void Tessellation::cleanCircularIntersections(CircularInterfacesPerAtom &circles
 }
 
 
+
+void Tessellation::extractInterfaces(vector<int> &assignedAtoms, Molecule &mol, Interfaces &interfaces, DerivativeMode dmode
+	vector<fvec> &atoms
+	vector<float> &radii
+	atoms = mol.fetchCoordinates();
+	radii = mol.fetchRadii();
+	closestNeighbours = mol.fetchClosestNeighbours();
+	
+	
+	parallel_for(blocked_range<unsigned int>( 0, assignedAtoms.size() ), 
+		[&atoms, &radii, &closestNeighbours, &interfaces](const blocked_range<size_t>& r) {
+			CircularInterface circle;
+			float r_i;
+			float d_i;
+			Vector mu_i;
+			vector<int>::iterator it;
+			int j;
+			int closestNeighbour;
+			isInsideOtherSpheres=false;
+			vector<int> &neighbourlist;
+			
+			for(unsigned int i=range.begin(); i!=range.end(); ++i)	{
+				l = assignedAtoms[i];
+				neighbourlist = mol.getNeighborListFor(l);
+				origin = atoms[l];
+				circles.clear();
+				closestNeighbour = closestNeighbours[l];
+			
+				
+
+				for(it=neighbourlist.begin(); it!=neighbourlist.end() && !insideAnotherSphere; ++it){
+					j=*it;
+					if(l != j){
+						r_i = radii[j];
+						
+						mu_i = calculateInterfaceNormal(origin, atoms[j], d_i);
+						
+						//reject, if no intersection
+						if(d_i < r_l + r_i && d_i+r_i > r_l && d_i+r_l > r_i){
+							circle.id = circles.size();
+							circle.normal = mu_i;
+							circle.d = d_i;
+							circle.sphereRadius = r_i;
+							circle.intersect = false;
+							circle.index=j;
+							circle.hasDerivatives=false;
+							circle.extended=false;
+							circle.erased=false;
+							circle.flagged=false;
+							circle.lonely=false;
+							circle.hemisphere=FRONTHEMISPHERE;
+							circles.push_back(circle);
+						}
+						//in this case, the atom is completely inside another atom and has no SASA
+						else if(d_i+r_l <= r_i){
+							circles.clear();
+							isInsideOtherSpheres=true;
+							return;
+						}
+						
+					}
+				}
+				
+				setupTessellationAxis(interfaces[i].frontTessellationAxis, FRONTHEMISPHERE, closestNeighbour, atoms, radii, atoms[l], radii[l], dmode, circles);
+				setupTessellationAxis(interfaces[i].backTessellationAxis, BACKHEMISPHERE, closestNeighbour, atoms, radii, atoms[l], radii[l], dmode, circles);
+				
+				interfaces[i].circles=circles;
+				interfaces[i].isInsideOtherSpheres=isInsideOtherSpheres;
+				interfaces[i].index = l;
+			}
+		}
+	);
+}
+
+
+InterfaceTaskList createInterfaceTaskList(Interfaces &interfaces){
+	vector<InterfaceTaskList> tasks;
+	InterfaceTaskList taskList;
+	tasks.resize(interfaces.size());
+	//divide
+	parallel_for(blocked_range<unsigned int>( 0, interfaces.size() ), 
+		[&interfaces, &tasks](const blocked_range<size_t>& r) {
+			for(size_t i=r.begin(); i!=r.end(); ++i){
+				tasks[i].resize(interfaces[i].circles.size());
+				for(unsigned int j=0; j<interfaces[i].circles.size(); ++j){
+					InterfaceTask task;
+					task.atom=i;
+					task.interface=j;
+					tasks[i][j]=task;
+				}
+			}
+		}
+	);
+	//and conquer
+	taskList = parallel_reduce(blocked_range<unsigned int>( 0, tasks.size() ),
+		InterfaceTaskList(),
+		[&tasks](const blocked_range<size_t>& r, InterfaceTaskList init)->InterfaceTaskList {
+			for(size_t i=r.begin(); i!=r.end(); ++i){
+				init.insert(init.end(), tasks[i].begin(), tasks[i].end());
+			}
+			return init;
+		},
+		[](InterfaceTaskList x, InterfaceTaskList y)->InterfaceTaskList{
+			return x.insert(x.end(),y.begin(),y.end());
+		}
+		);
+		
+	return taskList;
+}
+
+
+
+void filterInterfaces(Interfaces &interfaces){
+	parallel_for(blocked_range<unsigned int>( 0, interfaces.size() ), 
+		[&interfaces](const blocked_range<size_t>& r) {
+			vector<CircularInterface>::iterator it;
+			float angle;
+			bool erased;
+			Vector n0,n1;
+			//sunsigned int c;
+			vector<CircularInterface> circles2;
+			
+			
+			for(unsigned int t=r.begin(); t!=r.end(); ++t)	{
+				atom = tasks[t].atom;
+				j = tasks[t].interface;
+				it = next(interfaces[atom].circles.begin(), j);
+			
+				
+				n0 = it->normal;
+				
+				for(unsigned i=0;i<interfaces[atom].circles.size();i++){
+					if(it->id != interfaces[atom].circles[i].id){// && !circles[i].erased){
+						if(!splitterOnly || (splitterOnly && interfaces[atom].circles[i].form==SPLITTER)){
+						
+							n1 = interfaces[atom].circles[i].normal;
+							
+							angle = getAngle(n0,n1);
+							
+							if(it->form==CONVEX){
+								//convex circle IT is inside of convex circle i
+								if(interfaces[atom].circles[i].form == CONVEX){
+									
+									if(it->lambda.rotation + angle-THRESHOLD_INTERFACE < interfaces[atom].circles[i].lambda.rotation){
+										it->erased=true;
+										break;
+									}
+								}
+								//convex circle is outside of concave circle i
+								else{
+									if(angle+THRESHOLD_INTERFACE-it->lambda.rotation >  interfaces[atom].circles[i].lambda.rotation){
+										it->erased=true;
+										break;
+									}
+								}
+								
+							}
+							else{
+								//concave circle IT has a free area. This area is covered by convex circle i
+								if(interfaces[atom].circles[i].form == CONVEX){
+									if(it->lambda.rotation + angle-THRESHOLD_INTERFACE < interfaces[atom].circles[i].lambda.rotation){
+										interfaces[atom].isInsideOtherSpheres=true; //principally this is unsafe, but it should work... TODO this should better be converted to an atomic varibale
+										return;
+									}
+									
+								}
+								else{
+									//concave circle IT is completely inside the occlusion of concave circle i
+									if(it->lambda.rotation > interfaces[atom].circles[i].lambda.rotation + angle-THRESHOLD_INTERFACE){
+										it->erased=true;
+										break;
+									}
+									//concave circle IT has a free area. This area is covered by concave circle i
+									else if(angle+THRESHOLD_INTERFACE > it->lambda.rotation + interfaces[atom].circles[i].lambda.rotation){
+										interfaces[atom].isInsideOtherSpheres=true; //TODO convert to atomic variables
+										return;
+										
+									}
+									
+								}
+
+							}	
+						}
+						
+								
+							
+					}
+				}
+			}
+		}
+	);
+
+}
+
+
+void Tessellation::removeErasedInterfaces(Interfaces &interfaces){
+	parallel_for(blocked_range<unsigned int>( 0, interfaces.size() ), 
+			[&interfaces](const blocked_range<size_t>& r) {
+				for(size_t i=r.begin(); i!=r.end(); ++i){
+					CircularInterfacesPerAtom circles;
+					circles.clear();
+					if(!interfaces[i].isInsideOtherSpheres){
+						circles.reserve(interfaces[i].circles.size());
+						for(unsigned int j=0; j<interfaces[i].size(); ++j){
+							if(!interfaces[i][j].erased) circles.push_back(interfaces[i][j]);
+						}
+					}
+					interfaces[i].circles = circles;
+				}
+			}
+		);	
+}
+
+
+void Tessellation::reindexCircularInterfaces(Interfaces &interfaces, InterfaceTaskList &tasks){
+	parallel_for(blocked_range<unsigned int>( 0, tasks.size() ), 
+			[&interfaces, &tasks](const blocked_range<size_t>& r) {
+				for(size_t i=r.begin(); i!=r.end(); ++i){
+					interfaces[tasks[i].atom][tasks[i].interface].id = tasks[i].interface;
+				}
+			}
+		);	
+}
+
+
+
+void Tessellation::determineCircularIntersections(Interfaces &interfaces, InterfaceTaskList &tasks, bool splitterOnly){
+	parallel_for(blocked_range<unsigned int>( 0, tasks.size() ),
+		[&interfaces, &tasks, splitterOnly](const blocked_range<size_t>& r) {
+			for(size_t i=r.begin(); i!=r.end(); ++i){
+				float angle;
+				RhoContainer c;
+				unsigned int start;
+				int atom;
+				int interface;
+				
+				atom = tasks[i].atom;
+				interface = tasks[i].interface;
+				
+				
+				//this doesn't really need to be optimised. The reason is, that the number of excluded interface-interface intersections is much smaller and at most equal to the number of included intersections
+				if(splitterOnly && interfaces[atom].circles[interface].form!=SPLITTER) continue;
+				for(unsigned j=0; j<interfaces[atom].circles.size(); j++){
+					if(interface!=j && !circles[j].flagged){
+						//determine if there will be intersections
+						angle = getAngle(interfaces[atom].circles[interface].normal, interfaces[atom].circles[j].normal);
+						if(angle+THRESHOLD_INTERFACE < interfaces[atom].circles[interface].lambda.rotation + interfaces[atom].circles[j].lambda.rotation){
+							if(angle-THRESHOLD_INTERFACE + interfaces[atom].circles[interface].lambda.rotation > interfaces[atom].circles[j].lambda.rotation && angle-THRESHOLD_INTERFACE + interfaces[atom].circles[j].lambda.rotation > interfaces[atom].circles[interface].lambda.rotation){
+								c.rho=angle;
+								c.id = j;
+								interfaces[atom].circles[interface].circularIntersections[interfaces[atom].circles[j].index]=c; //TODO might be problematic
+							}
+						}
+					}
+				
+				}
+			}
+		}
+	);	
+	
+}
+
+
+
+
+void Tessellation::buildIntersectionGraphFirstPass(Molecule &mol, Interfaces &interfaces, InterfaceTaskList &tasks){
+	vector<float> radii;
+	radii = mol.fetchRadii();
+	parallel_for(blocked_range<unsigned int>( 0, tasks.size() ),
+		[&interfaces, &tasks, &radii](const blocked_range<size_t>& r) {
+			for(size_t i=r.begin(); i!=r.end(); ++i){
+				int atom;
+				int interface;
+				
+				atom = tasks[i].atom;
+				interface = tasks[i].interface;
+
+	
+	unsigned int j;
+	CircularInterface *I, *J;
+	map<int,RhoContainer>::iterator it_j;
+	
+	
+	IntersectionBranches::iterator it;
+	PHIContainer  PHII;
+	
+	bool erased;
+	bool done;
+	RhoContainer rhoContainer;
+	int round;
+	map<int,bool> activeBranches;
+	
+	
+	//iterate through all circles and add them to the intersectiongraph, one by one
+		I = &interfaces[atom].circles[interface];
+		
+		if(I->circularIntersections.size()==0){
+			I->lonely=true;
+			continue;	
+		}
+		
+		//iterate through all intersections with other interfaces
+		for(it_j=I->circularIntersections.begin(); it_j != I->circularIntersections.end(); ++it_j){
+			j=it_j->second.id;
+			rhoContainer = it_j->second;
+			J = &circles[j];
+			
+			//retrieve external and internal interfaces and create a branch stored in PHII (which stands for PHI, circle I)
+			PHII = calculatePHI(interfaces[atom].tessellationAxis, *I, *J, radii[interfaces[atom].index], rhoContainer);
+			createIntersectionBranch(PHII, *I, *J,rhoContainer);
+		}
+		
+
+		
+		//now we have to do 2 rounds of eliminations
+		round=0;
+		activeBranches.clear();
+		
+		it = I->intersectionBranches.begin();
+		done=false;
+		while(!done){
+			//for out directions, we have to check if the ip should be deleted before we add the interface to the active branches
+			if(it->second->direction==OUT){
+				++it->second->visited;
+				if(activeBranches.size()>0) it->second->flagged=true;
+				activeBranches[it->second->id]=true;				
+			}
+			//for in directions the other way around
+			else{
+				activeBranches.erase(it->second->id);
+				if(activeBranches.size()>0) it->second->flagged=true;
+			}
+			
+			it=increaseBranchInterator(it, *I);
+
+			if(round==0 && it->second->visited==1) ++round;
+			else if(round==1 && it->second->visited==2) done=true;
+
+			
+			
+		}
+			
+
+		
+		
+		//The branches have been flagged to be deleted, here, we perform the actual deletion.
+		it = I->intersectionBranches.begin();
+		while(it != I->intersectionBranches.end()){
+			erased=false;
+			if(it->second->flagged){
+				//dist0 = buriedness(hemisphere, *I, circles[it->second.id], it->second.PHI.rotation, buffer0, buffer1);
+				//fprintf(stderr,"%f\n",dist0);
+				delete(it->second);
+				it=I->intersectionBranches.erase(it);
+				erased=true;
+			}
+			
+			if(!erased) ++it;
+				
+		}
+			
+	}
+}
+
+
+void Tessellation::cleanCircularIntersections(Interfaces &interfaces, InterfaceTaskList &tasks){
+	parallel_for(blocked_range<unsigned int>( 0, tasks.size() ),
+		[&interfaces, &tasks](const blocked_range<size_t>& r) {
+			for(size_t i=r.begin(); i!=r.end(); ++i){
+				int atom;
+				int interface;
+				
+				atom = tasks[i].atom;
+				interface = tasks[i].interface;
+	
+				if(interfaces[atom].circles[interface].form!=SPLITTER && interfaces[atom].circles[interface].intersectionBranches.size()==0 && !interfaces[atom].circles[interface].lonely){
+					interfaces[atom].circles[interface].flagged=true;
+				}
+			}
+		);
+	}
+	
+}
+
+
+void Tessellation::reindexCircularInterfaces2(Interfaces &interfaces, bool eraseImproperBranches){
+	parallel_for(blocked_range<unsigned int>( 0, tasks.size() ),
+		[&interfaces, eraseImproperBranches](const blocked_range<size_t>& r) {
+			for(size_t l=r.begin(); l!=r.end(); ++l){
+				
+				map<int,int> cross;
+				IntersectionBranches::iterator it,it2;
+				CircularIntersections::iterator it3;
+				bool erased;
+	
+				
+	
+	
+				for(unsigned i=0;i<interfaces[l].circles.size();i++){
+					cross[interfaces[l].circles[i].id]=i;
+				}
+				
+				for(unsigned i=0;i<interfaces[l].circles.size();i++){
+					it3=interfaces[l].circles[i].circularIntersections.begin();
+					while(it3!=interfaces[l].circles[i].circularIntersections.end()){
+						erased=false;
+						if(cross.find(it3->second.id)!=cross.end()){
+							it3->second.id=cross[it3->second.id];
+						}
+						else{
+							it3=circles[i].circularIntersections.erase(it3);
+							erased=true;
+						}
+						if(!erased) it3++;
+					}
+				}
+				
+				
+				for(unsigned i=0;i<interfaces[l].circles.size();i++){
+					interfaces[l].circles[i].id = i;
+					it = interfaces[l].circles[i].intersectionBranches.begin();
+					
+					//if the branch is pointing to a not-deleted circle, we update its id, or remove it in the other case
+					while(it != interfaces[l].circles[i].intersectionBranches.end()){
+						erased=false;
+						if(cross.find(it->second->id)!=cross.end()){
+							it->second->id=cross[it->second->id];
+							it->second->PHI.omega.id_i=cross[it->second->PHI.omega.id_i];
+							it->second->PHI.omega.id_j=cross[it->second->PHI.omega.id_j];
+							it->second->PHI.eta.id_i=cross[it->second->PHI.eta.id_i];
+							it->second->PHI.eta.id_j=cross[it->second->PHI.eta.id_j];
+						}
+						else{
+							if(eraseImproperBranches){
+								delete(it->second);
+								it=circles[i].intersectionBranches.erase(it);
+								erased=true;
+							}
+							else{
+								//Usually it's not good to delete the intersection points, but we have to give them a different id
+								//We also flag them for deletion so that they get removed after they are used
+								it->second->id=i;
+								it->second->flagged=true;
+								
+							}
+						}
+						if(!erased) ++it;
+					}
+				}
+			}
+		}
+	);
+}
+
+
+
+
+void Tessellation::determinePsiRotations(Interfaces &interfaces, InterfaceTaskList &tasks){
+	parallel_for(blocked_range<unsigned int>( 0, tasks.size() ),
+		[&interfaces, &tasks, hemisphere](const blocked_range<size_t>& r) {
+			for(size_t i=r.begin(); i!=r.end(); ++i){
+				int atom;
+				int interface;
+				TessellationAxis t;
+				atom = tasks[i].atom;
+				interface = tasks[i].interface;
+				if(interfaces[atom].circles[interface].hemisphere==FRONTHEMISPHERE) t=interfaces[atom].frontTessellationAxis;
+				else t=interfaces[atom].backTessellationAxis;
+				interfaces[atom].circles[interface].psi.rotation = getAngle(t.v,interfaces[atom].circles[interface].normal);
+			}
+		}
+	);
+}
+
+
+
+void Tessellation::copyIntersectionGraph(Molecule &mol, Interfaces &interfaces, InterfaceTaskList &tasks){
+	vector<float> radii;
+	radii = mol.fetchRadii();
+	Interfaces interfaces2;
+	interfaces2 = Interfaces(interfaces); //TODO this copy might be parallelised
+	
+	parallel_for(blocked_range<unsigned int>( 0, tasks.size() ),
+		[&interfaces, interfaces2, &tasks](const blocked_range<size_t>& r) {
+			for(size_t i=r.begin(); i!=r.end(); ++i){
+				int atom;
+				int interface;
+				TessellationAxis t;
+				atom = tasks[i].atom;
+				interface = tasks[i].interface;
+	
+				SASASegment sasaSegment;
+				
+				
+				CircularInterface *I, *J;
+				vector<RhoContainer>::iterator it_j;
+				
+				
+				IntersectionBranches::iterator it;
+				PHIContainer PHII;
+				
+				RhoContainer rhoContainer;
+				
+
+				//clear intersectionbranches. They will be refreshed in the next step.
+				interfaces2[atoms].circles[interface].intersectionBranches.clear();
+				interfaces2[atoms].circles[interface].hasDerivatives=false;
+				interfaces2[atoms].circles[interface].hemisphere=BACKHEMISPHERE;
+				
+				
+				
+				
+				
+				I = &intersections2[atoms].circles[interface];
+				
+				//here, the intersection graph is refreshed with the new PHI values with respect to the new tessellation axis
+				for(it = I->intersectionBranches.begin(); it != I->intersectionBranches.end(); ++it){
+					J=&interfaces2[atoms].circles[it->second->id];
+					rhoContainer=it->second->rho;
+					PHII = calculatePHI(interfaces2[atoms].backTessellationAxis, *I, *J, radii[interfaces2[atom].index], rhoContainer);
+					
+					createIntersectionBranch(PHII, interfaces2[atoms].circles[interface], interfaces2[atoms].circles[interface][it->second->id], rhoContainer, *(it->second));
+					
+				}
+					
+
+			}
+		}
+	);
+	
+	
+	parallel_for(blocked_range<unsigned int>( 0, interfaces.size() ),
+		[&interfaces, interfaces2](const blocked_range<size_t>& r) {
+			for(size_t i=r.begin(); i!=r.end(); ++i){	
+				interfaces[i].circles.insert(interfaces[i].circles.end(), interfaces2[i].circles.begin(), interfaces2[i].circles.end());
+			}
+		}
+	);
+
+}
+
+
+
+unsigned int Tessellation::coverHemisphere2(Interfaces &interfaces){
+	parallel_for(blocked_range<unsigned int>( 0, interfaces.size() ),
+		[&interfaces, interfaces2](const blocked_range<size_t>& r) {
+			for(size_t i=r.begin(); i!=r.end(); ++i){
+				
+				CircularInterface C;
+				Vector v(3);
+				Matrix NullMatrix(3,3);
+				NullMatrix.zeros();
+				
+				v = interfaces[i].frontTessellationAxis.v;
+				
+				C.lambdaRotation.rotation = M_PI * 0.5;
+				C.lambda.rotation = M_PI * 0.5;
+				C.psi.rotation=0;
+				C.g=0;
+				C.normal = v;
+				C.form = form;
+				C.id = circles.size();
+				C.valid = true;
+				C.index = -1;
+				C.hasDerivatives=true;
+				C.extended=false;
+				C.flagged=false;
+				C.lonely=false;
+				
+				C.dmu_dx = NullMatrix;
+				C.lambda.drotation_dxi = Vector(3).zeros();
+				C.lambda.drotation_dxj = Vector(3).zeros();
+				C.lambda.drotation_dxl = Vector(3).zeros();
+				C.lambda.drotation_dxt = Vector(3).zeros();
+
+				C.psi.drotation_dxi = Vector(3).zeros();
+				C.psi.drotation_dxj = Vector(3).zeros();
+				C.psi.drotation_dxl = Vector(3).zeros();
+				C.psi.drotation_dxt = Vector(3).zeros();
+				
+				
+				circles.push_back(C);
+				
+				return circles.size()-1;
+}
+
+
+
+void Tessellation::buildGaussBonnetPath(vector<int> &assignedAtoms){
+	CircularInterfacesPerAtom circles,precircles;
+	Interfaces interfaces;
+	
+	InterfaceTaskList tasks;
+	
+	
+	
+	interfaces.resize(assignedAtoms.size());
+	extractInterfaces(assignedAtoms, mol, interfaces, FIXED_POSITION);
+	tasks = createInterfaceTaskList(interfaces);
+	
+	filterInterfaces(interfaces);
+	removeErasedInterfaces(interfaces);
+	
+	tasks = createInterfaceTaskList(interfaces);
+	
+	reindexCircularInterfaces(interfaces, tasks);
+	determineCircularIntersections(interfaces, tasks, false);
+	cleanCircularIntersections(interfaces, tasks);
+	reindexCircularInterfaces2(interfaces, true);
+	
+	tasks = createInterfaceTaskList(interfaces);	
+	
+	copyIntersectionGraph(mol, interfaces, tasks);	
+	determinePsiRotations(interfaces, tasks);
+}
+
+
+
 /**
  * Main builder function.
  * */
@@ -356,7 +974,7 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 	TessellationAxis backTessellationAxis;
 	Vector origin;
 	float radius;
-	bool isInsideAnotherSphere;
+	bool isInsideOtherSpheres;
 	Vector v;
 	MultiLayeredDepthBuffer depthBuffer0;
 	MultiLayeredDepthBuffer depthBuffer1;
@@ -401,9 +1019,9 @@ void Tessellation::buildGaussBonnetPath(int i, vector<Vector> &atoms, vector<flo
 	circles.clear();
 	precircles.reserve(neighbourlist.size()+1);
 	circles.reserve(neighbourlist.size()+1);
-	makeCircularInterfaces(i,origin, radius, atoms, radii, precircles, neighbourlist, isInsideAnotherSphere);
+	makeCircularInterfaces(i,origin, radius, atoms, radii, precircles, neighbourlist, isInsideOtherSpheres);
 	
-	if(isInsideAnotherSphere) return;
+	if(isInsideOtherSpheres) return;
 	
 	
 	for(unsigned int j=0;j<precircles.size();j++){
@@ -826,14 +1444,14 @@ Vector Tessellation::calculateInterfaceNormal(const Vector &v_l, const Vector &v
  * Here, all intersecting atoms are traversed and their projection on atom l calculated. This intersection is called circular interface and will be stored in variable circles.
  * All interfaces are initialised with some default properties.
  * */
-void Tessellation::makeCircularInterfaces(int l,Vector &origin, float r_l, vector<fvec> &atoms, vector<float> &radii, vector<CircularInterface> &circles, vector<int> &neighbourlist, bool &isInsideAnotherSphere){
+void Tessellation::makeCircularInterfaces(int l,Vector &origin, float r_l, vector<fvec> &atoms, vector<float> &radii, vector<CircularInterface> &circles, vector<int> &neighbourlist, bool &isInsideOtherSpheres){
 	CircularInterface circle;
 	float r_i;
 	float d_i;
 	Vector mu_i;
 	vector<int>::iterator it;
 	int j;
-	isInsideAnotherSphere=false;
+	isInsideOtherSpheres=false;
 
 	for(it=neighbourlist.begin(); it!=neighbourlist.end(); ++it){
 		j=*it;
@@ -861,7 +1479,7 @@ void Tessellation::makeCircularInterfaces(int l,Vector &origin, float r_l, vecto
 			//in this case, the atom is completely inside another atom and has no SASA
 			else if(d_i+r_l <= r_i){
 				circles.clear();
-				isInsideAnotherSphere=true;
+				isInsideOtherSpheres=true;
 				return;
 			}
 			
